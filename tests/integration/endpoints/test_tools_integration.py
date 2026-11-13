@@ -1,8 +1,5 @@
 """Integration tests for the /tools endpoint."""
 
-from collections.abc import Generator
-from typing import Any
-
 import pytest
 from fastapi import HTTPException, Request, status
 from pytest_mock import MockerFixture
@@ -10,23 +7,6 @@ from pytest_mock import MockerFixture
 from app.endpoints import tools
 from authentication.interface import AuthTuple
 from configuration import AppConfig
-
-
-@pytest.fixture(name="mock_ogx_tools")
-def mock_ogx_tools_fixture(
-    mocker: MockerFixture,
-) -> Generator[Any, None, None]:
-    """Mock the OGX client for tools endpoint.
-
-    Returns:
-        Mock client with toolgroups.list and tools.list configured.
-
-    """
-    mock_holder_class = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
-    mock_client = mocker.AsyncMock()
-    mock_holder_class.return_value.get_client.return_value = mock_client
-    yield mock_client
-
 
 TOOLS_OAUTH_401_TEST_CASES = [
     pytest.param(
@@ -51,7 +31,6 @@ TOOLS_OAUTH_401_TEST_CASES = [
 async def test_tools_endpoint_returns_401_for_mcp_oauth(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     test_case: dict,
     test_config: AppConfig,
-    mock_ogx_tools: Any,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -68,14 +47,12 @@ async def test_tools_endpoint_returns_401_for_mcp_oauth(  # pylint: disable=too-
     Parameters:
         test_case: Dictionary containing test parameters (www_authenticate, expect_www_authenticate)
         test_config: Test configuration
-        mock_ogx_tools: Mocked OGX client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
 
     """
     _ = test_config
-    _ = mock_ogx_tools
 
     www_authenticate = test_case["www_authenticate"]
     expect_www_authenticate = test_case["expect_www_authenticate"]

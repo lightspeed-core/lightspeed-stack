@@ -8,7 +8,6 @@ from opentelemetry import trace
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -21,7 +20,6 @@ from models.api.responses.error import (
 from models.api.responses.successful import ToolsResponse
 from models.common.tools import CatalogTool
 from models.config import Action, ModelContextProtocolServer
-from utils.builtin_tools import get_file_search_tools
 from utils.endpoints import check_configuration_loaded
 from utils.mcp.mcp_headers import (
     McpHeaders,
@@ -99,10 +97,7 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals
         # Check MCP auth
         await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
-        client = AsyncOgxClientHolder().get_client()
-        consolidated_tools: list[CatalogTool] = list(
-            await get_file_search_tools(client)
-        )
+        consolidated_tools: list[CatalogTool] = []
 
         for mcp_server in configuration.mcp_servers:
             consolidated_tools.extend(

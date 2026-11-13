@@ -3,7 +3,7 @@
 """Unit tests for tools endpoint."""
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 from fastapi import HTTPException
@@ -29,25 +29,8 @@ from models.config import (
     TLSConfiguration,
     UserDataCollection,
 )
-from utils.builtin_tools import FILE_SEARCH_CATALOG_TOOLS
 
 MOCK_AUTH: AuthTuple = ("mock_user_id", "mock_username", False, "mock_token")
-
-
-def _mock_file_search_tools(
-    mocker: MockerFixture, file_search_tools: Optional[list] = None
-) -> None:
-    """Patch LLS file-search discovery for tools tests."""
-    mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
-    mocker.patch(
-        "app.endpoints.tools.get_file_search_tools",
-        new_callable=mocker.AsyncMock,
-        return_value=(
-            FILE_SEARCH_CATALOG_TOOLS
-            if file_search_tools is None
-            else file_search_tools
-        ),
-    )
 
 
 def _make_app_config(mocker: MockerFixture, config: Configuration) -> AppConfig:
@@ -120,7 +103,7 @@ async def test_tools_lists_builtin_and_mcp_tools(
     mocker: MockerFixture,
     mock_configuration: Configuration,
 ) -> None:
-    """Return file-search tools from LLS plus MCP tools discovered locally."""
+    """Return MCP tools discovered locally."""
     _make_app_config(mocker, mock_configuration)
     mocker.patch(
         "app.endpoints.tools.check_configuration_loaded",
@@ -135,7 +118,6 @@ async def test_tools_lists_builtin_and_mcp_tools(
         "app.endpoints.tools.get_agent_capability_tools",
         return_value=[],
     )
-    _mock_file_search_tools(mocker)
     mock_list = mocker.patch(
         "app.endpoints.tools.list_mcp_tools",
         side_effect=[
@@ -177,8 +159,6 @@ async def test_tools_lists_builtin_and_mcp_tools(
     assert isinstance(response, ToolsResponse)
     assert mock_list.call_count == 2
     identifiers = {tool.identifier for tool in response.tools}
-    assert "insert_into_memory" in identifiers
-    assert "file_search" in identifiers
     assert "filesystem_read" in identifiers
     assert "git_status" in identifiers
 
@@ -211,7 +191,6 @@ async def test_tools_skips_server_with_unresolved_auth(
         "app.endpoints.tools.get_agent_capability_tools",
         return_value=[],
     )
-    _mock_file_search_tools(mocker)
     mock_list = mocker.patch("app.endpoints.tools.list_mcp_tools")
 
     request = mocker.Mock()
@@ -225,7 +204,7 @@ async def test_tools_skips_server_with_unresolved_auth(
 
     mock_list.assert_not_called()
     identifiers = {tool.identifier for tool in response.tools}
-    assert identifiers == {"insert_into_memory", "file_search"}
+    assert identifiers == set()
 
 
 @pytest.mark.asyncio
@@ -255,7 +234,6 @@ async def test_tools_continues_when_mcp_list_returns_empty(
         "app.endpoints.tools.get_agent_capability_tools",
         return_value=[],
     )
-    _mock_file_search_tools(mocker)
     mocker.patch(
         "app.endpoints.tools.list_mcp_tools",
         return_value=[],
@@ -272,7 +250,6 @@ async def test_tools_continues_when_mcp_list_returns_empty(
 
     identifiers = {tool.identifier for tool in response.tools}
     assert "filesystem_read" not in identifiers
-    assert "insert_into_memory" in identifiers
 
 
 @pytest.mark.asyncio
@@ -302,7 +279,6 @@ async def test_tools_skips_mcp_server_when_discovery_returns_no_tools(
         "app.endpoints.tools.get_agent_capability_tools",
         return_value=[],
     )
-    _mock_file_search_tools(mocker)
     mocker.patch(
         "app.endpoints.tools.list_mcp_tools",
         return_value=[],
@@ -318,7 +294,7 @@ async def test_tools_skips_mcp_server_when_discovery_returns_no_tools(
     )
 
     identifiers = {tool.identifier for tool in response.tools}
-    assert identifiers == {"insert_into_memory", "file_search"}
+    assert identifiers == set()
 
 
 @pytest.mark.asyncio
@@ -334,11 +310,6 @@ async def test_tools_endpoint_includes_agent_capability_tools(
     app_config = AppConfig()
     app_config._configuration = config_with_skills
     mocker.patch("app.endpoints.tools.configuration", app_config)
-
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
-    mock_client = mocker.AsyncMock()
-    mock_client_holder.return_value.get_client.return_value = mock_client
-    mock_client.toolgroups.list.return_value = []
 
     mock_request = mocker.Mock()
     mock_request.headers = {}
@@ -385,7 +356,6 @@ class TestToolsEndpointOtel:
         )
         mocker.patch("app.endpoints.tools.check_mcp_auth", return_value=None)
         mocker.patch("app.endpoints.tools.get_agent_capability_tools", return_value=[])
-        _mock_file_search_tools(mocker, file_search_tools=[])
         mocker.patch("app.endpoints.tools.list_mcp_tools", return_value=[])
 
         request = mocker.Mock()

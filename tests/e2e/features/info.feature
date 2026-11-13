@@ -22,6 +22,8 @@ Feature: Info tests
       And The body of the response does not contain ogx_version
 
 
+  # Skip this scenario due to the temporary built-in tools removal
+  @skip
   Scenario: Check if tools endpoint is working
      When I access REST API endpoint "tools" using HTTP GET method
      Then The status code of the response is 200
