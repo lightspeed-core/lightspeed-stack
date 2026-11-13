@@ -1,5 +1,6 @@
 """Unit tests for safety.types."""
 
+import pytest
 from pydantic_ai.messages import (
     PartDeltaEvent,
     PartEndEvent,
@@ -57,6 +58,52 @@ class TestGuardrailResult:
         assert result.action == "replace"
         assert result.replacement == {"safe": True}
         assert result.message is None
+
+    def test_combine_empty_allows(self) -> None:
+        """Test that no verdicts is an allow."""
+        assert GuardrailResult.combine([]) == GuardrailResult.allow()
+
+    def test_combine_keeps_a_single_verdict(self) -> None:
+        """Test that one verdict is returned unchanged in substance."""
+        assert GuardrailResult.combine([GuardrailResult.allow()]) == (
+            GuardrailResult.allow()
+        )
+        assert GuardrailResult.combine([GuardrailResult.block("stop")]) == (
+            GuardrailResult.block("stop")
+        )
+
+    def test_combine_block_keeps_every_block_message(self) -> None:
+        """Test that any block wins and keeps every block message."""
+        combined = GuardrailResult.combine(
+            [
+                GuardrailResult.allow(),
+                GuardrailResult.block("harm"),
+                GuardrailResult.block(None),
+                GuardrailResult.block("jailbreak"),
+            ]
+        )
+
+        assert combined == GuardrailResult.block("harm\njailbreak")
+
+    def test_combine_rejects_a_replacement(self) -> None:
+        """Test that a replace verdict cannot be combined."""
+        with pytest.raises(ValueError, match="only accepts allow and block"):
+            GuardrailResult.combine(
+                [GuardrailResult.allow(), GuardrailResult.replace("clean")]
+            )
+
+    def test_combine_reads_a_one_pass_iterable_once(self) -> None:
+        """Test that a generator is consumed once and still keeps block messages."""
+        combined = GuardrailResult.combine(
+            verdict
+            for verdict in (
+                GuardrailResult.allow(),
+                GuardrailResult.block("harm"),
+                GuardrailResult.block("jailbreak"),
+            )
+        )
+
+        assert combined == GuardrailResult.block("harm\njailbreak")
 
 
 class TestOutputState:

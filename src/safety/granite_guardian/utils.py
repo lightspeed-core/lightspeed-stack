@@ -4,7 +4,7 @@ Granite Guardian is judged via a structured `<think>...</think><score>yes|no</sc
 completion rather than free text: `build_guardian_block` builds the instructions that ask
 for that shape, and `is_safe` parses the model's response logprobs back out of it into a
 risky/safe verdict. Both are used by
-:class:`~lightspeed.core.agent.safety.granite_guardian.capability.GraniteGuardianRisk`.
+:class:`~lightspeed.core.agent.safety.granite_guardian.capability.GraniteGuardianType`.
 """
 
 from __future__ import annotations

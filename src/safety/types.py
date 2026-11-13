@@ -1,5 +1,6 @@
 """Verdicts and the streamed-output buffer used by safety capabilities."""
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Literal, Optional, Self
 
@@ -79,3 +80,38 @@ class GuardrailResult:
     def replace(cls, value: object) -> Self:
         """Return a replace verdict with the given replacement value."""
         return cls(action="replace", replacement=value)
+
+    @classmethod
+    def combine(cls, results: Iterable[Self]) -> Self:
+        """Return one allow or block verdict for ``results``.
+
+        Any ``block`` wins. Its message is every block message joined in
+        order. When nothing blocks, the result allows. An empty sequence
+        allows.
+
+        Parameters:
+            results: Allow and block verdicts to collapse.
+
+        Returns:
+            One allow or block verdict representing every input verdict.
+
+        Raises:
+            ValueError: If any verdict is a replacement, or has an action
+                other than allow or block.
+
+        """
+        verdicts = list(results)
+        for result in verdicts:
+            if result.action not in ("allow", "block"):
+                raise ValueError(
+                    "GuardrailResult.combine only accepts allow and block "
+                    f"results, got {result.action}."
+                )
+
+        blocks = [result for result in verdicts if result.action == "block"]
+
+        if not blocks:
+            return cls.allow()
+
+        messages = [result.message for result in blocks if result.message]
+        return cls.block("\n".join(messages) or None)

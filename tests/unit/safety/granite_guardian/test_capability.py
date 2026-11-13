@@ -7,6 +7,7 @@ import pytest
 from pydantic_ai import AgentRunResult
 from pydantic_ai.exceptions import SkipModelRequest, UnexpectedModelBehavior
 from pydantic_ai.messages import (
+    ModelMessage,
     ModelRequest,
     ModelResponse,
     TextPart,
@@ -18,7 +19,7 @@ from pydantic_ai.tools import ToolDefinition
 from pytest_mock import MockerFixture
 
 from safety.exceptions import ToolBlocked
-from safety.granite_guardian.capability import GraniteGuardian, GraniteGuardianRisk
+from safety.granite_guardian.capability import GraniteGuardian, GraniteGuardianType
 from safety.granite_guardian.types import DEFAULT_VIOLATION_MESSAGE, Risk
 from safety.types import GuardrailResult
 from tests.unit.safety.helpers import request_context, run_context
@@ -68,7 +69,9 @@ def _response(provider_details: dict[str, Any] | None) -> ModelResponse:
     )
 
 
-def _patch_request(mocker: MockerFixture, provider_details: dict[str, Any] | None):
+def _patch_request(
+    mocker: MockerFixture, provider_details: dict[str, Any] | None
+) -> Any:
     """Patch the Granite Guardian model call to return `provider_details`."""
     return mocker.patch(
         f"{_MODULE}.model_request",
@@ -77,8 +80,8 @@ def _patch_request(mocker: MockerFixture, provider_details: dict[str, Any] | Non
     )
 
 
-class TestGraniteGuardianRiskEvaluate:
-    """Tests for GraniteGuardianRisk.evaluate."""
+class TestGraniteGuardianTypeEvaluate:
+    """Tests for GraniteGuardianType.evaluate."""
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -99,9 +102,10 @@ class TestGraniteGuardianRiskEvaluate:
     ) -> None:
         """Test that the risk threshold decides allow and block."""
         _patch_request(mocker, {"logprobs": _score_logprobs(risky)})
-        capability = GraniteGuardianRisk(
-            risk=_risk(threshold=threshold),
+        capability = GraniteGuardianType(
+            risks=[_risk(threshold=threshold)],
             model=mocker.Mock(),
+            type=["input"],
         )
 
         assert await capability.evaluate("hello") == expected
@@ -112,14 +116,17 @@ class TestGraniteGuardianRiskEvaluate:
     ) -> None:
         """Test that a risk without its own message uses the generic one."""
         _patch_request(mocker, {"logprobs": _score_logprobs(0.9)})
-        capability = GraniteGuardianRisk(
-            risk=Risk(
-                name="harm",
-                criteria="harmful content",
-                threshold=0.5,
-                type=["input"],
-            ),
+        capability = GraniteGuardianType(
+            risks=[
+                Risk(
+                    name="harm",
+                    criteria="harmful content",
+                    threshold=0.5,
+                    type=["input"],
+                )
+            ],
             model=mocker.Mock(),
+            type=["input"],
         )
 
         result = await capability.evaluate("hello")
@@ -144,9 +151,10 @@ class TestGraniteGuardianRiskEvaluate:
         """Test that the check asks Granite Guardian to score this risk."""
         model = mocker.Mock()
         mock_request = _patch_request(mocker, {"logprobs": _score_logprobs(0.1)})
-        capability = GraniteGuardianRisk(
-            risk=_risk(criteria="harmful content", enable_thinking=think),
+        capability = GraniteGuardianType(
+            risks=[_risk(criteria="harmful content", enable_thinking=think)],
             model=model,
+            type=["input"],
         )
 
         await capability.evaluate("the prompt")
@@ -177,7 +185,9 @@ class TestGraniteGuardianRiskEvaluate:
     ) -> None:
         """Test that a response without provider details is an error."""
         _patch_request(mocker, details)
-        capability = GraniteGuardianRisk(risk=_risk(), model=mocker.Mock())
+        capability = GraniteGuardianType(
+            risks=[_risk()], model=mocker.Mock(), type=["input"]
+        )
 
         with pytest.raises(UnexpectedModelBehavior, match="No provider_details"):
             await capability.evaluate("hello")
@@ -194,7 +204,9 @@ class TestGraniteGuardianRiskEvaluate:
     ) -> None:
         """Test that provider details without usable logprobs are an error."""
         _patch_request(mocker, details)
-        capability = GraniteGuardianRisk(risk=_risk(), model=mocker.Mock())
+        capability = GraniteGuardianType(
+            risks=[_risk()], model=mocker.Mock(), type=["input"]
+        )
 
         with pytest.raises(UnexpectedModelBehavior, match="No logprobs"):
             await capability.evaluate("hello")
@@ -215,7 +227,9 @@ class TestGraniteGuardianRiskEvaluate:
                 ]
             },
         )
-        capability = GraniteGuardianRisk(risk=_risk(), model=mocker.Mock())
+        capability = GraniteGuardianType(
+            risks=[_risk()], model=mocker.Mock(), type=["input"]
+        )
 
         with pytest.raises(UnexpectedModelBehavior, match="did not generate"):
             await capability.evaluate("hello")
@@ -228,25 +242,116 @@ class TestGraniteGuardianRiskEvaluate:
             new_callable=mocker.AsyncMock,
             side_effect=RuntimeError("down"),
         )
-        capability = GraniteGuardianRisk(risk=_risk(), model=mocker.Mock())
+        capability = GraniteGuardianType(
+            risks=[_risk()], model=mocker.Mock(), type=["input"]
+        )
 
         with pytest.raises(RuntimeError, match="down"):
             await capability.evaluate("hello")
+
+    @pytest.mark.asyncio
+    async def test_empty_risks_allow_without_a_model_call(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that a guard point with no risks allows and does not call the model."""
+        mock_request = _patch_request(mocker, {"logprobs": _score_logprobs(0.9)})
+        capability = GraniteGuardianType(risks=[], model=mocker.Mock(), type=["input"])
+
+        assert await capability.evaluate("hello") == GuardrailResult.allow()
+        mock_request.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_allows_when_every_risk_is_safe(self, mocker: MockerFixture) -> None:
+        """Test that several safe risks collapse to one allow."""
+        mock_request = _patch_request(mocker, {"logprobs": _score_logprobs(0.1)})
+        capability = GraniteGuardianType(
+            risks=[
+                _risk(name="harm", criteria="harmful content"),
+                _risk(name="jailbreak", criteria="prompt injection"),
+            ],
+            model=mocker.Mock(),
+            type=["input"],
+        )
+
+        assert await capability.evaluate("hello") == GuardrailResult.allow()
+        assert mock_request.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_one_block_wins_and_keeps_that_message(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that a single risky verdict blocks and names that risk."""
+        model = mocker.Mock()
+        mock_request = mocker.patch(
+            f"{_MODULE}.model_request",
+            new_callable=mocker.AsyncMock,
+            side_effect=[
+                _response({"logprobs": _score_logprobs(0.1)}),
+                _response({"logprobs": _score_logprobs(0.9)}),
+            ],
+        )
+        capability = GraniteGuardianType(
+            risks=[
+                _risk(
+                    name="harm",
+                    criteria="harmful content",
+                    violation_message="Harm.",
+                ),
+                _risk(
+                    name="jailbreak",
+                    criteria="prompt injection",
+                    violation_message="Jailbreak.",
+                    enable_thinking=True,
+                ),
+            ],
+            model=model,
+            type=["input"],
+        )
+
+        assert await capability.evaluate("hello") == GuardrailResult.block(
+            message="Jailbreak."
+        )
+
+        assert mock_request.await_count == 2
+        first, second = (
+            call.kwargs["messages"][0] for call in mock_request.await_args_list
+        )
+        assert first.instructions is not None
+        assert "### Criteria: harmful content" in first.instructions
+        assert "<guardian><no-think>" in first.instructions
+        assert second.instructions is not None
+        assert "### Criteria: prompt injection" in second.instructions
+        assert "<guardian><think>" in second.instructions
+        assert "<no-think>" not in second.instructions
+        assert all(
+            call.kwargs["model"] is model for call in mock_request.await_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_joins_block_messages_in_risk_order(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that every blocking risk contributes its message, in list order."""
+        _patch_request(mocker, {"logprobs": _score_logprobs(0.9)})
+        capability = GraniteGuardianType(
+            risks=[
+                _risk(name="harm", violation_message="Harm."),
+                _risk(name="jailbreak", violation_message="Jailbreak."),
+            ],
+            model=mocker.Mock(),
+            type=["input"],
+        )
+
+        assert await capability.evaluate("hello") == GuardrailResult.block(
+            message="Harm.\nJailbreak."
+        )
 
 
 class TestGraniteGuardian:
     """Tests for GraniteGuardian construction."""
 
-    def test_copies_guard_points_from_the_risk(self, mocker: MockerFixture) -> None:
-        """Test that a risk capability screens the points configured on its risk."""
-        risk = _risk(type=["output"])
-        capability = GraniteGuardianRisk(risk=risk, model=mocker.Mock())
-
-        assert capability.type == ["output"]
-        assert capability.risk is risk
-
-    def test_builds_one_child_per_risk(self, mocker: MockerFixture) -> None:
-        """Test that each risk becomes its own guard sharing the model."""
+    def test_groups_risks_by_guard_point(self, mocker: MockerFixture) -> None:
+        """Test that each guard point becomes one child sharing the model."""
         model = mocker.Mock()
         harm = _risk(name="harm", criteria="harmful", type=["input"])
         jailbreak = _risk(
@@ -262,46 +367,61 @@ class TestGraniteGuardian:
             id="shield",
         )
 
-        assert len(guardian.capabilities) == 2
-        harm_guard, jailbreak_guard = guardian.capabilities
-        assert isinstance(harm_guard, GraniteGuardianRisk)
-        assert isinstance(jailbreak_guard, GraniteGuardianRisk)
-        assert harm_guard.id == "shield.harm"
-        assert jailbreak_guard.id == "shield.jailbreak"
-        assert harm_guard.model is model
-        assert jailbreak_guard.model is model
-        assert harm_guard.check_tokens == 7
-        assert jailbreak_guard.check_tokens == 7
-        assert harm_guard.type == ["input"]
-        assert jailbreak_guard.type == ["output", "tool"]
-        assert harm_guard.risk is harm
-        assert jailbreak_guard.risk.enable_thinking is True
+        assert [capability.id for capability in guardian.capabilities] == [
+            "shield.input",
+            "shield.output",
+            "shield.tool",
+        ]
+        by_id = {capability.id: capability for capability in guardian.capabilities}
+        for capability in by_id.values():
+            assert isinstance(capability, GraniteGuardianType)
+            assert capability.model is model
+            assert capability.check_tokens == 7
 
-    def test_omitted_id_uses_the_risk_name(self, mocker: MockerFixture) -> None:
-        """Test that a shield without an id names each child after its risk."""
+        assert by_id["shield.input"].type == ["input"]
+        assert by_id["shield.input"].risks == [harm]
+        assert by_id["shield.output"].type == ["output"]
+        assert by_id["shield.output"].risks == [jailbreak]
+        assert by_id["shield.tool"].type == ["tool"]
+        assert by_id["shield.tool"].risks == [jailbreak]
+        assert by_id["shield.tool"].risks[0].enable_thinking is True
+
+    def test_omitted_id_uses_the_guard_point(self, mocker: MockerFixture) -> None:
+        """Test that a shield without an id names each child after its guard point."""
         guardian = GraniteGuardian(risks=[_risk(name="harm")], model=mocker.Mock())
 
-        assert guardian.capabilities[0].id == "harm"
+        assert [capability.id for capability in guardian.capabilities] == [
+            "input",
+            "output",
+            "tool",
+        ]
 
-    def test_empty_risks_and_default_check_interval(
+    def test_empty_risks_still_build_a_child_per_guard_point(
         self, mocker: MockerFixture
     ) -> None:
-        """Test that a shield with no risks has no children."""
+        """Test that a shield with no risks still has one child per guard point."""
         guardian = GraniteGuardian(risks=[], model=mocker.Mock())
 
-        assert guardian.capabilities == []
+        assert [capability.id for capability in guardian.capabilities] == [
+            "input",
+            "output",
+            "tool",
+        ]
+        assert all(capability.risks == [] for capability in guardian.capabilities)
         assert guardian.check_tokens == 50
 
 
-class TestGraniteGuardianRiskHooks:
-    """Tests for a Granite Guardian risk wired through the safety hooks."""
+class TestGraniteGuardianTypeHooks:
+    """Tests for a Granite Guardian group wired through the safety hooks."""
 
     @pytest.mark.asyncio
     async def test_safe_input_reaches_the_handler(self, mocker: MockerFixture) -> None:
         """Test that a safe prompt is forwarded to the model request."""
         mock_request = _patch_request(mocker, {"logprobs": _score_logprobs(0.1)})
-        capability = GraniteGuardianRisk(risk=_risk(), model=mocker.Mock())
-        messages = [
+        capability = GraniteGuardianType(
+            risks=[_risk()], model=mocker.Mock(), type=["input"]
+        )
+        messages: list[ModelMessage] = [
             ModelRequest(parts=[UserPromptPart(content="How do I restart a node?")])
         ]
         called = False
@@ -331,8 +451,12 @@ class TestGraniteGuardianRiskHooks:
     ) -> None:
         """Test that an unsafe prompt is replaced by the violation message."""
         _patch_request(mocker, {"logprobs": _score_logprobs(0.9)})
-        capability = GraniteGuardianRisk(risk=_risk(), model=mocker.Mock())
-        messages = [ModelRequest(parts=[UserPromptPart(content="do harm")])]
+        capability = GraniteGuardianType(
+            risks=[_risk()], model=mocker.Mock(), type=["input"]
+        )
+        messages: list[ModelMessage] = [
+            ModelRequest(parts=[UserPromptPart(content="do harm")])
+        ]
         called = False
 
         async def _handler(_request_context: ModelRequestContext) -> ModelResponse:
@@ -353,14 +477,45 @@ class TestGraniteGuardianRiskHooks:
         assert part.content == "Blocked."
 
     @pytest.mark.asyncio
+    async def test_unsafe_input_joins_every_block_message(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that several blocking risks become one skipped model request."""
+        _patch_request(mocker, {"logprobs": _score_logprobs(0.9)})
+        capability = GraniteGuardianType(
+            risks=[
+                _risk(name="harm", violation_message="Harm."),
+                _risk(name="jailbreak", violation_message="Jailbreak."),
+            ],
+            model=mocker.Mock(),
+            type=["input"],
+        )
+
+        messages: list[ModelMessage] = [
+            ModelRequest(parts=[UserPromptPart(content="do harm")])
+        ]
+
+        with pytest.raises(SkipModelRequest) as exc_info:
+            await capability.wrap_model_request(
+                run_context(),
+                request_context=request_context(messages),
+                handler=mocker.AsyncMock(),
+            )
+
+        part = exc_info.value.response.parts[0]
+        assert isinstance(part, TextPart)
+        assert part.content == "Harm.\nJailbreak."
+
+    @pytest.mark.asyncio
     async def test_unsafe_output_replaces_the_run_result(
         self, mocker: MockerFixture
     ) -> None:
         """Test that an unsafe final answer is replaced by the violation message."""
         _patch_request(mocker, {"logprobs": _score_logprobs(0.9)})
-        capability = GraniteGuardianRisk(
-            risk=_risk(type=["output"]),
+        capability = GraniteGuardianType(
+            risks=[_risk(type=["output"])],
             model=mocker.Mock(),
+            type=["output"],
         )
         result = AgentRunResult(output="harmful answer")
 
@@ -376,9 +531,10 @@ class TestGraniteGuardianRiskHooks:
     async def test_unsafe_tool_result_raises(self, mocker: MockerFixture) -> None:
         """Test that an unsafe tool result aborts the run."""
         _patch_request(mocker, {"logprobs": _score_logprobs(0.9)})
-        capability = GraniteGuardianRisk(
-            risk=_risk(type=["tool"]),
+        capability = GraniteGuardianType(
+            risks=[_risk(type=["tool"])],
             model=mocker.Mock(),
+            type=["tool"],
         )
 
         with pytest.raises(ToolBlocked) as exc_info:
@@ -396,13 +552,16 @@ class TestGraniteGuardianRiskHooks:
     async def test_output_risk_does_not_screen_input(
         self, mocker: MockerFixture
     ) -> None:
-        """Test that a risk limited to output does not classify the user prompt."""
+        """Test that an output group does not classify the user prompt."""
         mock_request = _patch_request(mocker, {"logprobs": _score_logprobs(0.9)})
-        capability = GraniteGuardianRisk(
-            risk=_risk(type=["output"]),
+        capability = GraniteGuardianType(
+            risks=[_risk(type=["output"])],
             model=mocker.Mock(),
+            type=["output"],
         )
-        messages = [ModelRequest(parts=[UserPromptPart(content="hello")])]
+        messages: list[ModelMessage] = [
+            ModelRequest(parts=[UserPromptPart(content="hello")])
+        ]
 
         async def _handler(_request_context: ModelRequestContext) -> ModelResponse:
             return ModelResponse(parts=[TextPart(content="ok")])
