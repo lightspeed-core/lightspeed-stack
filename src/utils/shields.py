@@ -190,7 +190,9 @@ async def run_shield_moderation(
             return ShieldModerationBlocked(
                 message=violation_message,
                 moderation_id=moderation_result.id,
-                refusal_response=create_refusal_response(violation_message),
+                refusal_response=create_refusal_response(
+                    violation_message, moderation_result.id
+                ),
             )
 
     return ShieldModerationPassed()
@@ -234,18 +236,21 @@ async def append_turn_to_conversation(
         raise HTTPException(**error_response.model_dump()) from e
 
 
-def create_refusal_response(refusal_message: str) -> OpenAIResponseMessage:
+def create_refusal_response(
+    refusal_message: str, moderation_id: Optional[str] = None
+) -> OpenAIResponseMessage:
     """Create a refusal response message object.
 
     Args:
         refusal_message: The refusal message text.
 
     Returns:
-        OpenAIResponseMessage with refusal message.
+        OpenAIResponseMessage with refusal message and optional moderation ID.
     """
     return OpenAIResponseMessage(
         role="assistant",
         content=refusal_message,
+        id=moderation_id,
     )
 
 

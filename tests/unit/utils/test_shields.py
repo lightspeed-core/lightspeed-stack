@@ -197,6 +197,7 @@ class TestRunShieldModeration:
 
         assert result.decision == "blocked"
         assert result.message == "Content blocked for violence"
+        assert result.refusal_response.id == "mod_123"
         mock_record_error.assert_called_once_with("/test-endpoint")
 
     @pytest.mark.asyncio

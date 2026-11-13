@@ -20,6 +20,7 @@ class ShieldModerationBlocked(BaseModel):
     decision: Literal["blocked"] = "blocked"
     message: str
     moderation_id: str
+
     refusal_response: ResponseMessage
 
 
