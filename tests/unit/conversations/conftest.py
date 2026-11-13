@@ -1,4 +1,4 @@
-"""Fixtures for display-history persistence tests."""
+"""Shared fixtures for conversations unit tests."""
 
 import pytest
 from pytest_mock import MockerFixture
