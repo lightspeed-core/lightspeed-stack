@@ -86,6 +86,23 @@ _OPENAPI_TAGS: Final[list[dict[str, str]]] = [
 ]
 
 
+def _validate_default_model(registry: ProviderRegistry) -> None:
+    """Validate configured default model exists in the registry.
+
+    Raises:
+        DefaultModelNotAvailableError: When the configured default
+            provider/model pair is not present in the registry catalog.
+
+    """
+    default_provider = configuration.inference.default_provider
+    default_model = configuration.inference.default_model
+    if default_provider is None or default_model is None:
+        return
+    provider = registry.find_provider(default_provider)
+    if provider is None or provider.get_catalog_model(default_model, "llm") is None:
+        raise DefaultModelNotAvailableError(default_provider, default_model)
+
+
 # running on FastAPI startup
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -102,17 +119,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     registry = ProviderRegistry()
     await registry.initialize(configuration.inference)
-
-    # Validate configured default model exists in the registry.
-    _default_provider = configuration.inference.default_provider
-    _default_model = configuration.inference.default_model
-    if _default_provider is not None and _default_model is not None:
-        _provider = registry.find_provider(_default_provider)
-        if (
-            _provider is None
-            or _provider.get_catalog_model(_default_model, "llm") is None
-        ):
-            raise DefaultModelNotAvailableError(_default_provider, _default_model)
+    _validate_default_model(registry)
 
     ogx_config = configuration.configuration.ogx
     await AsyncOgxClientHolder().load(ogx_config)
@@ -154,12 +161,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         azure_base_url = await AsyncOgxClientHolder().get_azure_base_url()
         AzureEntraIDManager().set_base_url(azure_base_url)
 
-    # Set up model metrics if in healthy mode
-    if not degraded_tracker.is_degraded():
-        try:
-            await setup_model_metrics()
-        except ApiException as e:
-            logger.warning("Failed to set up model metrics: %s", e, exc_info=True)
+    # Registry-based metrics have no OGX dependency, so they are always
+    # initialised regardless of degraded mode.
+    await setup_model_metrics()
 
     logger.info("App startup complete")
 

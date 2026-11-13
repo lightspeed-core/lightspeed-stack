@@ -235,6 +235,38 @@ async def test_lifespan_aborts_when_default_model_missing(
 
 
 @pytest.mark.asyncio
+async def test_lifespan_aborts_when_default_provider_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    """Startup aborts when configured default provider is not in registry."""
+    monkeypatch.setenv(
+        "LIGHTSPEED_STACK_CONFIG_PATH",
+        str(
+            _write_config(
+                tmp_path,
+                inference={
+                    "default_provider": "nonexistent-provider",
+                    "default_model": "chat",
+                    "providers": [
+                        _openai_provider_entry(skip_model_discovery=True),
+                    ],
+                },
+            )
+        ),
+    )
+    _patch_lifespan_foreign_dependencies(mocker)
+
+    with pytest.raises(DefaultModelNotAvailableError) as exc_info:
+        async with lifespan(FastAPI()):
+            pass
+
+    assert exc_info.value.provider_id == "nonexistent-provider"
+    assert exc_info.value.model_id == "chat"
+
+
+@pytest.mark.asyncio
 async def test_lifespan_skips_default_model_check_when_not_configured(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
