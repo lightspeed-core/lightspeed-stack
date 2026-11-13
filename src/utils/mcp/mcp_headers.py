@@ -11,6 +11,7 @@ import constants
 from configuration import AppConfig
 from log import get_logger
 from models.config import ModelContextProtocolServer
+from utils.mcp.mcp_auth_headers import resolve_authorization_headers
 
 logger = get_logger(__name__)
 
@@ -237,7 +238,7 @@ def build_server_headers(
     for (
         header_name,
         resolved_value,
-    ) in mcp_server.resolved_authorization_headers.items():
+    ) in resolve_authorization_headers(mcp_server.authorization_headers).items():
         if header_name.lower() in existing_lower:
             continue
         match resolved_value:

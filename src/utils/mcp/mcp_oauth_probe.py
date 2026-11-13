@@ -15,6 +15,7 @@ import constants
 from configuration import AppConfig
 from log import get_logger
 from models.api.responses.error import UnauthorizedResponse
+from utils.mcp.mcp_auth_headers import resolve_authorization_headers
 from utils.mcp.mcp_headers import McpHeaders, build_mcp_headers, ensure_bearer_prefix
 
 logger = get_logger(__name__)
@@ -65,7 +66,7 @@ async def check_mcp_auth(
         if (
             authorization
             or constants.MCP_AUTH_OAUTH
-            in mcp_server.resolved_authorization_headers.values()
+            in resolve_authorization_headers(mcp_server.authorization_headers).values()
         ):
             probes.append(probe_mcp(mcp_server.url, authorization=authorization))
     if probes:

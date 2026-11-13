@@ -34,7 +34,6 @@ from pydantic.dataclasses import dataclass
 import constants
 from log import get_logger
 from utils import checks
-from utils.mcp.mcp_auth_headers import resolve_authorization_headers
 from utils.types import CompiledPatterns
 
 logger = get_logger(__name__)
@@ -629,13 +628,6 @@ class ModelContextProtocolServer(ConfigurationBase):
         ),
     )
 
-    _resolved_authorization_headers: dict[str, str] = PrivateAttr(default_factory=dict)
-
-    @property
-    def resolved_authorization_headers(self) -> dict[str, str]:
-        """Resolved authorization headers (computed from authorization_headers)."""
-        return self._resolved_authorization_headers
-
     headers: list[str] = Field(
         default_factory=list,
         title="Propagated headers",
@@ -685,25 +677,6 @@ class ModelContextProtocolServer(ConfigurationBase):
             "field is reserved for future use when OGX adds timeout support."
         ),
     )
-
-    @model_validator(mode="after")
-    def resolve_auth_headers(self) -> Self:
-        """
-        Resolve authorization headers by reading secret files.
-
-        Automatically populates resolved_authorization_headers by reading
-        secret files specified in authorization_headers. Special values
-        'kubernetes' and 'client' are preserved for later substitution.
-
-        Returns:
-            Self: The model instance with resolved_authorization_headers populated.
-
-        """
-        if self.authorization_headers:
-            self._resolved_authorization_headers = resolve_authorization_headers(
-                self.authorization_headers
-            )
-        return self
 
 
 class AllowedModel(ConfigurationBase):
