@@ -21,7 +21,7 @@ class AgentFactory:
     """Builds pydantic-ai :class:`~pydantic_ai.agent.Agent` instances on demand."""
 
     @staticmethod
-    def create_agent(
+    async def create_agent(
         settings: AgentSettings,
     ) -> Agent[None, str]:
         """Build an ``Agent``, bound to a real provider/model or (when both
@@ -60,7 +60,7 @@ class AgentFactory:
         """
         capabilities = []
 
-        capabilities.append(MCPFactory.build_capabilities(settings.mcp_servers))
+        capabilities.append(await MCPFactory.build_capabilities(settings.mcp_servers))
         capabilities.append(ShieldFactory.build_capabilities(settings.shields))
         capabilities.append(SkillFactory.build_capabilities(settings.skills))
         capabilities.append(
