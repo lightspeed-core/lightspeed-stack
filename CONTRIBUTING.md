@@ -4,17 +4,21 @@
 <!-- vim-markdown-toc GFM -->
 
 * [TLDR;](#tldr)
+* [Before you start](#before-you-start)
 * [New feature requests](#new-feature-requests)
 * [Prerequisites](#prerequisites)
     * [Tooling installation](#tooling-installation)
 * [Setting up your development environment](#setting-up-your-development-environment)
+* [Local validation](#local-validation)
 * [PR description](#pr-description)
 * [Pull request size](#pull-request-size)
-* [Definition of Done](#definition-of-done)
-    * [A deliverable is to be considered “done” when](#a-deliverable-is-to-be-considered-done-when)
 * [Backports](#backports)
+    * [Installation](#installation)
+    * [Usage](#usage)
+* [Definition of Done](#definition-of-done)
+    * [A deliverable is considered done when](#a-deliverable-is-considered-done-when)
 * [AI assistants](#ai-assistants)
-    * [“Mark” code with substantial AI-generated portions.](#mark-code-with-substantial-ai-generated-portions)
+    * [Mark substantial AI-generated content](#mark-substantial-ai-generated-content)
     * [Copyright and licence notices](#copyright-and-licence-notices)
 * [Automation](#automation)
     * [Pre-commit hook settings](#pre-commit-hook-settings)
@@ -26,7 +30,7 @@
     * [Pylint](#pylint)
     * [Security checks](#security-checks)
 * [Code style](#code-style)
-    * [Function Standards](#function-standards)
+    * [Function standards](#function-standards)
         * [Documentation](#documentation)
         * [Type annotations](#type-annotations)
         * [Naming conventions](#naming-conventions)
@@ -39,41 +43,90 @@
 
 ## TLDR;
 
-NOTE: Please Create an RFE for new features before you continue working on PR
+1. Create an RFE for new features before implementation work starts.
+2. Fork the repository and make your changes in a topic branch.
+3. Keep the pull request focused on one feature, fix, or refactor.
+4. Add or update tests and documentation for user-visible behavior.
+5. Run `uv run make format`, `uv run make verify`, and `uv run make test-unit`.
+6. Open a pull request against the `main` branch with a valid JIRA prefix in the title.
 
-1. Create your own fork of the repo
-2. Make changes to the code in your fork
-3. Run unit tests and integration tests
-4. Check the code with linters
-5. Submit PR from your fork to main branch of the project repo
+## Before you start
 
+Lightspeed Core Stack is an AI-powered assistant built on FastAPI, LLM providers,
+agents, and RAG services. Changes often affect several layers of the stack, so
+please check the existing code, configuration, and tests before adding a new
+pattern.
+
+Prefer small, easy-to-review changes. If you are unsure whether a change belongs
+in this repository, or whether it should be split into multiple pull requests,
+open the RFE or issue first and describe the intended scope.
 
 ## New feature requests
 
-1. Create an RFE: If you haven’t already, please create an RFE (Request for Enhancement) in the LCORE project (Red Hat contributions) or GitHub repository (external contributions). This helps us track the feature and ensures it is visible to the team.
-2. RFE Vetting: Your RFE will be vetted by Pavel Tisnovsky and Stefan Bunciak to evaluate the requirement and alignment with our project goals.
-3. Tests & Documentation: Please ensure that your feature implementation includes the necessary integration tests and comprehensive documentation covering the functionality and configuration options
+1. Create an RFE. For Red Hat contributors, create it in the LCORE project. For
+   external contributors, create it in GitHub. The RFE gives reviewers a shared
+   place to discuss the requirement, expected behavior, and release timing.
+2. Wait for vetting. Pavel Tisnovsky and Stefan Bunciak review RFEs for project
+   fit, priority, and alignment with the roadmap.
+3. Include tests and documentation. Feature work should cover the behavior,
+   configuration options, and any important operational notes.
+
+Bug fixes do not need a separate RFE unless they change public behavior or grow
+into feature work.
 
 ## Prerequisites
 
-- git
-- Python 3.12 or 3.13
-- pip
-- **Node.js** (18 or newer; **npm** and **`npx`** ship with Node). **`make verify`** runs **`lint-openapi`**, which calls **`npx --yes @stoplight/spectral-cli@6`** (see `Makefile`). If **`npx`** is not installed, **`lint-openapi` is skipped** with a message so **`make verify` still succeeds** locally; install Node to run the OpenAPI check. **CI** always runs Spectral (see `.github/workflows/openapi_spectral.yaml`).
+- `git`
+- Python 3.12, 3.13, or 3.14, as defined by `pyproject.toml`
+- `pip`
+- `uv`
+- Node.js 18 or newer, including `npm` and `npx`
 
-The development requires at least [Python 3.12](https://docs.python.org/3/whatsnew/3.12.html) due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous processing capabilities. It is also possible to use Python 3.13.
+The project requires Python 3.12 or newer. Python 3.12 brought performance and
+typing improvements that are useful for modern ML, AI, LLM, and asynchronous
+service code. The supported range is controlled by `requires-python` in
+`pyproject.toml`.
 
+Node.js is required for the local OpenAPI lint check. The `make verify` target
+runs `make lint-openapi`, which calls:
 
+```bash
+npx --yes @stoplight/spectral-cli@6 lint docs/devel_doc/openapi.json
+```
+
+If `npx` is not installed, `lint-openapi` is skipped locally with a message and
+`make verify` can still succeed. CI always runs the Spectral check, so installing
+Node locally is the best way to catch OpenAPI problems before opening a PR.
 
 ### Tooling installation
 
-1. `pip install --user uv`
-1. `uv --version` -- should return no error
-1. Install [Node.js](https://nodejs.org/en/download) (LTS is fine) or use your OS package manager, e.g. Fedora: `sudo dnf install nodejs`, macOS with [Homebrew](https://brew.sh/): `brew install node`. Confirm `node --version` and `npx --version` work. CI uses Node 22 for Spectral (see `.github/workflows/openapi_spectral.yaml`).
+Install `uv` and confirm it is available:
 
+```bash
+pip install --user uv
+uv --version
+```
 
+Install Node.js from your operating system package manager or from the Node.js
+download page. For example:
+
+```bash
+# Fedora
+sudo dnf install nodejs
+
+# macOS with Homebrew
+brew install node
+
+node --version
+npx --version
+```
+
+CI currently uses Node 22 for Spectral; an active LTS release is sufficient for
+local development.
 
 ## Setting up your development environment
+
+Clone your fork and install the development dependencies from the project root:
 
 ```bash
 # clone your fork
@@ -81,45 +134,79 @@ git clone https://github.com/YOUR-GIT-PROFILE/lightspeed-stack.git
 
 # move into the directory
 cd lightspeed-stack
-
-# setup your devel environment with uv
-uv sync --group dev
-
-# Now you can run test commands trough make targets, or prefix the rest of commands with `uv run`, eg. `uv run make test` or do `uv venv`, which creates virtual environment and prints activation command, and run commands inside venv.
-
-# run unit tests
-make test-unit
-
-# run integration tests
-make test-integration
-
-# code formatting
-# (this is also run automatically as part of pre-commit hook if configured)
-make format
-
-# code style and docstring style
-# (this is also run automatically as part of pre-commit hook if configured)
-make verify
-
-# check type hints
-# (this is also run automatically as part of pre-commit hook)
-make check-types
+uv sync --group dev --group ogxlibdev
 ```
+
+Use `uv run` for project commands so the correct virtual environment and pinned
+dependencies are used:
+
+```bash
+uv run make test-unit
+uv run make test-integration
+uv run make format
+uv run make verify
+uv run make check-types
+```
+
+If you need to debug dependency or import problems, first check which Python is
+being used:
+
+```bash
+which python
+uv run which python
+```
+
+Then confirm that dependencies were installed from the project root with:
+
+```bash
+uv sync --group dev --group ogxlibdev
+```
+
+Do not assume that an activated shell environment is using the same interpreter
+as `uv run`.
 
 Happy hacking!
 
+## Local validation
+
+Run the same checks locally that reviewers and CI expect:
+
+```bash
+uv run make format
+uv run make verify
+uv run make test-unit
+```
+
+Run integration or end-to-end tests when the change affects runtime behavior,
+configuration, providers, persistence, authentication, or external service
+integration:
+
+```bash
+uv run make test-integration
+uv run make test-e2e
+```
+
+If your change updates API models, endpoint response shapes, router tags, or
+OpenAPI metadata, regenerate the OpenAPI schema and commit the generated output:
+
+```bash
+uv run make schema
+```
 
 ## PR description
 
-* PR titles must start with a JIRA issue key prefix or the target branch of a backport in brackets. CI enforces this via
-  `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
-  Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`,
-  `CWFHEALTH-`, `[release/`
-    - for example: `LCORE-740: type hints for models unit tests`
-* Fill-in all relevant information in the PR template
-    - unused parts of PR template (like information about testing etc.) can be deleted
-* Please note that CodeRabbitAI will create a summary of your pull request
-
+- PR titles must start with a JIRA issue key prefix or the target branch of a
+  backport in brackets. CI enforces this with `pr-title-checker` using
+  `.github/pr-title-checker-config.json`.
+- Allowed prefixes are `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`,
+  `LEADS-`, `CWFHEALTH-`, and `[release/`.
+- Example: `LCORE-740: add type hints for model unit tests`.
+- Fill in the relevant parts of the pull request template. Remove sections that
+  do not apply so reviewers can focus on the actual change.
+- Describe what changed, why it changed, how it was tested, and any rollout,
+  migration, compatibility, or follow-up concerns.
+- CodeRabbitAI may add an automated PR summary. Treat it as supplemental; the
+  human-written PR description is still the source of review context.
 
 ## Pull request size
 
@@ -180,8 +267,8 @@ pip install --user cherry_picker
 
 ### Usage
 
-After a pull request has been merged to `main`, you can backport it to one or
-more release branches:
+After a pull request has been merged to `main`, backport it to one or more
+release branches:
 
 ```bash
 # backport to a single release branch
@@ -191,18 +278,18 @@ cherry_picker <commit-sha> release/0.6
 cherry_picker <commit-sha> release/0.5 release/0.6
 ```
 
-`cherry_picker` will create a new branch, cherry-pick the commit, and open a
-pull request against the target release branch.
+`cherry_picker` creates a branch, cherry-picks the commit, and opens a pull
+request against the target release branch.
 
-If the commit you want to backport is a **merge commit**, append `^-` to the
-hash so that `cherry_picker` applies the correct parent diff:
+If the commit you want to backport is a merge commit, append `^-` to the hash so
+that `cherry_picker` applies the correct parent diff:
 
 ```bash
 cherry_picker <merge-commit-sha>^- release/0.6
 ```
 
-If there are conflicts, `cherry_picker` will pause and let you resolve them.
-After resolving:
+If there are conflicts, `cherry_picker` pauses so you can resolve them. After
+resolving:
 
 ```bash
 git add .
@@ -215,110 +302,123 @@ To abort a backport in progress:
 cherry_picker --abort
 ```
 
-See the [branching documentation](docs/branching.md) for more details on our
+See the [branching documentation](docs/branching.md) for more details on the
 branching strategy and release workflow.
-
-
 
 ## Definition of Done
 
-### A deliverable is to be considered “done” when
+### A deliverable is considered done when
 
-* Code is complete, commented, and merged to the relevant release branch
-* User facing documentation written (where relevant)
-* Acceptance criteria in the related Jira ticket (where applicable) are verified and fulfilled
-* Pull request title+commit includes Jira number
-* Changes are covered by unit tests that run cleanly in the CI environment (where relevant)
-* Changes are covered by integration tests that run cleanly in the CI environment (where relevant)
-* Changes are covered by E2E tests that run cleanly in the CI environment (where relevant)
-* All linters are running cleanly in the CI environment
-* Code changes reviewed by at least one peer
-* Code changes acked by at least one project owner
+- Code is complete, reviewed, and merged to the relevant branch.
+- User-facing documentation has been updated where relevant.
+- Acceptance criteria in the related Jira ticket are verified.
+- The pull request title and commits include the Jira number where required.
+- Unit tests pass in CI for relevant changes.
+- Integration tests pass in CI for relevant changes.
+- End-to-end tests pass in CI for relevant changes.
+- Linters and type checks pass in CI.
+- The change has been reviewed by at least one peer.
+- The change has been acknowledged by at least one project owner when required.
 
 ## AI assistants
 
-### “Mark” code with substantial AI-generated portions.
+### Mark substantial AI-generated content
 
-Nontrivial and substantial AI-generated or AI-assisted content should be
-“marked” in appropriate cases. In deciding how to approach this, consider
-adopting one or more of the following recommendations. (This assumes you have
-not concluded that a suggestion is a match to some existing third-party code.)
+Nontrivial or substantial AI-generated and AI-assisted content should be marked
+when appropriate. This is especially important when a code assistant produced a
+large portion of a change and you have confirmed that the suggestion is not a
+copy of existing third-party code.
 
-In a commit message, or in a pull request/merge request description field,
-identify the code assistant that you used, perhaps elaborating on how it was
-used. You may wish to use a trailer like “Assisted-by:” or “Generated-by:”. For
-example:
+You can identify the assistant in a commit message or pull request description.
+For example:
 
-```
+```text
 Assisted-by: <name of code assistant>
 ```
 
-In a source file comment, indicate the use of the code assistant. For example:
+If a source file contains a substantial generated block, a short source comment
+may also be appropriate:
 
-```
+```text
 Generated by: <name of code assistant>
 ```
 
 ### Copyright and licence notices
 
-If the contents of an entire file or files in PR were substantially generated
-by a code assistant with little to no creative input or modification by you
-(which should typically not be the case), copyright protection may be limited,
-but it is particularly appropriate to mark the contents of the file as
-recommended above.
+If the contents of an entire file, or several files, were substantially
+generated by a code assistant with little creative input or modification from
+you, copyright protection may be limited. In that situation, clearly marking the
+generated content is particularly important.
 
 ## Automation
 
 ### Pre-commit hook settings
 
-It is possible to run formatters and linters automatically for all commits. You just need
-to copy file `hooks/pre-commit` into subdirectory `.git/hooks/`. It must be done manually
-because the copied file is an executable script (so from GIT point of view it is unsafe
-to enable it automatically).
+You can run formatters and linters automatically before each commit by copying
+the provided hook into your local Git hooks directory:
 
+```bash
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+This step is manual because Git treats executable hooks as local configuration,
+not repository content that should be enabled automatically for every clone.
 
 ## Code coverage measurement
 
-During testing, code coverage is measured. If the coverage is below the defined threshold (see `pyproject.toml` settings for actual value stored in section `[tool.coverage.report]`), tests will fail. We measured and checked code coverage in order to be able to develop software with high quality.
+Unit and integration test runs measure code coverage. If coverage falls below
+the thresholds configured in `pyproject.toml`, the test command fails.
 
-Code coverage reports are generated in JSON and also in format compatible with [_JUnit_ test automation framework](https://junit.org/junit5/). It is also possible to start `make coverage-report` to generate code coverage reports in the form of interactive HTML pages. These pages are stored in the `htmlcov` subdirectory. Just open the index page from this subdirectory in your web browser.
-
-
+Coverage reports are written as JSON and JUnit-compatible output under the test
+artifact directory. By default, that directory is `tests/test_results`; override
+it with the `ARTIFACT_DIR` environment variable when needed.
 
 ## Linters
 
-_Black_, _Ruff_, Pyright, _Pylint_, __Pydocstyle__, __Mypy__, and __Bandit__ tools are used as linters. There are a bunch of linter rules enabled for this repository. All of them are specified in `pyproject.toml`, such as in sections `[tool.ruff]` and `[tool.pylint."MESSAGES CONTROL"]`. Some specific rules can be disabled using `ignore` parameter (empty now).
+The project uses Black, Ruff, Pyright, Pylint, Pydocstyle, Mypy, Bandit, and
+Spectral. Configuration lives in `pyproject.toml`, the `Makefile`, and the
+OpenAPI Spectral workflow.
+
+Run the complete lint and type-check suite with:
+
+```bash
+uv run make verify
+```
 
 ### OpenAPI (Spectral)
 
-OpenAPI is linted with [Spectral](https://stoplight.io/open-api/) via **`npx --yes @stoplight/spectral-cli@6`** in the **`lint-openapi`** target (`make lint-openapi`, part of **`make verify`**). If **`npx`** is missing, **`lint-openapi`** skips Spectral locally; install **Node.js** to run it (see [Prerequisites](#prerequisites) and [Tooling installation](#tooling-installation)). **CI** always runs the Spectral step. If you introduce a **new** router tag (`APIRouter(tags=[...])`), you must also extend the global tag list in `src/app/main.py` and regenerate `docs/openapi.json`. See **[docs/contributing/openapi-tags-and-spectral.md](docs/contributing/openapi-tags-and-spectral.md)**.
+OpenAPI is linted with [Spectral](https://stoplight.io/open-api/) through the
+`lint-openapi` target. This target is part of `make verify`.
 
+If you introduce a new router tag with `APIRouter(tags=[...])`, also extend the
+global tag list in `src/app/main.py` and regenerate `docs/devel_doc/openapi.json`.
+See [docs/contributing/openapi-tags-and-spectral.md](docs/contributing/openapi-tags-and-spectral.md)
+for details.
 
 ### Type hints checks
 
-It is possible to check if type hints added into the code are correct and whether assignments, function calls etc. use values of the right type. This check is invoked by following command:
+Run the type hint checks with:
 
+```bash
+uv run make check-types
 ```
-make check-types
-```
 
-Please note that type hints check might be very slow on the first run.
-Subsequent runs are much faster thanks to the cache that Mypy uses. This check
-is part of a CI job that verifies sources.
-
+The first run can be slow. Later runs are usually faster because Mypy reuses its
+cache.
 
 ### Ruff
 
-List of all _Ruff_ rules recognized by Ruff can be retrieved by:
+List the Ruff rule groups recognized by your installed Ruff version with:
 
-
+```bash
+uv run ruff linter
 ```
-ruff linter
-```
 
-Description of all _Ruff_ rules are available on https://docs.astral.sh/ruff/rules/
+Ruff rule documentation is available at
+[https://docs.astral.sh/ruff/rules/](https://docs.astral.sh/ruff/rules/).
 
-Ruff rules can be disabled in source code (for a given line or block) by using a special `noqa` comment line. For example:
+Use `noqa` comments only when there is a clear reason to suppress a rule:
 
 ```python
 # noqa: E501
@@ -326,69 +426,86 @@ Ruff rules can be disabled in source code (for a given line or block) by using a
 
 ### Pylint
 
-List of all _Pylint_ rules can be retrieved by:
+List Pylint messages with:
 
+```bash
+uv run pylint --list-msgs
 ```
-pylint --list-msgs
-```
 
-Description of all rules are available on https://pylint.readthedocs.io/en/latest/user_guide/checkers/features.html
+Pylint documentation is available at
+[https://pylint.readthedocs.io/en/latest/user_guide/checkers/features.html](https://pylint.readthedocs.io/en/latest/user_guide/checkers/features.html).
 
-To disable _Pylint_ rule in source code, the comment line in following format can be used:
+Use targeted disables when a rule must be suppressed:
 
 ```python
 # pylint: disable=C0415
 ```
 
-
-
 ### Security checks
 
-Static security check is performed by _Bandit_ tool. The check can be started by using:
+Static security checks are performed with Bandit:
 
+```bash
+uv run make security-check
 ```
-make security-check
-```
 
-
+Never commit secrets, tokens, private keys, or provider credentials. Use
+environment variables or configuration mechanisms designed for sensitive values.
 
 ## Code style
 
-### Function Standards
+### Function standards
 
 #### Documentation
 
-All functions require docstrings with brief descriptions
+All modules, classes, and functions should have clear docstrings. Keep the first
+sentence concise and add details only when they help future readers understand
+the behavior, parameters, return values, or raised exceptions.
 
 #### Type annotations
 
-Use complete type annotations for parameters and return types
+Use complete type annotations for function parameters, return values, and class
+attributes.
 
-- Use `typing_extensions.Self` for model validators
-- Union types: `str | int` (modern syntax)
-- Optional: `Optional[Type]`
+- Use `typing_extensions.Self` for Pydantic model validators.
+- Prefer modern union syntax such as `str | int`.
+- Use `Optional[Type]` where the surrounding codebase already follows that
+  convention.
 
 #### Naming conventions
 
-Use snake_case with descriptive, action-oriented names (get_, validate_, check_)
+Use `snake_case` for functions and variables. Prefer descriptive,
+action-oriented names such as `get_`, `validate_`, `build_`, and `check_` when
+they match the behavior.
 
 #### Async functions
 
-Use `async def` for I/O operations and external API calls
+Use `async def` for I/O work and calls to external services. Keep synchronous
+helpers synchronous when they only transform local data.
 
 #### Error handling
 
-- Use FastAPI `HTTPException` with appropriate status codes for API endpoints
-- Handle `APIConnectionError` from OGX where appropriate
+- Use FastAPI `HTTPException` with appropriate status codes in endpoint code.
+- Handle `APIConnectionError` from OGX where appropriate.
+- Preserve useful context in logs without exposing secrets or credentials.
 
 ### Formatting rules
 
-Code formatting rules are checked by __Black__. More info can be found on [https://black.readthedocs.io/en/stable/](https://black.readthedocs.io/en/stable/).
+Code formatting is handled by Black and Ruff:
+
+```bash
+uv run make format
+```
+
+Black documentation is available at
+[https://black.readthedocs.io/en/stable/](https://black.readthedocs.io/en/stable/).
 
 ### Docstrings style
-We are using [Google's docstring style](https://google.github.io/styleguide/pyguide.html).
 
-Here is simple example:
+We use [Google's docstring style](https://google.github.io/styleguide/pyguide.html).
+
+Example:
+
 ```python
 def function_with_pep484_type_annotations(param1: int, param2: str) -> bool:
     """Example function with PEP 484 type annotations.
@@ -401,10 +518,8 @@ def function_with_pep484_type_annotations(param1: int, param2: str) -> bool:
         The return value. True for success, False otherwise.
 
     Raises:
-        ValueError: If the first parameter does not contain proper model name
+        ValueError: If the first parameter does not contain a valid model name.
     """
 ```
 
-For further guidance, see the rest of our codebase, or check sources online. There are many, e.g. [this one](https://gist.github.com/redlotus/3bc387c2591e3e908c9b63b97b11d24e).
-
-
+For more examples, follow the existing codebase.
