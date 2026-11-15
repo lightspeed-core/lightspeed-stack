@@ -166,18 +166,6 @@ class "PromptsListResponse" as src.models.api.responses.successful.prompts.Promp
   data : list[PromptResourceResponse]
   model_config : dict
 }
-class "ProviderResponse" as src.models.api.responses.successful.catalog.ProviderResponse {
-  api : str
-  config : dict[str, Any]
-  health : dict[str, Any]
-  model_config : dict
-  provider_id : str
-  provider_type : str
-}
-class "ProvidersListResponse" as src.models.api.responses.successful.catalog.ProvidersListResponse {
-  model_config : dict
-  providers : dict[str, list[dict[str, Any]]]
-}
 class "QueryResponse" as src.models.api.responses.successful.query.QueryResponse {
   available_quotas : dict[str, int]
   context_status
