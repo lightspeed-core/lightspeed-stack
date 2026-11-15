@@ -17,7 +17,7 @@ from quota.user_quota_limiter import UserQuotaLimiter
 
 
 def test_quota_limiters_no_storage() -> None:
-    """Test the quota limiters creating when no storage is configured."""
+    """Return no limiters when quota storage is unavailable."""
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.sqlite = None
     configuration.postgres = None
@@ -27,7 +27,7 @@ def test_quota_limiters_no_storage() -> None:
 
 
 def test_quota_limiters_no_limiters_pg_storage() -> None:
-    """Test the quota limiters creating when no limiters are specified."""
+    """Skip PostgreSQL-backed setup when no limiter definitions are present."""
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.postgres = PostgreSQLDatabaseConfiguration(
         db="test",
@@ -46,7 +46,7 @@ def test_quota_limiters_no_limiters_pg_storage() -> None:
 
 
 def test_quota_limiters_no_limiters_sqlite_storage() -> None:
-    """Test the quota limiters creating when no limiters are specified."""
+    """Skip SQLite-backed setup when limiter definitions are absent."""
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.sqlite = SQLiteDatabaseConfiguration(
         db_path="/foo/bar",
@@ -83,7 +83,7 @@ def test_quota_limiters_empty_limiters_pg_storage() -> None:
 
 
 def test_quota_limiters_empty_limiters_sqlite_storage() -> None:
-    """Test the quota limiters creating when no limiters are specified."""
+    """Return an empty collection for SQLite storage with an empty limiter list."""
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.sqlite = SQLiteDatabaseConfiguration(
         db_path="/foo/bar",
@@ -164,7 +164,7 @@ def test_quota_limiters_user_quota_limiter_sqlite_storage() -> None:
 def test_quota_limiters_cluster_quota_limiter_postgres_storage(
     mocker: MockerFixture,
 ) -> None:
-    """Test the quota limiters creating when one limiter is specified."""
+    """Build a PostgreSQL-backed cluster limiter from a cluster_limiter definition."""
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.postgres = PostgreSQLDatabaseConfiguration(
         db="test",
@@ -194,7 +194,7 @@ def test_quota_limiters_cluster_quota_limiter_postgres_storage(
 
 
 def test_quota_limiters_cluster_quota_limiter_sqlite_storage() -> None:
-    """Test the quota limiters creating when one limiter is specified."""
+    """Build an in-memory SQLite cluster limiter from a cluster_limiter definition."""
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.sqlite = SQLiteDatabaseConfiguration(
         db_path=":memory:",
@@ -214,7 +214,7 @@ def test_quota_limiters_cluster_quota_limiter_sqlite_storage() -> None:
 
 
 def test_quota_limiters_two_limiters(mocker: MockerFixture) -> None:
-    """Test the quota limiters creating when two limiters are specified."""
+    """Preserve configured limiter order when building multiple limiters."""
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.postgres = PostgreSQLDatabaseConfiguration(
         db="test",
@@ -252,7 +252,7 @@ def test_quota_limiters_two_limiters(mocker: MockerFixture) -> None:
 
 
 def test_quota_limiters_invalid_limiter_type(mocker: MockerFixture) -> None:
-    """Test the quota limiters creating when invalid limiter type is specified."""
+    """Reject unknown limiter types instead of creating a fallback limiter."""
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.postgres = PostgreSQLDatabaseConfiguration(
         db="test",

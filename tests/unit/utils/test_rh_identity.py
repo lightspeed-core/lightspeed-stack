@@ -10,7 +10,7 @@ from utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
 
 
 def test_auth_disabled_constant() -> None:
-    """Verify AUTH_DISABLED constant value."""
+    """Keep the sentinel value stable for telemetry fallbacks."""
     assert AUTH_DISABLED == "auth_disabled"
 
 
@@ -49,7 +49,7 @@ def test_get_rh_identity_context(
     expected_org_id: str,
     expected_system_id: str,
 ) -> None:
-    """Test get_rh_identity_context extracts or defaults org/system IDs."""
+    """Return RH Identity IDs when present and sentinels when values are absent."""
     mock_request = mocker.Mock()
 
     mock_rh_identity = None
