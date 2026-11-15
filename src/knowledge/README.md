@@ -16,6 +16,10 @@ Cross-encoder reranking for `Knowledge` search results.
 
 Concurrent multi-source knowledge search with optional cross-encoder reranking.
 
+## [toolset.py](toolset.py)
+
+Function-tool toolset for the ``Knowledge`` capability's tool-callable search.
+
 ## [types.py](types.py)
 
 Shared types for knowledge capability.

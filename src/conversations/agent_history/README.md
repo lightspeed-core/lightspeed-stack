@@ -2,5 +2,9 @@
 
 ## [__init__.py](__init__.py)
 
-Agent run history for continuation (PAI StepPersistence).
+Agent step persistence store for Pydantic AI harness.
+
+## [service.py](service.py)
+
+Process-local harness step store lifecycle for PAI agent history.
 
