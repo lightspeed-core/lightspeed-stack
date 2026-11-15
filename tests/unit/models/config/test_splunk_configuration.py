@@ -22,7 +22,7 @@ def token_file_fixture(tmp_path: Path) -> Path:
 
 
 def test_default_values() -> None:
-    """Test default SplunkConfiguration has expected values."""
+    """Keep Splunk telemetry disabled until explicit connection settings exist."""
     cfg = SplunkConfiguration()  # pyright: ignore[reportCallIssue]
     assert cfg.enabled is False
     assert cfg.url is None
@@ -34,7 +34,7 @@ def test_default_values() -> None:
 
 
 def test_disabled_skips_validation() -> None:
-    """Test that disabled Splunk config doesn't require other fields."""
+    """Allow disabled Splunk telemetry without URL, token, or index."""
     cfg = SplunkConfiguration(enabled=False)  # pyright: ignore[reportCallIssue]
     assert cfg.enabled is False
     assert cfg.url is None
@@ -64,7 +64,7 @@ def test_enabled_missing_required_fields(
     index: Optional[str],
     expected_missing: str,
 ) -> None:
-    """Test that enabled Splunk config validates required fields."""
+    """Require URL, token path, and index whenever Splunk telemetry is enabled."""
     with pytest.raises(ValueError, match=expected_missing):
         SplunkConfiguration(
             enabled=True,
@@ -104,7 +104,7 @@ def test_valid_enabled_configuration(token_file: Path) -> None:
 
 
 def test_custom_source() -> None:
-    """Test custom source value is preserved."""
+    """Allow deployments to override the Splunk source label."""
     cfg = SplunkConfiguration(
         enabled=False, source="custom-source"
     )  # pyright: ignore[reportCallIssue]
@@ -112,7 +112,7 @@ def test_custom_source() -> None:
 
 
 def test_custom_timeout() -> None:
-    """Test custom timeout value is preserved."""
+    """Allow deployments to override the Splunk request timeout."""
     cfg = SplunkConfiguration(
         enabled=False, timeout=30
     )  # pyright: ignore[reportCallIssue]
@@ -120,7 +120,7 @@ def test_custom_timeout() -> None:
 
 
 def test_verify_ssl_disabled() -> None:
-    """Test verify_ssl can be disabled."""
+    """Allow TLS verification to be disabled for Splunk transport."""
     cfg = SplunkConfiguration(
         enabled=False, verify_ssl=False
     )  # pyright: ignore[reportCallIssue]

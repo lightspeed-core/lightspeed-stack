@@ -9,7 +9,7 @@ from tests.unit.conftest import make_openai_model, make_openai_models_list_respo
 
 @pytest.mark.asyncio
 async def test_setup_model_metrics(mocker: MockerFixture) -> None:
-    """Test the setup_model_metrics function."""
+    """Publish one model metric per LLM and mark the configured default."""
     # Mock the OGXAsLibraryClient
     mock_client = mocker.patch(
         "client.ogx.AsyncOgxClientHolder.get_client"

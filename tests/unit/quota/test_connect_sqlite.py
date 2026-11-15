@@ -9,7 +9,7 @@ from quota.connect_sqlite import connect_sqlite
 
 
 def test_connect_sqlite_when_connection_established() -> None:
-    """Test the connection to SQLite database residing in memory."""
+    """Open an in-memory SQLite database for quota storage."""
     configuration = SQLiteDatabaseConfiguration(db_path=":memory:")
 
     # connection should be established
@@ -18,7 +18,7 @@ def test_connect_sqlite_when_connection_established() -> None:
 
 
 def test_connect_sqlite_when_connection_error() -> None:
-    """Test the connection to SQLite database."""
+    """Surface SQLite connection failures from invalid database paths."""
     configuration = SQLiteDatabaseConfiguration(db_path="/")
 
     # connection should not be established

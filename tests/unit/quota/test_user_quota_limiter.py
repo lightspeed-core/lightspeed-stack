@@ -16,7 +16,7 @@ from quota.user_quota_limiter import UserQuotaLimiter
 def create_quota_limiter(
     name: str, initial_quota: int, quota_limit: int
 ) -> UserQuotaLimiter:
-    """Create new quota limiter instance."""
+    """Create a user quota limiter backed by an in-memory SQLite store."""
     configuration = QuotaHandlersConfiguration()  # pyright: ignore[reportCallIssue]
     configuration.sqlite = SQLiteDatabaseConfiguration(
         db_path=":memory:",
@@ -36,7 +36,7 @@ def create_quota_limiter(
 
 
 def test_connected() -> None:
-    """Test the connected method."""
+    """Report connected once the in-memory quota store is initialized."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -45,7 +45,7 @@ def test_connected() -> None:
 
 
 def test_init_quota() -> None:
-    """Test the init quota operation."""
+    """Initialize user quota without changing limiter identity details."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -58,7 +58,7 @@ def test_init_quota() -> None:
 
 
 def test_available_quota() -> None:
-    """Test the available quota operation."""
+    """Expose the configured initial token allowance for the user."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -72,7 +72,7 @@ def test_available_quota() -> None:
 
 
 def test_consume_tokens() -> None:
-    """Test the consume tokens operation."""
+    """Deduct input and output token usage from user quota."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -101,7 +101,7 @@ def test_consume_tokens() -> None:
 
 
 def test_increase_quota() -> None:
-    """Test the increase_quota operation."""
+    """Restore user quota by the configured periodic increment."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -123,7 +123,7 @@ def test_increase_quota() -> None:
 
 
 def test_ensure_available_quota() -> None:
-    """Test the ensure_available_quota operation."""
+    """Allow requests while the user still has tokens available."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -159,7 +159,7 @@ def test_ensure_available_quota_no_quota() -> None:
 
 
 def test_revoke_quota() -> None:
-    """Test the revoke_quota operation."""
+    """Reset consumed user tokens back to the initial allowance."""
     initial_quota = 1000
     quota_limit = 100
 

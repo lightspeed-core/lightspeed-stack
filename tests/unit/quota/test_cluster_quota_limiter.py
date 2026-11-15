@@ -52,7 +52,7 @@ def create_quota_limiter(
 
 
 def test_connected() -> None:
-    """Test the connected method."""
+    """Report connected once the in-memory quota store is initialized."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -61,7 +61,7 @@ def test_connected() -> None:
 
 
 def test_init_quota() -> None:
-    """Test the init quota operation."""
+    """Initialize cluster quota without changing limiter identity details."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -76,7 +76,7 @@ def test_init_quota() -> None:
 
 
 def test_available_quota() -> None:
-    """Test the available quota operation."""
+    """Expose the configured initial token allowance for the cluster."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -90,7 +90,7 @@ def test_available_quota() -> None:
 
 
 def test_consume_tokens() -> None:
-    """Test the consume tokens operation."""
+    """Deduct input and output token usage from cluster quota."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -119,7 +119,7 @@ def test_consume_tokens() -> None:
 
 
 def test_increase_quota() -> None:
-    """Test the increase_quota operation."""
+    """Restore cluster quota by the configured periodic increment."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -141,7 +141,7 @@ def test_increase_quota() -> None:
 
 
 def test_ensure_available_quota() -> None:
-    """Test the ensure_available_quota operation."""
+    """Allow requests while the cluster still has tokens available."""
     initial_quota = 1000
     quota_limit = 100
 
@@ -175,7 +175,7 @@ def test_ensure_available_quota_no_quota() -> None:
 
 
 def test_revoke_quota() -> None:
-    """Test the revoke_quota operation."""
+    """Reset consumed cluster tokens back to the initial allowance."""
     initial_quota = 1000
     quota_limit = 100
 
