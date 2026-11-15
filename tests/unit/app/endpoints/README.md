@@ -64,10 +64,6 @@ Unit tests for the /models REST API endpoint.
 
 Unit tests for the /prompts REST API endpoints.
 
-## [test_providers.py](test_providers.py)
-
-Unit tests for the /providers REST API endpoints.
-
 ## [test_query.py](test_query.py)
 
 Unit tests for the /query (v2) REST API endpoint using Responses API.

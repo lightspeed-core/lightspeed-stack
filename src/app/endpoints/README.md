@@ -60,10 +60,6 @@ Handler for REST API call to list available models.
 
 Handler for REST API calls to manage OGX stored prompt templates.
 
-## [providers.py](providers.py)
-
-Handler for REST API calls to list and retrieve available providers.
-
 ## [query.py](query.py)
 
 Handler for REST API call to provide answer to query using Response API.

@@ -10,7 +10,7 @@ Base model for SQLAlchemy ORM classes.
 
 ## [conversations.py](conversations.py)
 
-User conversation and turn envelope models (`user_conversation`, `user_turn`).
+User conversation models.
 
 ## [prompts.py](prompts.py)
 
