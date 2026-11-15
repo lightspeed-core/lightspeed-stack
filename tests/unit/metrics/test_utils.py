@@ -1,4 +1,4 @@
-"""Unit tests for functions defined in metrics/utils.py"""
+"""Unit tests for functions defined in metrics/utils.py."""
 
 import pytest
 from pytest_mock import MockerFixture
