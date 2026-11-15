@@ -8,6 +8,7 @@ import asyncio
 from typing import Any
 
 import pytest
+from fastapi import Request
 from ogx_api.openai_responses import OpenAIResponseMessage
 from pytest_mock import AsyncMockType, MockerFixture, MockType
 from sqlalchemy.orm import Session
@@ -182,7 +183,7 @@ class TestResponsesConversationCompaction:
         test_auth: AuthTuple,
         mock_ogx_client: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         patch_db_session: Session,
         mocker: MockerFixture,
     ) -> None:
@@ -256,7 +257,7 @@ class TestResponsesConversationCompaction:
         test_auth: AuthTuple,
         mock_ogx_client: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         patch_db_session: Session,
         mocker: MockerFixture,
     ) -> None:
@@ -337,7 +338,7 @@ class TestResponsesConversationCompaction:
         test_auth: AuthTuple,
         mock_ogx_client: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         patch_db_session: Session,
         mocker: MockerFixture,
     ) -> None:
@@ -414,7 +415,7 @@ class TestResponsesConversationCompaction:
         test_auth: AuthTuple,
         mock_ogx_client: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         patch_db_session: Session,
         mocker: MockerFixture,
     ) -> None:
@@ -470,7 +471,7 @@ class TestResponsesConversationCompaction:
         test_auth: AuthTuple,
         mock_ogx_client: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         patch_db_session: Session,
         mocker: MockerFixture,
     ) -> None:
@@ -525,7 +526,7 @@ class TestResponsesConversationCompaction:
         test_config: AppConfig,
         test_auth: AuthTuple,
         mock_ogx_client: AsyncMockType,
-        test_request,
+        test_request: Request,
         patch_db_session: Session,
         mocker: MockerFixture,
     ) -> None:
@@ -567,7 +568,7 @@ class TestResponsesConversationCompaction:
         test_auth: AuthTuple,
         mock_ogx_client: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         patch_db_session: Session,
         mocker: MockerFixture,
     ) -> None:
@@ -696,7 +697,7 @@ class TestResponsesConversationCompaction:
         test_config: AppConfig,
         test_auth: AuthTuple,
         mock_ogx_client: AsyncMockType,
-        test_request,
+        test_request: Request,
         patch_db_session: Session,
         mocker: MockerFixture,
     ) -> None:
@@ -768,7 +769,7 @@ class TestResponsesConversationCompaction:
         test_auth: AuthTuple,
         mock_ogx_client: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         patch_db_session: Session,
         mocker: MockerFixture,
     ) -> None:
