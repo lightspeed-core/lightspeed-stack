@@ -10,6 +10,7 @@ import json
 from typing import Any
 
 import pytest
+from fastapi import Request
 from ogx_api.openai_responses import OpenAIResponseMessage
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
@@ -105,7 +106,7 @@ class TestStreamingQueryConversationCompaction:
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
@@ -179,7 +180,7 @@ class TestStreamingQueryConversationCompaction:
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
@@ -257,7 +258,7 @@ class TestStreamingQueryConversationCompaction:
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
@@ -327,7 +328,7 @@ class TestStreamingQueryConversationCompaction:
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
@@ -407,7 +408,7 @@ class TestStreamingQueryConversationCompaction:
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
@@ -466,7 +467,7 @@ class TestStreamingQueryConversationCompaction:
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
         patch_db_session: Session,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         mocker: MockerFixture,
     ) -> None:
@@ -509,7 +510,7 @@ class TestStreamingQueryConversationCompaction:
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
@@ -641,7 +642,7 @@ class TestStreamingQueryConversationCompaction:
         test_config: AppConfig,
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
@@ -711,7 +712,7 @@ class TestStreamingQueryConversationCompaction:
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,
@@ -764,7 +765,7 @@ class TestStreamingQueryConversationCompaction:
         mock_ogx_client: AsyncMockType,
         mock_streaming_query_agent: AsyncMockType,
         mock_conversation_store: InMemoryConversationStore,
-        test_request,
+        test_request: Request,
         test_auth: AuthTuple,
         patch_db_session: Session,
         mocker: MockerFixture,

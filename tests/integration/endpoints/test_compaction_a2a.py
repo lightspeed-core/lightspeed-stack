@@ -59,7 +59,12 @@ def _setup_a2a_compaction_mocks(
         return_value=FAKE_AGENT_CARD,
     )
 
-    async def _fake_prepare(client, query_request, *args, **kwargs):
+    async def _fake_prepare(
+        client: Any,
+        query_request: Any,
+        *args: Any,
+        **kwargs: Any,
+    ) -> ResponsesApiParams:
         """Return ResponsesApiParams with the real query as input."""
         _ = client, args, kwargs
         return ResponsesApiParams(

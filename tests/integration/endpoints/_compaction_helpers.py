@@ -165,7 +165,9 @@ def assert_marker_count(
     ), f"Expected {expected} marker(s) in store, found {len(markers)}"
 
 
-def patch_get_all_conversation_items(mocker: MockerFixture):
+def patch_get_all_conversation_items(
+    mocker: MockerFixture,
+) -> tuple[asyncio.Event, asyncio.Event, asyncio.Event]:
     """Patch ``get_all_conversation_items`` with a slow fake for concurrency tests.
 
     The first call blocks until ``release`` is set; the second call signals
@@ -182,7 +184,7 @@ def patch_get_all_conversation_items(mocker: MockerFixture):
     release = asyncio.Event()
     task2_entered = asyncio.Event()
 
-    async def slow_get_items(client, conv_id):
+    async def slow_get_items(client: Any, conv_id: str) -> list[Any]:
         """First call holds the lock; second call signals and returns."""
         _ = client
         _ = conv_id
