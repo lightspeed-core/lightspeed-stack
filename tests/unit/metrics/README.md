@@ -8,7 +8,7 @@ Unit tests for metrics.
 
 Unit tests for Prometheus metric recording helpers.
 
-## [test_utis.py](test_utis.py)
+## [test_utils.py](test_utils.py)
 
-Unit tests for functions defined in metrics/utils.py
+Unit tests for functions defined in metrics/utils.py.
 
