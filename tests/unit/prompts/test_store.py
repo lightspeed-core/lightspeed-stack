@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from typing import Literal, Optional, overload
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -112,7 +113,9 @@ def sqlite_engine_fixture() -> Generator[Engine, None, None]:
 
 
 @pytest.fixture(name="db_session")
-def db_session_fixture(mocker, sqlite_engine: Engine) -> Generator[Session, None, None]:
+def db_session_fixture(
+    mocker: MockerFixture, sqlite_engine: Engine
+) -> Generator[Session, None, None]:
     """Provide a database session for tests.
 
     Parameters:
@@ -128,7 +131,7 @@ def db_session_fixture(mocker, sqlite_engine: Engine) -> Generator[Session, None
     session = session_factory()
 
     @contextmanager
-    def mock_get_session():
+    def mock_get_session() -> Generator[Session, None, None]:
         yield session
 
     mocker.patch("prompts.store.get_session", mock_get_session)
