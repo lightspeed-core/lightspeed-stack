@@ -374,7 +374,7 @@ Feature: Responses endpoint API tests
     When I use "responses" to ask question with authorization header
     """
     {
-      "input": "Fork from middle using first response id.",
+      "input": "Fork from middle using first response id: say middle.",
       "model": "{PROVIDER}/{MODEL}",
       "previous_response_id": "{RESPONSES_FIRST_RESPONSE_ID}",
       "stream": false
