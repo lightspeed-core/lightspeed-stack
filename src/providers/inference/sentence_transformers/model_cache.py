@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional, cast, overload
+from typing import TYPE_CHECKING, Literal, Optional, cast, overload
 
 from pydantic_ai.embeddings import EmbeddingModel
-from sentence_transformers import CrossEncoder
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 
 class SentenceTransformersModelCache:
@@ -66,6 +68,10 @@ class SentenceTransformersModelCache:
             model: Model instance to cache.
 
         """
+        from sentence_transformers.cross_encoder import (  # pylint: disable=import-outside-toplevel
+            CrossEncoder,
+        )
+
         if isinstance(model, CrossEncoder):
             self._rerankers[provider_model_id] = model
         else:
