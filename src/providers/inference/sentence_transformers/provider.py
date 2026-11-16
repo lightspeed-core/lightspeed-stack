@@ -4,24 +4,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic_ai.embeddings.sentence_transformers import (
-    SentenceTransformerEmbeddingModel,
-)
 from pydantic_ai.providers import Provider
-from sentence_transformers import CrossEncoder, SentenceTransformer
 
 from configuration import configuration
 from log import get_logger
 from models.config import SentenceTransformersInferenceProviderEntry
 from providers.inference.base import InferenceProvider
 from providers.inference.catalog import CatalogModel, DiscoveredModel
-from providers.inference.sentence_transformers.model_cache import (
-    SentenceTransformersModelCache,
-)
 
 if TYPE_CHECKING:
     from pydantic_ai.embeddings import EmbeddingModel
+    from sentence_transformers import CrossEncoder
 
+    from providers.inference.sentence_transformers.model_cache import (
+        SentenceTransformersModelCache,
+    )
     from providers.inference.types import ModelType
 
 logger = get_logger(__name__)
@@ -44,7 +41,11 @@ class SentenceTransformersInferenceProvider(
 
         """
         super().__init__(entry)
-        self._cache = SentenceTransformersModelCache()
+        from providers.inference.sentence_transformers.model_cache import (  # pylint: disable=import-outside-toplevel
+            SentenceTransformersModelCache,
+        )
+
+        self._cache: SentenceTransformersModelCache = SentenceTransformersModelCache()
 
     def _build_provider(self) -> Optional[Provider[Any]]:
         """Return no Pydantic AI provider; models run in-process.
@@ -156,6 +157,17 @@ class SentenceTransformersInferenceProvider(
         if cached is not None:
             return cached
 
+        # Imported on first model build only. After PR #3157, CrossEncoder
+        # construction lives on this provider; importing sentence-transformers
+        # at module load still pulls datasets → pyarrow, which crashes Konflux
+        # images (RHOAI pyarrow linked against missing libthrift-0.15.0.so).
+        from pydantic_ai.embeddings.sentence_transformers import (  # pylint: disable=import-outside-toplevel
+            SentenceTransformerEmbeddingModel,
+        )
+        from sentence_transformers import (  # pylint: disable=import-outside-toplevel
+            SentenceTransformer,
+        )
+
         config = self._entry.config
         embedding = SentenceTransformerEmbeddingModel(
             SentenceTransformer(
@@ -181,6 +193,10 @@ class SentenceTransformersInferenceProvider(
         cached = self._cache.get(provider_model_id, "rerank")
         if cached is not None:
             return cached
+
+        from sentence_transformers import (  # pylint: disable=import-outside-toplevel
+            CrossEncoder,
+        )
 
         config = self._entry.config
         reranker = CrossEncoder(

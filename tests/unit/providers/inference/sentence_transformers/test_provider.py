@@ -184,10 +184,10 @@ async def test_initialize_does_not_load_models(mocker: Any) -> None:
     """Models stay lazy; initialize only builds the catalog."""
     _patch_no_rag_rerank_on_configuration(mocker)
     sentence_transformer_cls = mocker.patch(
-        "providers.inference.sentence_transformers.provider.SentenceTransformer",
+        "sentence_transformers.SentenceTransformer",
     )
     cross_encoder_cls = mocker.patch(
-        "providers.inference.sentence_transformers.provider.CrossEncoder",
+        "sentence_transformers.CrossEncoder",
     )
     provider = SentenceTransformersInferenceProvider(_entry())
 
@@ -223,12 +223,11 @@ def test_create_embedding_passes_config_and_caches(
     runtime = mocker.Mock(name="sentence-transformer")
     wrapped = mocker.Mock(name="embedding-model")
     sentence_transformer_cls = mocker.patch(
-        "providers.inference.sentence_transformers.provider.SentenceTransformer",
+        "sentence_transformers.SentenceTransformer",
         return_value=runtime,
     )
     embedding_model_cls = mocker.patch(
-        "providers.inference.sentence_transformers.provider."
-        "SentenceTransformerEmbeddingModel",
+        "pydantic_ai.embeddings.sentence_transformers.SentenceTransformerEmbeddingModel",
         return_value=wrapped,
     )
     catalog = _catalog_model(
@@ -268,7 +267,7 @@ def test_create_rerank_passes_config_and_caches(
     )
     created = mocker.Mock(name="cross-encoder", spec=CrossEncoder)
     cross_encoder_cls = mocker.patch(
-        "providers.inference.sentence_transformers.provider.CrossEncoder",
+        "sentence_transformers.CrossEncoder",
         return_value=created,
     )
     catalog = _catalog_model(
@@ -316,15 +315,14 @@ async def test_get_model_instance_resolves_embed_and_rerank(
     embedding = mocker.Mock(name="embedding")
     reranker = mocker.Mock(name="rerank", spec=CrossEncoder)
     mocker.patch(
-        "providers.inference.sentence_transformers.provider.SentenceTransformer",
+        "sentence_transformers.SentenceTransformer",
     )
     mocker.patch(
-        "providers.inference.sentence_transformers.provider."
-        "SentenceTransformerEmbeddingModel",
+        "pydantic_ai.embeddings.sentence_transformers.SentenceTransformerEmbeddingModel",
         return_value=embedding,
     )
     mocker.patch(
-        "providers.inference.sentence_transformers.provider.CrossEncoder",
+        "sentence_transformers.CrossEncoder",
         return_value=reranker,
     )
 

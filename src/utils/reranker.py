@@ -4,10 +4,10 @@ This module contains functionality for reranking RAG chunks using cross-encoder 
 to improve the relevance of retrieved documents in RAG applications.
 """
 
-import asyncio
-from typing import Optional
+from __future__ import annotations
 
-from sentence_transformers import CrossEncoder
+import asyncio
+from typing import TYPE_CHECKING, Optional
 
 import constants
 from configuration import configuration
@@ -19,6 +19,9 @@ from providers.inference.errors import (
     ProviderNotFoundError,
 )
 from providers.inference.registry import ProviderRegistry
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 logger = get_logger(__name__)
 
