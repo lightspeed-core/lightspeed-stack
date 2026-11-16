@@ -654,8 +654,9 @@ class TestFaissKnowledgeSource:
 
         assert source.name == "docs"
         assert source.mode == {"tool"}
-        assert source.top_k == 5
+        assert source.max_matches == 5
         assert source.score_threshold == 0.0
+        assert source.score_multiplier == 1.0
         assert source.embedding_settings is None
         assert isinstance(source.store, FaissVectorStore)
 
@@ -681,7 +682,7 @@ class TestFaissKnowledgeSource:
         assert second.mode == {"tool"}
 
     def test_honors_explicit_mode_and_search_options(self, embedded_db: Path) -> None:
-        """Explicit mode, settings, top_k, and threshold are stored on the source."""
+        """Explicit mode, settings, max_matches, and threshold are stored on the source."""
         embedder, _model = _embedder()
         settings: EmbeddingSettings = {"dimensions": 2}
 
@@ -691,14 +692,14 @@ class TestFaissKnowledgeSource:
             vector_store_id=_STORE_ID,
             embedder=embedder,
             embedding_settings=settings,
-            top_k=1,
+            max_matches=1,
             score_threshold=0.9,
             mode={"tool", "auto"},
         )
 
         assert source.mode == {"tool", "auto"}
         assert source.embedding_settings == {"dimensions": 2}
-        assert source.top_k == 1
+        assert source.max_matches == 1
         assert source.score_threshold == 0.9
 
     def test_missing_store_raises_key_error(self, tmp_path: Path) -> None:
@@ -729,16 +730,16 @@ class TestFaissKnowledgeSource:
         assert matches[0].metadata == {"k": "near"}
 
     @pytest.mark.asyncio
-    async def test_search_applies_top_k_and_score_threshold(
+    async def test_search_applies_max_matches_and_score_threshold(
         self, embedded_db: Path
     ) -> None:
-        """`top_k` and `score_threshold` are passed through to the store search."""
+        """`max_matches` and `score_threshold` are passed through to the store search."""
         source = FaissKnowledgeSource(
             "docs",
             embedded_db,
             _STORE_ID,
             _embedder()[0],
-            top_k=1,
+            max_matches=1,
             score_threshold=0.9,
         )
 
@@ -757,7 +758,7 @@ class TestFaissKnowledgeSource:
             _STORE_ID,
             embedder,
             embedding_settings=settings,
-            top_k=1,
+            max_matches=1,
         )
 
         matches = await source.search("query")
