@@ -1,6 +1,7 @@
 """Unit tests for pydantic_ai_lightspeed.capabilities.granite_guardian.utils module."""
 
 import math
+from typing import Any
 
 import pytest
 from openai.types.chat.chat_completion_token_logprob import (
@@ -23,7 +24,11 @@ from pydantic_ai_lightspeed.capabilities.granite_guardian.utils import (
 )
 
 
-def _make_logprob(token: str, logprob: float = 0.0, top_logprobs=None):
+def _make_logprob(
+    token: str,
+    logprob: float = 0.0,
+    top_logprobs: list[tuple[str, float]] | list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Build a raw logprob dict matching the ChatCompletionTokenLogprob schema."""
     return {
         "token": token,
@@ -33,7 +38,11 @@ def _make_logprob(token: str, logprob: float = 0.0, top_logprobs=None):
     }
 
 
-def _make_token_logprob(token: str, logprob: float = 0.0, top_logprobs=None):
+def _make_token_logprob(
+    token: str,
+    logprob: float = 0.0,
+    top_logprobs: list[tuple[str, float]] | None = None,
+) -> ChatCompletionTokenLogprob:
     """Build a ChatCompletionTokenLogprob instance."""
     tops = [
         TopLogprob(token=t, logprob=lp, bytes=None) for t, lp in (top_logprobs or [])
@@ -136,7 +145,7 @@ class TestCleanUpCandidates:
 
     def test_empty_candidates(self) -> None:
         """Test that empty list does not raise."""
-        candidates = []
+        candidates: list[ChatCompletionTokenLogprob] = []
         _clean_up_candidates(candidates)
         assert not candidates
 
@@ -314,7 +323,9 @@ class TestGetRiskyProbabilities:
 class TestIsSafe:
     """Tests for is_safe."""
 
-    def _make_full_logprobs(self, safe_prob: float, risky_prob: float):
+    def _make_full_logprobs(
+        self, safe_prob: float, risky_prob: float
+    ) -> list[dict[str, Any]]:
         """Build a complete logprobs list for a single-token score response."""
         return [
             _make_logprob("<think>"),
