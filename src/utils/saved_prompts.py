@@ -315,7 +315,10 @@ def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
     Rows are loaded in canonical order (see ``_ordered_user_prompts``),
     capped at ``SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND`` so a misconfigured
     or out-of-band insert path cannot materialize unbounded rows. NULL
-    positions, if any, are healed and committed before returning.
+    positions, if any, are healed and committed before returning. If a
+    concurrent create commits a position the in-flight heal also assigns
+    (possible only while NULL strays exist during a rolling update), the
+    list is retried once in a fresh transaction that sees the new row.
 
     Parameters:
         user_id: Owner whose prompts should be returned.
@@ -325,20 +328,32 @@ def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
 
     """
     with get_session() as session:
-        rows, healed = _ordered_user_prompts(
-            session,
-            user_id,
-            limit=constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND,
-        )
-        if healed:
-            session.commit()
-            # commit expires the loaded rows; re-load them fresh
-            rows, _ = _ordered_user_prompts(
-                session,
-                user_id,
-                limit=constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND,
-            )
-        return rows
+        retries_left = 1
+        while True:
+            try:
+                rows, healed = _ordered_user_prompts(
+                    session,
+                    user_id,
+                    limit=constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND,
+                )
+                if healed:
+                    session.commit()
+                    # commit expires the loaded rows; re-load them fresh
+                    rows, _ = _ordered_user_prompts(
+                        session,
+                        user_id,
+                        limit=constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND,
+                    )
+                return rows
+            except IntegrityError:
+                session.rollback()
+                if retries_left == 0:
+                    raise
+                retries_left -= 1
+                logger.debug(
+                    "Saved prompt heal conflict for user_id=%s, retrying",
+                    user_id,
+                )
 
 
 def _renumber_positions(

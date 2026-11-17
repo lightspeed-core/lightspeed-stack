@@ -3,6 +3,7 @@
 import time
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from pytest_mock import MockerFixture
@@ -592,6 +593,79 @@ class TestListSavedPromptsByUser:
 
         assert [row.id for row in results] == ["p1", "p2", "p3-null"]
         assert [row.position for row in results] == [1, 2, 3]
+
+    def test_list_retries_heal_when_concurrent_create_takes_position(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        """Test a create committing between load and heal is retried.
+
+        Reachable only while NULL strays exist (rolling update window): a
+        concurrent create takes max+1 from the database, which the
+        in-flight heal then also assigns to a stray, violating the unique
+        constraint. The list retries in a fresh transaction instead of
+        returning HTTP 500.
+        """
+        engine = create_engine(f"sqlite:///{tmp_path / 'heal-race.db'}")
+        try:
+            Base.metadata.create_all(engine)
+            session_factory = sessionmaker(
+                autocommit=False, autoflush=False, bind=engine
+            )
+            with session_factory() as session:
+                session.add(
+                    SavedPrompt(
+                        id="p1",
+                        user_id="user-1",
+                        name="p1",
+                        content="c",
+                        position=1,
+                    )
+                )
+                session.add(
+                    SavedPrompt(
+                        id="p-null",
+                        user_id="user-1",
+                        name="p-null",
+                        content="c",
+                    )
+                )
+                session.commit()
+            mocker.patch("utils.saved_prompts.get_session", side_effect=session_factory)
+
+            real_heal = (
+                saved_prompts_utils._heal_null_positions
+            )  # pylint: disable=protected-access
+            injected = False
+
+            def heal_with_concurrent_create(
+                session: Session, rows: list[SavedPrompt]
+            ) -> None:
+                """Commit a concurrent create before healing, once."""
+                nonlocal injected
+                if not injected:
+                    injected = True
+                    with engine.connect() as connection:
+                        connection.execute(
+                            text(
+                                "INSERT INTO saved_prompt "
+                                "(id, user_id, name, content, position) "
+                                "VALUES ('p-create', 'user-1', 'pc', 'c', 2)"
+                            )
+                        )
+                        connection.commit()
+                real_heal(session, rows)
+
+            mocker.patch(
+                "utils.saved_prompts._heal_null_positions",
+                side_effect=heal_with_concurrent_create,
+            )
+
+            results = list_saved_prompts_by_user("user-1")
+
+            assert [row.id for row in results] == ["p1", "p-create", "p-null"]
+            assert [row.position for row in results] == [1, 2, 3]
+        finally:
+            engine.dispose()
 
 
 @pytest.mark.usefixtures("patch_saved_prompts_get_session")
