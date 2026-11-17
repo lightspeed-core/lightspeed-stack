@@ -181,6 +181,7 @@ def sqlite_cache(tmp_path: Path) -> Generator[SQLiteCache]:
 
     """
     c = SQLiteCache(SQLiteDatabaseConfiguration(db_path=str(tmp_path / "cache.db")))
+    c.initialize_cache()
     try:
         yield c
     finally:
