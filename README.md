@@ -7,7 +7,7 @@
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![Required Python version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Flightspeed-core%2Flightspeed-stack%2Frefs%2Fheads%2Fmain%2Fpyproject.toml)](https://www.python.org/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lightspeed-core/lightspeed-stack)
-[![Tag](https://img.shields.io/github/v/tag/lightspeed-core/lightspeed-stack)](https://github.com/lightspeed-core/lightspeed-stack/releases/tag/0.6.0rc2)
+[![Tag](https://img.shields.io/github/v/tag/lightspeed-core/lightspeed-stack)](https://github.com/lightspeed-core/lightspeed-stack/releases/tag/0.8.0rc1)
 
 Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases.
 
@@ -125,7 +125,7 @@ The service includes comprehensive user data collection capabilities for various
 
 Overall architecture with all main parts is displayed below:
 
-![Architecture diagram](docs/architecture.png)
+![Architecture diagram](docs/devel_doc/architecture.png)
 
 Lightspeed Core Stack is based on the FastAPI framework (Uvicorn). The service is split into several parts described below.
 
@@ -238,7 +238,7 @@ Lightspeed Core Stack supports the following agentic features:
 |------------|--------|-------------|
 | MCP Tools | Supported | External tool integration via [Model Context Protocol](https://modelcontextprotocol.io) servers |
 | RAG | Supported | Retrieval-Augmented Generation with vector stores ([RAG Guide](docs/user_doc/rag_guide.md)) |
-| A2A Protocol (Client) | Supported | Agent-to-Agent communication as client ([A2A Protocol](docs/a2a_protocol.md)) |
+| A2A Protocol (Client) | Supported | Agent-to-Agent communication as client ([A2A Protocol](docs/user_doc/a2a_protocol.md)) |
 | Conversation History | Supported | Persistent conversation context across requests |
 | Human-in-the-Loop | Upcoming | Interactive approval or confirmation steps |
 | Agent Skills | Supported | Domain-specific instructions loaded on demand ([Agent Skills Guide](docs/user_doc/skills_guide.md)) |
@@ -252,7 +252,7 @@ __Note__: Support for individual models is dependent on the specific inference p
 |----------------|------------------------------------------------------------------------------|---------------|------------------|----------------------------------------------------------------------------|
 | OpenAI         | gpt-5, gpt-5.6-luna, gpt-4-turbo, gpt-4.1, o1, o3, o4                               | Yes           | remote::openai   | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
 | OpenAI         | gpt-3.5-turbo, gpt-4                                                         | No            | remote::openai   |                                                                            |
-| RHOAI (vLLM)   | meta-llama/Llama-3.2-1B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                 |
+| RHOAI (vLLM)   | meta-llama/Llama-3.2-1B-Instruct                                             | Yes           | remote::vllm     | [1](examples/vllm-rhoai.yaml)                                               |
 | RHEL AI (RHAIIS/vLLM) | meta-llama/Llama-3.1-8B-Instruct                                      | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhelai.yaml) [2](tests/e2e/configs/run-rhaiis.yaml) |
 | Azure          | gpt-5, gpt-5-mini, gpt-5-nano, gpt-5.6-luna, o3-mini, o4-mini, o1             | Yes           | remote::azure    | [1](examples/azure-run.yaml)                                               |
 | Azure          | gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,  o1-mini                    | No or limited | remote::azure    |                                                                            |
@@ -867,6 +867,9 @@ The [guide to RAG setup](docs/user_doc/rag_guide.md) provides guidance on settin
 
 The following configurations are OGX config examples from production deployments:
 
+- [RHOAI vLLM example](examples/vllm-rhoai.yaml)
+- [RHEL AI vLLM example](examples/vllm-rhelai.yaml)
+- [RHAIIS vLLM example](examples/vllm-rhaiis.yaml)
 - [Granite on vLLM example](examples/vllm-granite-run.yaml)
 - [Qwen3 on vLLM example](examples/vllm-qwen3-run.yaml)
 - [Gemini example](examples/gemini-run.yaml)
@@ -1158,8 +1161,9 @@ RUN uv pip install . --no-deps && uv clean
 
 USER 0
 
-# Bundle additional rpm packages
-RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs TODO1 TODO2 \
+# Bundle additional RPM packages when your customization needs them.
+# Delete this block if the base image already has everything required.
+RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs git \
     && microdnf clean all \
     && rm -rf /var/cache/dnf
 
@@ -1186,7 +1190,7 @@ podman build -t "my-awesome-chatbot:latest" .
 
 ## OpenAPI specification
 
-* [Generated OpenAPI specification](docs/openapi.json)
+* [Generated OpenAPI specification](docs/devel_doc/openapi.json)
 * [OpenAPI documentation](docs/devel_doc/openapi.md)
 
 The service provides health check endpoints that can be used for monitoring, load balancing, and orchestration systems like Kubernetes.
@@ -1477,21 +1481,21 @@ For complete integration setup, deployment options, and configuration details, s
 
 ## Configuration classes
 
-![Configuration classes](docs/config.png)
+![Configuration classes](docs/user_doc/config.png)
 
 ## REST API
 
-![REST API](docs/rest_api.png)
+![REST API](docs/user_doc/rest_api.png)
 
 ## Sequence diagrams
 
 ### Query endpoint REST API handler
 
-![Query endpoint](docs/query_endpoint.svg)
+![Query endpoint](docs/devel_doc/query_endpoint.svg)
 
 ## Streaming query endpoint REST API handler
 
-![Streaming query endpoint](docs/streaming_query_endpoint.svg)
+![Streaming query endpoint](docs/devel_doc/streaming_query_endpoint.svg)
 
 ## Versioning
 
