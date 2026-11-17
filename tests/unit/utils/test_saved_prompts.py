@@ -633,8 +633,8 @@ class TestListSavedPromptsByUser:
             mocker.patch("utils.saved_prompts.get_session", side_effect=session_factory)
 
             real_heal = (
-                saved_prompts_utils._heal_null_positions
-            )  # pylint: disable=protected-access
+                saved_prompts_utils._heal_null_positions  # pylint: disable=protected-access
+            )
             injected = False
 
             def heal_with_concurrent_create(
