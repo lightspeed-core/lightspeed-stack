@@ -47,7 +47,6 @@ async def test_metrics_endpoint(mocker: MockerFixture) -> None:
     assert "# TYPE ls_llm_validation_errors_total counter" in response_body
     assert "# TYPE ls_llm_token_sent_total counter" in response_body
     assert "# TYPE ls_llm_token_received_total counter" in response_body
-    assert "# TYPE ls_started_in_degraded_mode gauge" in response_body
 
 
 @pytest.mark.asyncio

@@ -414,12 +414,7 @@ _restart_llama_stack_core() {
 _restart_lightspeed_core() {
     echo "Restarting lightspeed-stack service..."
 
-    # Degraded-mode e2e must start LCS while llama is down. Default path restores
-    # llama first so pods can come up; set E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART=1
-    # to keep llama disrupted for allow_degraded_mode startup checks.
-    if [[ "${E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART:-0}" == "1" ]]; then
-        echo "⚠️  Skipping llama restore before LCS restart (E2E_SKIP_OGX_RESTORE_ON_LCS_RESTART=1)"
-    elif ! _llama_stack_http_health_once 2>/dev/null; then
+    if ! _llama_stack_http_health_once 2>/dev/null; then
         echo "⚠️  OGX not healthy — restoring before LCS restart..."
         if ! _restart_llama_stack_core; then
             echo "===== Lightspeed restore FAILED (Llama not healthy) ====="

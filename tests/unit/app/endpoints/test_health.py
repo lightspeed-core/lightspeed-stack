@@ -33,11 +33,6 @@ async def test_readiness_probe_fails_due_to_unhealthy_providers(
     """Test the readiness endpoint handler fails when providers are unhealthy."""
     mock_authorization_resolvers(mocker)
 
-    # Mock DegradedModeTracker to return healthy (not degraded) state
-    mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
-    mock_instance = mock_tracker.return_value
-    mock_instance.is_degraded.return_value = False
-
     # Mock get_providers_health_statuses to return an unhealthy provider
     mock_get_providers_health_statuses = mocker.patch(
         "app.endpoints.health.get_providers_health_statuses"
@@ -72,11 +67,6 @@ async def test_readiness_probe_success_when_all_providers_healthy(
 ) -> None:
     """Test the readiness endpoint handler succeeds when all providers are healthy."""
     mock_authorization_resolvers(mocker)
-
-    # Mock DegradedModeTracker to return healthy (not degraded) state
-    mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
-    mock_instance = mock_tracker.return_value
-    mock_instance.is_degraded.return_value = False
 
     # Mock get_providers_health_statuses to return healthy providers
     mock_get_providers_health_statuses = mocker.patch(
@@ -124,11 +114,6 @@ async def test_readiness_probe_fails_when_model_not_available(
 ) -> None:
     """Test readiness returns 503 when providers are healthy but default model is missing."""
     mock_authorization_resolvers(mocker)
-
-    # Mock DegradedModeTracker to return healthy (not degraded) state
-    mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
-    mock_instance = mock_tracker.return_value
-    mock_instance.is_degraded.return_value = False
 
     mock_get_providers = mocker.patch(
         "app.endpoints.health.get_providers_health_statuses"
@@ -369,39 +354,6 @@ class TestCheckDefaultModelAvailable:
         assert "not found in model registry" in reason
 
 
-class TestReadinessDegradedMode:  # pylint: disable=too-few-public-methods
-    """Test cases for /readiness endpoint with degraded mode."""
-
-    @pytest.mark.asyncio
-    async def test_readiness_degraded_mode(self, mocker: MockerFixture) -> None:
-        """Test /readiness endpoint returns ready=True in degraded mode."""
-        mock_authorization_resolvers(mocker)
-
-        # Mock DegradedModeTracker to return degraded state
-        mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
-        mock_instance = mock_tracker.return_value
-        mock_instance.is_degraded.return_value = True
-        mock_instance.get_degraded_reason.return_value = (
-            "Failed to connect to OGX: Connection error"
-        )
-
-        mock_response = mocker.Mock()
-        auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-
-        response = await readiness_probe_get_method(auth=auth, response=mock_response)
-
-        assert response is not None
-        assert isinstance(response, ReadinessResponse)
-        assert response.ready is True  # Service is ready even in degraded mode
-        assert response.reason == "Service running in degraded mode"
-        assert response.overall_status == HealthStatus.DEGRADED
-        assert response.impacts is not None
-        assert "LLM inference unavailable" in response.impacts
-        assert "RAG functionality unavailable" in response.impacts
-        assert "Agent tools unavailable" in response.impacts
-        assert len(response.providers) == 0
-
-
 class TestHealthEndpointOtel:
     """OTEL instrumentation tests for health probe endpoints."""
 
@@ -415,9 +367,6 @@ class TestHealthEndpointOtel:
         tracer, exporter = otel
         mocker.patch("app.endpoints.health.tracer", tracer)
         mock_authorization_resolvers(mocker)
-
-        mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
-        mock_tracker.return_value.is_degraded.return_value = False
 
         mocker.patch(
             "app.endpoints.health.get_providers_health_statuses",
@@ -456,9 +405,6 @@ class TestHealthEndpointOtel:
         tracer, exporter = otel
         mocker.patch("app.endpoints.health.tracer", tracer)
         mock_authorization_resolvers(mocker)
-
-        mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
-        mock_tracker.return_value.is_degraded.return_value = False
 
         mocker.patch(
             "app.endpoints.health.get_providers_health_statuses",

@@ -33,7 +33,6 @@ The service includes comprehensive user data collection capabilities for various
     * [Supported providers](#supported-providers)
     * [Integration with OGX](#integration-with-ogx)
     * [OGX as separate server](#ogx-as-separate-server)
-        * [Degraded mode](#degraded-mode)
         * [MCP Server and Tool Configuration](#mcp-server-and-tool-configuration)
             * [Configuring MCP Servers](#configuring-mcp-servers)
             * [Configuring MCP Server Authentication](#configuring-mcp-server-authentication)
@@ -371,19 +370,6 @@ user_data_collection:
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 ```
-
-### Degraded mode
-
-Lightspeed core is able to continue operating in a _degraded but safe_ mode if the OGX service is not started or fails to start. When degraded, the `/health` endpoint report the OGX status and any relevant impacts so operators and automation can detect and respond.
-
-Degraded mode need to be enabled in `lightspeed-stack.yaml` configuration file:
-
-```yaml
-allow_degraded_mode = true
-```
-
-[NOTE] Ability to run in degraded mode is disabled by default.
-
 
 
 ### MCP Server and Tool Configuration

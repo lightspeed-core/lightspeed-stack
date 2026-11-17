@@ -346,7 +346,6 @@ def build_fully_populated_config() -> Configuration:
             timeout=180,
             max_retries=5,
             retry_delay=2,
-            allow_degraded_mode=True,
             config=UnifiedOgxConfig.model_construct(
                 baseline="default",
                 profile=PII_LS_PROFILE,
@@ -702,7 +701,6 @@ def build_minimal_config() -> Configuration:
             timeout=180,
             max_retries=5,
             retry_delay=2,
-            allow_degraded_mode=False,
             config=None,
         ),
         inference=InferenceConfiguration.model_construct(

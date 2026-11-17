@@ -46,7 +46,6 @@ def _write_config(tmp_path: Path, *, inference: dict[str, Any]) -> Path:
             "use_as_library_client": False,
             "url": "http://localhost:8321",
             "api_key": "xyzzy",
-            "allow_degraded_mode": True,
         },
         "user_data_collection": {"feedback_enabled": False},
         "mcp_servers": [],

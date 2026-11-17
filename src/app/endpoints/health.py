@@ -32,7 +32,6 @@ from models.common import (
     ProviderHealthStatus,
 )
 from models.config import Action
-from utils.degraded_mode import DegradedModeTracker
 from utils.types import Responses
 
 logger = get_logger(__name__)
@@ -129,8 +128,7 @@ async def readiness_probe_get_method(
     Handle the readiness probe endpoint, returning service readiness and health status.
 
     Returns comprehensive health information including overall service status,
-    provider health, and functional impacts. The service is considered "ready" even
-    in degraded mode (returns 200), but reports reduced functionality.
+    provider health, and functional impacts.
 
     ### Parameters:
     - response: The outgoing HTTP response (used by middleware).
@@ -140,14 +138,14 @@ async def readiness_probe_get_method(
     - HTTPException: with status 401 for unauthorized access.
     - HTTPException: with status 403 if permission is denied.
     - HTTPException: with status 503 when service is unhealthy (providers down,
-      models unavailable) and degraded mode is not enabled.
+      models unavailable).
 
     ### Returns:
     - ReadinessResponse: Object with comprehensive health status including:
-      - ready: True if service can handle requests (even in degraded mode)
+      - ready: True if service can handle requests
       - reason: Description of service state
-      - overall_status: healthy, degraded, or unhealthy
-      - impacts: Functional limitations when degraded/unhealthy
+      - overall_status: healthy or unhealthy
+      - impacts: Functional limitations when unhealthy
       - providers: List of unhealthy providers
     """
     # Used only for authorization
@@ -156,27 +154,6 @@ async def readiness_probe_get_method(
     with tracer.start_as_current_span("readiness.handle_request") as span:
         logger.info("Response to /readiness endpoint")
 
-        degraded_tracker = DegradedModeTracker()
-        is_degraded = degraded_tracker.is_degraded()
-
-        # Determine overall status
-        if is_degraded:
-            # Service is ready (can serve health checks, metrics, etc.) but degraded
-            impacts = [
-                "LLM inference unavailable",
-                "RAG functionality unavailable",
-                "Agent tools unavailable",
-            ]
-            span.set_attribute("http.status_code", 200)
-            return ReadinessResponse(
-                ready=True,
-                reason="Service running in degraded mode",
-                overall_status=HealthStatus.DEGRADED,
-                impacts=impacts,
-                providers=[],
-            )
-
-        # Not in degraded mode - check provider health
         provider_statuses = await get_providers_health_statuses()
         unhealthy_providers = [
             p for p in provider_statuses if p.status == HealthStatus.ERROR.value

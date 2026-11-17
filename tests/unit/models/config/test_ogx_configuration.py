@@ -43,7 +43,6 @@ def test_ogx_cfg_constructor(subtests: SubTests) -> None:
             timeout=60,
         )
         assert ogx_cfg is not None
-        assert ogx_cfg.allow_degraded_mode is False
         assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
         assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
 
@@ -56,7 +55,6 @@ def test_ogx_cfg_constructor(subtests: SubTests) -> None:
             timeout=60,
         )
         assert ogx_cfg is not None
-        assert ogx_cfg.allow_degraded_mode is False
         assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
         assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
 
@@ -65,7 +63,6 @@ def test_ogx_cfg_constructor(subtests: SubTests) -> None:
             url="http://localhost"
         )  # pyright: ignore[reportCallIssue]
         assert ogx_cfg is not None
-        assert ogx_cfg.allow_degraded_mode is False
         assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
         assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
 
@@ -74,17 +71,6 @@ def test_ogx_cfg_constructor(subtests: SubTests) -> None:
             use_as_library_client=False, url="http://localhost", api_key="foo"
         )  # pyright: ignore[reportCallIssue]
         assert ogx_cfg is not None
-        assert ogx_cfg.allow_degraded_mode is False
-        assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
-        assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
-
-    with subtests.test(msg="Degraded mode enabled"):
-        ogx_cfg = OgxConfiguration(
-            url="http://localhost",
-            allow_degraded_mode=True,
-        )  # pyright: ignore[reportCallIssue]
-        assert ogx_cfg is not None
-        assert ogx_cfg.allow_degraded_mode is True
         assert ogx_cfg.max_retries == constants.DEFAULT_MAX_RETRIES
         assert ogx_cfg.retry_delay == constants.DEFAULT_RETRY_DELAY
 

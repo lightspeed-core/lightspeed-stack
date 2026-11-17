@@ -221,7 +221,6 @@ src/
 │   ├── connection_decorator.py                   # Decorator that makes sure the object is 'connected' according to it's connected predicate
 │   ├── conversation_compaction.py                # Runtime integration of conversation compaction into the request flow
 │   ├── conversations.py                          # Utilities for conversations
-│   ├── degraded_mode.py                          # Degraded mode state tracking
 │   ├── endpoints.py                              # Utility functions for endpoint handlers
 │   ├── json_schema_updater.py                    # Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema
 │   ├── ogx_version.py                            # Check if the OGX version is supported by the LCS
