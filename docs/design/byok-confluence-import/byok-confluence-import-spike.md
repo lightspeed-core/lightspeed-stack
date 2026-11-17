@@ -576,7 +576,7 @@ lightspeed-stack: operators declare stores under `byok_rag:`
 `src/ogx_configuration.py` enriches them into OGX
 `run.yaml` (`VECTOR_IO_TEMPLATES` supports `inline::faiss` and
 `remote::pgvector` only); retrieval fans out in
-`src/utils/vector_search.py`. All vector access is mediated by the
+`src/utils/rag/vector_search.py`. All vector access is mediated by the
 OGX client — the service never opens DBs directly, and the
 config-merge design (LCORE-836) keeps operator config backend-agnostic.
 **No hot-reload**: nothing watches `db_path`; a changed DB needs a

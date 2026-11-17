@@ -177,7 +177,7 @@ replacement for `AsyncOGXAsLibraryClient`, not a new corpus format.
 
 ### Decision T3: Reranker behavior
 
-Current LCS (`src/utils/reranker.py`):
+Current LCS (`src/utils/rag/reranker.py`):
 
 - Lazy-loaded `sentence-transformers` `CrossEncoder`
 - Min-max normalize CE scores and original scores
@@ -483,7 +483,7 @@ return the original order.
 
 - Function that takes query + matches + model id, returns reranked
   matches
-- Reuse the algorithm in `src/utils/reranker.py`; do not change
+- Reuse the algorithm in `src/utils/rag/reranker.py`; do not change
   product scoring. May extract shared helpers, or call into that
   module after adapting `RAGChunk` ↔ match.
 
@@ -499,7 +499,7 @@ return the original order.
 **Agentic tool instruction**:
 
 ```text
-Read src/utils/reranker.py and "Decision T3" in
+Read src/utils/rag/reranker.py and "Decision T3" in
 docs/design/rag-vector-stores-migration/rag-vector-stores-migration-spike.md.
 Keep 30/70 mix and score_multiplier influence. Implement against
 Knowledge matches, from scratch relative to any external tree.
@@ -686,7 +686,7 @@ OKP MCP server tool contract from the OKP team.
 
 ```text
 Read OkpConfiguration in src/models/config.py, _fetch_okp_rag in
-src/utils/vector_search.py, and docs/user_doc/okp_guide.md for
+src/utils/rag/vector_search.py, and docs/user_doc/okp_guide.md for
 current OKP behavior to preserve. Implement OkpKnowledgeSource from
 scratch as a KnowledgeSource that calls the OKP MCP search tool and
 maps results to KnowledgeMatch. Do not add a Solr client or
@@ -775,7 +775,7 @@ factory.
 streaming, responses, transcripts, and telemetry already consume:
 `RAGChunk` and `ReferencedDocument` in
 `src/models/common/turn_summary.py`. Preserve document URL / id
-extraction used today in `src/utils/vector_search.py`
+extraction used today in `src/utils/rag/vector_search.py`
 (`_process_byok_rag_chunks_for_documents` and related helpers).
 
 **Acceptance criteria**:
@@ -792,7 +792,7 @@ extraction used today in `src/utils/vector_search.py`
 
 ```text
 Read RAGChunk / ReferencedDocument and the BYOK document extraction in
-src/utils/vector_search.py. Implement a pure mapper. Do not change
+src/utils/rag/vector_search.py. Implement a pure mapper. Do not change
 response JSON shapes. Implement from scratch.
 ```
 
@@ -807,7 +807,7 @@ Knowledge capability; LCS must not call OGX for BYOK or OKP search.
 Rip out, at least:
 
 - `client.vector_io.query` / `_fetch_byok_rag` / `_fetch_okp_rag` /
-  `build_rag_context` in `src/utils/vector_search.py`
+  `build_rag_context` in `src/utils/rag/vector_search.py`
 - OGX builtin `file_search` attachment for BYOK and OKP tool sources
   (`src/utils/responses.py`, `src/utils/builtin_tools.py`,
   `file_search` extra_body tools)
@@ -840,7 +840,7 @@ auto-mode injection; Knowledge search tool.
 **Agentic tool instruction**:
 
 ```text
-Rip OGX out of static BYOK and OKP RAG. Read src/utils/vector_search.py
+Rip OGX out of static BYOK and OKP RAG. Read src/utils/rag/vector_search.py
 (build_rag_context, _fetch_byok_rag, _fetch_okp_rag),
 src/utils/responses.py file_search helpers, src/utils/builtin_tools.py,
 BYOK helpers in src/ogx_configuration.py, and call sites in query.py /
@@ -1082,8 +1082,8 @@ already exercised by the table above.
 
 - Prototype:
   `lightspeed-stack-pydantic/lightspeed/core/agent/knowledge`
-- LCS retrieval: `src/utils/vector_search.py`,
-  `src/utils/pydantic_ai_helpers.py`, `src/utils/reranker.py`
+- LCS retrieval: `src/utils/rag/vector_search.py`,
+  `src/utils/pydantic_ai_helpers.py`, `src/utils/rag/reranker.py`
 - rag-content write path:
   `rag-content/src/lightspeed_rag_content/document_processor.py`
   (`_LlamaStackDB`)
