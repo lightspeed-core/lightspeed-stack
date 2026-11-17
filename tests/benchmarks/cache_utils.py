@@ -2,12 +2,12 @@
 
 from datetime import UTC, datetime, timedelta
 
+from cache.cache import Cache
 from cache.cache_entry import CacheEntry
-from cache.noop_cache import NoopCache
 from utils import suid
 
 
-def fill_in_conversations(noop_cache: NoopCache, items: int, entries: int) -> None:
+def fill_in_conversations(cache: Cache, items: int, entries: int) -> None:
     """Fill-in cache by conversations."""
     for _ in range(items):
         user_id = suid.get_suid()
@@ -31,4 +31,4 @@ def fill_in_conversations(noop_cache: NoopCache, items: int, entries: int) -> No
             )
 
             # insert cache entry record into database
-            noop_cache.insert_or_append(user_id, conversation_id, cache_entry)
+            cache.insert_or_append(user_id, conversation_id, cache_entry, False)

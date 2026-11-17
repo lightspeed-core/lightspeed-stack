@@ -1,13 +1,17 @@
 """Fixtures used by benchmarks."""
 
+from collections.abc import Generator
 from pathlib import Path
 
 import psycopg2
 import pytest
 
 from app import database
+from cache.in_memory_cache import InMemoryCache
 from cache.noop_cache import NoopCache
+from cache.sqlite_cache import SQLiteCache
 from configuration import AppConfig, configuration
+from models.config import InMemoryCacheConfig, SQLiteDatabaseConfiguration
 
 
 @pytest.fixture(name="configuration_filename_sqlite")
@@ -145,3 +149,41 @@ def noop_cache() -> NoopCache:
     c = NoopCache()
     c.initialize_cache()
     return c
+
+
+@pytest.fixture(name="memory_cache_fixture")
+def memory_cache() -> InMemoryCache:
+    """Fixture with constructed and initialized in-memory cache object.
+
+    Create and initialize an InMemoryCache for use as a test fixture.
+
+    Returns:
+        InMemoryCache: An initialized InMemoryCache instance ready for tests.
+
+    """
+    c = InMemoryCache(InMemoryCacheConfig(max_entries=100))
+    c.initialize_cache()
+    return c
+
+
+@pytest.fixture(name="sqlite_cache_fixture")
+def sqlite_cache(tmp_path: Path) -> Generator[SQLiteCache]:
+    """Fixture with constructed and initialized SQLite cache object.
+
+    Create and initialize a SQLiteCache backed by a temporary database file.
+
+    Parameters:
+    ----------
+        tmp_path: pytest-provided temporary directory for creating the DB file.
+
+    Yields:
+        SQLiteCache: An initialized SQLiteCache instance ready for tests.
+
+    """
+    c = SQLiteCache(SQLiteDatabaseConfiguration(db_path=str(tmp_path / "cache.db")))
+    c.initialize_cache()
+    try:
+        yield c
+    finally:
+        if c.connection is not None:
+            c.connection.close()
