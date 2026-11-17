@@ -565,7 +565,7 @@ OTEL_INSTRUMENTED_MODULES = (
     "utils.quota_utils",
     "utils.responses",
     "utils.shields",
-    "utils.vector_search",
+    "utils.rag.vector_search",
 )
 
 

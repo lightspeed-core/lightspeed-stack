@@ -99,6 +99,10 @@ from utils.query import (
     validate_model_provider_override,
 )
 from utils.quota_utils import check_tokens_available, get_available_quotas
+from utils.rag.vector_search import (
+    append_inline_rag_context_to_responses_input,
+    build_rag_context,
+)
 from utils.responses import (
     apply_reasoning_for_resolved_tools,
     build_tool_call_summary,
@@ -125,10 +129,6 @@ from utils.suid import (
 )
 from utils.tool_formatter import translate_vector_store_ids_to_user_facing
 from utils.types import Responses
-from utils.vector_search import (
-    append_inline_rag_context_to_responses_input,
-    build_rag_context,
-)
 
 if TYPE_CHECKING:
     from models.common.moderation import ShieldModerationBlocked

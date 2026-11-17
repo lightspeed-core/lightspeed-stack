@@ -1230,7 +1230,7 @@ async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-m
     - Returned chunks are the top-scoring ones
     """
     _ = mock_query_agent
-    mocker.patch("utils.vector_search.constants.DEFAULT_INLINE_RAG_MAX_CHUNKS", 3)
+    mocker.patch("utils.rag.vector_search.constants.DEFAULT_INLINE_RAG_MAX_CHUNKS", 3)
 
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"
