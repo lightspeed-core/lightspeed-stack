@@ -18,12 +18,12 @@ from models.common.query import SolrVectorSearchRequest
 from models.common.turn_summary import RAGChunk, ReferencedDocument
 from providers.inference.errors import ModelNotAvailableError
 from utils.otel_tracing import SpanAttributes, SpanEvents
-from utils.reranker import (
+from utils.rag.reranker import (
     _get_cross_encoder,
     apply_byok_rerank_boost,
     rerank_chunks_with_cross_encoder,
 )
-from utils.vector_search import (
+from utils.rag.vector_search import (
     _build_document_url,
     _build_query_params,
     _convert_solr_chunks_to_rag_format,
@@ -73,14 +73,14 @@ class TestIsSolrEnabled:
         """Test when Solr is enabled in configuration."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = True
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
         assert _is_solr_enabled() is True
 
     def test_solr_enabled_false(self, mocker: MockerFixture) -> None:
         """Test when Solr is disabled in configuration."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = False
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
         assert _is_solr_enabled() is False
 
 
@@ -234,7 +234,7 @@ class TestBuildQueryParams:
         """OKP config search_mode is used when no per-request mode is set."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.okp.search_mode = "keyword"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         params = _build_query_params()
 
@@ -244,7 +244,7 @@ class TestBuildQueryParams:
         """OKP config search_mode 'semantic' is used as default."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.okp.search_mode = "semantic"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         params = _build_query_params()
 
@@ -254,7 +254,7 @@ class TestBuildQueryParams:
         """Per-request solr mode takes precedence over OKP config default."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.okp.search_mode = "keyword"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         solr = SolrVectorSearchRequest(mode="semantic", filters={})
         params = _build_query_params(solr=solr)
@@ -267,7 +267,7 @@ class TestBuildQueryParams:
         """Without config or per-request mode, global default is used."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.okp.search_mode = None
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         params = _build_query_params()
 
@@ -277,7 +277,7 @@ class TestBuildQueryParams:
         """Per-request 'lexical' is translated to 'keyword' even with config set."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.okp.search_mode = "hybrid"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         solr = SolrVectorSearchRequest(mode="lexical", filters={})
         params = _build_query_params(solr=solr)
@@ -465,14 +465,14 @@ class TestGetOkpBaseUrl:
         custom = "https://custom.okp.example.com"
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = custom
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
         assert _get_okp_base_url() == AnyUrl(custom)
 
     def test_returns_default_when_rhokp_url_unset(self, mocker: MockerFixture) -> None:
         """When rhokp_url is missing or empty, returned base URL uses default."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = None
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
         assert _get_okp_base_url() == AnyUrl(constants.RH_SERVER_OKP_DEFAULT_URL)
         assert str(_get_okp_base_url()).startswith("http://")
 
@@ -484,7 +484,7 @@ class TestBuildDocumentUrl:
         """Test URL building in offline mode with source_path."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = "https://mimir.test"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
         doc_url, reference_doc = _build_document_url(
             offline=True,
             doc_id="doc_123",
@@ -498,7 +498,7 @@ class TestBuildDocumentUrl:
         """Test offline mode falls back to doc_id when source_path is None."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = "https://mimir.test"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
         doc_url, reference_doc = _build_document_url(
             offline=True, doc_id="doc_123", reference_url=None
         )
@@ -520,7 +520,7 @@ class TestBuildDocumentUrl:
         """Test online mode when reference_url doesn't start with http."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = "https://mimir.test"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
         doc_url, reference_doc = _build_document_url(
             offline=False, doc_id="doc_123", reference_url="relative/path"
         )
@@ -618,7 +618,7 @@ class TestFetchByokRag:
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.rag.retrieval.inline.sources = []
         config_mock.rag.byok.stores = []
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
         rag_chunks, referenced_docs = await _fetch_byok_rag(client_mock, "test query")
@@ -643,7 +643,7 @@ class TestFetchByokRag:
             "vs_1": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
         }
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         # Mock search response
         chunk_mock = mocker.Mock()
@@ -686,7 +686,7 @@ class TestFetchByokRag:
             "vs-internal-001": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
         }
         config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         chunk_mock = mocker.Mock()
         chunk_mock.content = "Test content"
@@ -741,7 +741,7 @@ class TestFetchByokRag:
             "vs-aaa-111": "kb-part1",
             "vs-bbb-222": "kb-part2",
         }
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         chunk_mock = mocker.Mock()
         chunk_mock.content = "Content"
@@ -785,7 +785,7 @@ class TestFetchByokRag:
         config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
         config_mock.relevance_cutoff_mapping = {"vs-internal-001": 0.55}
         config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         chunk_mock = mocker.Mock()
         chunk_mock.content = "Test content"
@@ -879,7 +879,7 @@ class TestFetchByokRag:
         config_mock.score_multiplier_mapping = {"vs-cutoff": 1.0}
         config_mock.relevance_cutoff_mapping = {"vs-cutoff": cutoff}
         config_mock.rag_id_mapping = {"vs-cutoff": "kb"}
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         def chunk(content: str, cid: str) -> Any:
             ch = mocker.Mock()
@@ -922,7 +922,7 @@ class TestFetchByokRag:
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.rag.retrieval.inline.sources = []
         config_mock.rag.byok.stores = []
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
 
@@ -942,7 +942,7 @@ class TestFetchByokRag:
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.rag.retrieval.inline.sources = ["registered-id"]
         config_mock.rag.byok.stores = []
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
 
@@ -963,7 +963,7 @@ class TestFetchSolrRag:
         """Test when Solr is disabled."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = False
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
         rag_chunks, referenced_docs = await _fetch_okp_rag(client_mock, "test query")
@@ -981,7 +981,7 @@ class TestFetchSolrRag:
         config_mock.okp.offline = True
         config_mock.okp.rhokp_url = "https://okp.test"
         config_mock.rag.okp.max_chunks = constants.DEFAULT_OKP_RAG_MAX_CHUNKS
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         # Mock chunk
         chunk_mock = mocker.Mock()
@@ -1014,7 +1014,7 @@ class TestFetchSolrRag:
         config_mock.okp.offline = True
         config_mock.okp.rhokp_url = "https://okp.test"
         config_mock.rag.okp.max_chunks = constants.DEFAULT_OKP_RAG_MAX_CHUNKS
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         chunk_mock = mocker.Mock()
         chunk_mock.content = "Solr content"
@@ -1058,7 +1058,7 @@ class TestBuildRagContext:
         )
         config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
         config_mock.inline_solr_enabled = False
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
         context = await build_rag_context(client_mock, "test query", None)
@@ -1087,7 +1087,7 @@ class TestBuildRagContext:
             "vs_1": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
         }
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         # Mock chunk
         chunk_mock = mocker.Mock()
@@ -1133,8 +1133,8 @@ class TestBuildRagContext:
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         config_mock.reranker.enabled = True
         config_mock.reranker.model = "test-model"
-        mocker.patch("utils.vector_search.configuration", config_mock)
-        mocker.patch("utils.reranker.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.reranker.configuration", config_mock)
 
         # Mock BYOK search response
         chunk_mock = mocker.Mock()
@@ -1151,7 +1151,7 @@ class TestBuildRagContext:
 
         # Mock cross-encoder reranking function
         mock_rerank = mocker.patch(
-            "utils.vector_search.rerank_chunks_with_cross_encoder"
+            "utils.rag.vector_search.rerank_chunks_with_cross_encoder"
         )
         mock_rerank.return_value = [
             RAGChunk(content="BYOK content", source="rag_1", score=0.95)
@@ -1190,7 +1190,7 @@ class TestBuildRagContext:
         }
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         config_mock.reranker.enabled = False
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
         # Mock BYOK search response
         chunk_mock = mocker.Mock()
@@ -1206,7 +1206,9 @@ class TestBuildRagContext:
         client_mock.vector_io.query.return_value = search_response
 
         # Mock cross-encoder reranking function
-        mock_rerank = mocker.patch("utils.reranker.rerank_chunks_with_cross_encoder")
+        mock_rerank = mocker.patch(
+            "utils.rag.reranker.rerank_chunks_with_cross_encoder"
+        )
 
         context = await build_rag_context(client_mock, "test query", None)
 
@@ -1227,19 +1229,19 @@ class TestGetCrossEncoder:
         provider: str = "st",
         model: str = "rerank-mini",
     ) -> None:
-        """Patch ``utils.reranker.configuration`` reranker fields."""
+        """Patch ``utils.rag.reranker.configuration`` reranker fields."""
         config = mocker.Mock()
         config.reranker.enabled = enabled
         if enabled:
             config.reranker.provider = provider
             config.reranker.model = model
-        mocker.patch("utils.reranker.configuration", config)
+        mocker.patch("utils.rag.reranker.configuration", config)
 
     @staticmethod
     def _patch_provider_registry(mocker: MockerFixture) -> Any:
         """Patch ``ProviderRegistry`` and return the mock instance."""
         registry = mocker.Mock()
-        mocker.patch("utils.reranker.ProviderRegistry", return_value=registry)
+        mocker.patch("utils.rag.reranker.ProviderRegistry", return_value=registry)
         return registry
 
     @pytest.mark.asyncio
@@ -1318,7 +1320,7 @@ class TestRerankChunksWithCrossEncoder:
 
         # Mock _get_cross_encoder to return our mock model
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "utils.rag.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1361,7 +1363,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.return_value = [2.5, 1.0, 3.0]
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "utils.rag.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1383,7 +1385,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.return_value = [1.5, 1.5]  # Identical cross-encoder scores
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "utils.rag.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1408,7 +1410,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.return_value = [2.5]
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "utils.rag.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1429,7 +1431,7 @@ class TestRerankChunksWithCrossEncoder:
 
         # Mock _get_cross_encoder to return None (loading failed)
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "utils.rag.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
@@ -1454,7 +1456,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.side_effect = Exception("Prediction failed")
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "utils.rag.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1478,7 +1480,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.return_value = mock_scores
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "utils.rag.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1605,7 +1607,7 @@ class TestBuildRagContextOtel:
         config_mock.rag.byok.max_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
         config_mock.inline_solr_enabled = False
         config_mock.reranker = None
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
 
     @pytest.mark.asyncio
     async def test_passed_with_no_chunks_emits_zero_count_event(
@@ -1615,14 +1617,14 @@ class TestBuildRagContextOtel:
     ) -> None:
         """No chunks emits retrieval completed with count 0."""
         tracer, exporter = otel
-        mocker.patch("utils.vector_search.tracer", tracer)
+        mocker.patch("utils.rag.vector_search.tracer", tracer)
         self._patch_rag_config(mocker)
         mocker.patch(
-            "utils.vector_search._fetch_byok_rag",
+            "utils.rag.vector_search._fetch_byok_rag",
             new=mocker.AsyncMock(return_value=([], [])),
         )
         mocker.patch(
-            "utils.vector_search._fetch_okp_rag",
+            "utils.rag.vector_search._fetch_okp_rag",
             new=mocker.AsyncMock(return_value=([], [])),
         )
         client = mocker.AsyncMock()
@@ -1654,7 +1656,7 @@ class TestBuildRagContextOtel:
     ) -> None:
         """Chunks set source attrs and chunk count event."""
         tracer, exporter = otel
-        mocker.patch("utils.vector_search.tracer", tracer)
+        mocker.patch("utils.rag.vector_search.tracer", tracer)
         self._patch_rag_config(mocker)
         chunk = RAGChunk(
             content="chunk text",
@@ -1667,11 +1669,11 @@ class TestBuildRagContextOtel:
             doc_title="Example Doc",
         )
         mocker.patch(
-            "utils.vector_search._fetch_byok_rag",
+            "utils.rag.vector_search._fetch_byok_rag",
             new=mocker.AsyncMock(return_value=([chunk], [document])),
         )
         mocker.patch(
-            "utils.vector_search._fetch_okp_rag",
+            "utils.rag.vector_search._fetch_okp_rag",
             new=mocker.AsyncMock(return_value=([], [])),
         )
         client = mocker.AsyncMock()

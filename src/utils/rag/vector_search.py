@@ -28,7 +28,7 @@ from utils.otel_tracing import (
     add_span_event,
     set_span_attributes,
 )
-from utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
+from utils.rag.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
 from utils.responses import resolve_vector_store_ids
 
 if TYPE_CHECKING:

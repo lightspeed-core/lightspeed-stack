@@ -132,7 +132,3 @@ Unit tests for tool_formatter utilities.
 
 Unit tests for functions and types defined in utils/types.py.
 
-## [test_vector_search.py](test_vector_search.py)
-
-Unit tests for vector search utilities.
-

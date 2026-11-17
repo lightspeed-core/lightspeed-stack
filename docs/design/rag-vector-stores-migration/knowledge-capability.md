@@ -41,7 +41,7 @@ the turn, matches map to the existing `rag_chunks` /
 ## Why
 
 BYOK and OKP retrieval still go through OGX. Inline RAG calls
-`client.vector_io.query` in `src/utils/vector_search.py`. Tool RAG
+`client.vector_io.query` in `src/utils/rag/vector_search.py`. Tool RAG
 attaches OGX `file_search`. Agents already run with capabilities
 (skills, question validity, redaction, Granite Guardian) in
 `build_agent`; retrieval is an OGX-shaped side path.
@@ -276,7 +276,7 @@ injection (same pattern as skills).
 current turn and exposes them as `KnowledgeMatch`es. Mapping those
 into `RAGChunk` / `ReferencedDocument` is LCS response plumbing, not
 part of the capability package. It lives next to the existing BYOK
-document extraction in `src/utils/vector_search.py` (or a sibling
+document extraction in `src/utils/rag/vector_search.py` (or a sibling
 helper in `src/utils/`), using the same URL / id keys as
 `_process_byok_rag_chunks_for_documents` (`document_id`, `docs_url` /
 `reference_url` / `doc_url`, `title`). Dedup keys stay the same.
@@ -289,7 +289,7 @@ If Responses clients still parse `file_search_call` output items
 
 ### Reranker
 
-Reuse the algorithm in `src/utils/reranker.py`. Do not change product
+Reuse the algorithm in `src/utils/rag/reranker.py`. Do not change product
 scoring.
 
 - Lazy-load and cache `sentence-transformers` `CrossEncoder`
@@ -496,10 +496,10 @@ health.
 | `src/app/endpoints/query.py` | Stop `build_rag_context` for static sources; map `Knowledge.turn_matches()` |
 | `src/app/endpoints/streaming_query.py` | Same |
 | `src/app/endpoints/responses.py` | Same; keep `file_search_call` translation if S3=B |
-| `src/utils/vector_search.py` | Map `KnowledgeMatch` → `RAGChunk` / `ReferencedDocument` (same keys as `_process_byok_rag_chunks_for_documents`). Delete `_fetch_byok_rag` / `_fetch_okp_rag` / BYOK branch of `build_rag_context` once endpoints no longer call them |
+| `src/utils/rag/vector_search.py` | Map `KnowledgeMatch` → `RAGChunk` / `ReferencedDocument` (same keys as `_process_byok_rag_chunks_for_documents`). Delete `_fetch_byok_rag` / `_fetch_okp_rag` / BYOK branch of `build_rag_context` once endpoints no longer call them |
 | `src/utils/responses.py`, `src/utils/builtin_tools.py` | Stop attaching OGX builtin `file_search` for BYOK/OKP tool sources |
 | `src/ogx_configuration.py` | Drop BYOK `providers.vector_io` synthesis. Leave top-level `vector_store` provider synthesis until [dynamic-knowledge.md](dynamic-knowledge.md) (`rag.dynamic`, one FAISS file) |
-| `src/utils/reranker.py` | Reuse 30/70 + BYOK boost; Knowledge reranker may call into this after adapting match ↔ `RAGChunk` |
+| `src/utils/rag/reranker.py` | Reuse 30/70 + BYOK boost; Knowledge reranker may call into this after adapting match ↔ `RAGChunk` |
 | `docs/user_doc/rag_guide.md`, `docs/user_doc/okp_guide.md` | Document native static search and OKP-as-MCP. Runtime `/v1/vector-stores` is [dynamic-knowledge.md](dynamic-knowledge.md) |
 
 ### Insertion point detail

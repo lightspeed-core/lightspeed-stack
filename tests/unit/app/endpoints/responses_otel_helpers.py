@@ -28,7 +28,7 @@ from utils.otel_tracing import SpanAttributes, SpanEvents
 
 MODULE = "app.endpoints.responses"
 UTILS_RESPONSES_MODULE = "utils.responses"
-VECTOR_SEARCH_MODULE = "utils.vector_search"
+VECTOR_SEARCH_MODULE = "utils.rag.vector_search"
 
 MOCK_AUTH: AuthTuple = (
     "00000001-0001-0001-0001-000000000001",
@@ -94,7 +94,7 @@ def patch_responses_otel_tracers(
     mocker.patch(f"{UTILS_RESPONSES_MODULE}.tracer", tracer)
     mocker.patch("utils.shields.tracer", tracer)
     mocker.patch("utils.quota_utils.tracer", tracer)
-    mocker.patch("utils.vector_search.tracer", tracer)
+    mocker.patch("utils.rag.vector_search.tracer", tracer)
     mocker.patch(
         f"{MODULE}.anonymize_value",
         side_effect=lambda value: f"[anon:{value}]",
