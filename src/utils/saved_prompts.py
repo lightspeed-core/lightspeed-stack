@@ -303,7 +303,7 @@ def _ordered_user_prompts(
     # (NULLs sort first on SQLite) and collide with freshly assigned
     # positions. The uncapped recursive call performs the heal.
     if limit is not None:
-        _ordered_user_prompts(session, user_id)
+        _ordered_user_prompts(session, user_id, defer_body=True)
     else:
         _heal_null_positions(session, rows)
     return query.all(), True

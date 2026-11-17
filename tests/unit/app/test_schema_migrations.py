@@ -339,3 +339,44 @@ def _seed_rows_with_null_positions(engine: Engine) -> None:
                     "ts": created_at,
                 },
             )
+
+
+def test_migration_tolerates_concurrent_column_add(
+    modern_schema_engine: Engine,
+    mocker: MockerFixture,
+) -> None:
+    """A duplicate-column ALTER failure (another replica won the race) is tolerated.
+
+    With multiple replicas booting concurrently, a second worker can add the
+    position column between this worker's inspection and its ALTER; the
+    loser's ALTER then fails with a duplicate-column error. The migration is
+    idempotent, so the loser must continue (the backfill still runs) instead
+    of crashing startup.
+    """
+    real_inspector = inspect(modern_schema_engine)
+    original_get_columns = real_inspector.get_columns
+    mocker.patch.object(
+        real_inspector,
+        "get_columns",
+        side_effect=lambda table_name: [
+            column
+            for column in original_get_columns(table_name)
+            if column["name"] != "position"
+        ],
+    )
+    mocker.patch(
+        "app.schema_migrations.inspect",
+        return_value=real_inspector,
+    )
+    _seed_rows_with_null_positions(modern_schema_engine)
+
+    # Must not raise despite the ALTER hitting a duplicate-column error.
+    run_startup_migrations(modern_schema_engine)
+
+    # The backfill still ran after tolerating the lost race.
+    assert _positions_by_id(modern_schema_engine) == {
+        "p1": 1,
+        "p2": 2,
+        "p4-null": 3,
+        "p3-null": 4,
+    }

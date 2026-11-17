@@ -14,6 +14,7 @@ than the ``UPDATE ... FROM`` form that differs between dialects.
 
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 
 from log import get_logger
 
@@ -43,6 +44,24 @@ WHERE position IS NULL
 """
 
 
+def _is_duplicate_column_error(exc: OperationalError) -> bool:
+    """Check whether an ALTER failure means another worker added the column.
+
+    Parameters:
+        exc: The OperationalError raised by the ALTER TABLE.
+
+    Returns:
+        True on the duplicate-column errors of either supported dialect:
+        SQLite's ``duplicate column name: position`` and PostgreSQL's
+        ``column "position" of relation "saved_prompt" already exists``.
+
+    """
+    message = str(getattr(exc, "orig", exc)).lower()
+    return "duplicate column name" in message or (
+        'column "position"' in message and "already exists" in message
+    )
+
+
 def run_startup_migrations(engine: Engine) -> None:
     """Bring an existing saved_prompt table up to the current schema.
 
@@ -56,13 +75,19 @@ def run_startup_migrations(engine: Engine) -> None:
     appended after the user's current maximum position. The backfill is a
     no-op when no NULL rows exist, so the call is safe on every boot.
 
+    Concurrent replicas booting simultaneously can both observe the
+    pre-migration schema; the worker whose ALTER loses the race sees a
+    duplicate-column error, which is tolerated (the migration is
+    idempotent) so startup continues with the backfill.
+
     Parameters:
         engine: Database engine to migrate (from ``app.database.get_engine``).
 
     Raises:
-        sqlalchemy.exc.SQLAlchemyError: If the ALTER or backfill fails; the
-            service should fail startup rather than serve queries against a
-            schema the ORM cannot read.
+        sqlalchemy.exc.SQLAlchemyError: If the ALTER or backfill fails for
+            any reason other than a lost duplicate-column race; the service
+            should fail startup rather than serve queries against a schema
+            the ORM cannot read.
 
     """
     inspector = inspect(engine)
@@ -74,7 +99,15 @@ def run_startup_migrations(engine: Engine) -> None:
     column_added = "position" not in columns
     if column_added:
         with engine.begin() as connection:
-            connection.execute(text(_ADD_POSITION_COLUMN_SQL))
+            try:
+                connection.execute(text(_ADD_POSITION_COLUMN_SQL))
+            except OperationalError as exc:
+                if not _is_duplicate_column_error(exc):
+                    raise
+                logger.info(
+                    "saved_prompt.position was added concurrently by another "
+                    "worker; continuing with backfill"
+                )
     else:
         logger.debug("saved_prompt.position already present")
 
