@@ -4,7 +4,7 @@
 
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 from azure.core.exceptions import ClientAuthenticationError
 from openai import APIConnectionError, AsyncAzureOpenAI
@@ -198,9 +198,7 @@ async def test_discover_models_infers_model_types(
     [
         APIConnectionError(
             message="connection failed",
-            request=httpx.Request(  # pyright: ignore[reportArgumentType]
-                "GET", f"{AZURE_ENDPOINT}openai/models"
-            ),
+            request=httpx2.Request("GET", f"{AZURE_ENDPOINT}openai/models"),
         ),
         ClientAuthenticationError(message="token acquisition failed"),
     ],

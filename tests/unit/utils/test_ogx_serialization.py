@@ -151,6 +151,7 @@ def test_dump_ogx_model_model_dump_leaves_empty_oneof_wrappers(
 ) -> None:
     """Plain model_dump is the failure mode dump_ogx_model exists to fix."""
     response = OpenAIResponseObject.from_dict(complex_client_response_payload)
+    assert response is not None
 
     broken = response.model_dump(exclude_none=True)
     fixed = dump_ogx_model(response)

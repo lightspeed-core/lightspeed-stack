@@ -5,6 +5,7 @@
 from typing import Any, Optional
 
 import httpx
+import httpx2
 import pytest
 from openai import APIConnectionError, AuthenticationError
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
@@ -114,15 +115,15 @@ async def test_discover_models_keeps_chat_and_embedding_only(
     [
         APIConnectionError(
             message="connection failed",
-            request=httpx.Request(  # pyright: ignore[reportArgumentType]
+            request=httpx2.Request(
                 "GET", "https://us-south.ml.cloud.ibm.com/ml/v1/models"
             ),
         ),
         AuthenticationError(
             message="unauthorized",
-            response=httpx.Response(  # pyright: ignore[reportArgumentType]
+            response=httpx2.Response(
                 401,
-                request=httpx.Request(
+                request=httpx2.Request(
                     "GET", "https://us-south.ml.cloud.ibm.com/ml/v1/models"
                 ),
             ),

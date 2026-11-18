@@ -4,7 +4,7 @@
 
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 from openai import APIConnectionError, AuthenticationError
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
@@ -96,15 +96,13 @@ async def test_discover_models_infers_model_types(
     [
         APIConnectionError(
             message="connection failed",
-            request=httpx.Request(  # pyright: ignore[reportArgumentType]
-                "GET", f"{BASE_URL}/models"
-            ),
+            request=httpx2.Request("GET", f"{BASE_URL}/models"),
         ),
         AuthenticationError(
             message="unauthorized",
-            response=httpx.Response(  # pyright: ignore[reportArgumentType]
+            response=httpx2.Response(
                 401,
-                request=httpx.Request("GET", f"{BASE_URL}/models"),
+                request=httpx2.Request("GET", f"{BASE_URL}/models"),
             ),
             body=None,
         ),

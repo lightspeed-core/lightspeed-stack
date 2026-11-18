@@ -3,7 +3,7 @@
 # pylint: disable=protected-access,too-few-public-methods,too-many-lines
 
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from ogx_api.openai_responses import (
@@ -221,7 +221,8 @@ class TestPrepareCompactedInput:
         assert "input" not in result["extra_body"]
         assert result["extra_body"]["max_infer_iters"] == 5
         # original settings untouched
-        assert "input" in settings["extra_body"]
+        extra_body = cast(dict[str, Any], settings["extra_body"])
+        assert "input" in extra_body
 
 
 class TestFromOgxClient:
