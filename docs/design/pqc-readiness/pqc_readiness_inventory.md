@@ -24,8 +24,10 @@
         * [Outbound HTTPS / TLS clients](#outbound-https--tls-clients)
         * [Database TLS paths](#database-tls-paths)
         * [Inbound TLS / termination paths](#inbound-tls--termination-paths)
+        * [Exceptions and CA trust](#exceptions-and-ca-trust)
     * [Deployment surfaces](#deployment-surfaces)
     * [Classical algorithm dependencies](#classical-algorithm-dependencies)
+    * [Focus-area findings](#focus-area-findings)
     * [Gaps](#gaps)
     * [Acceptance](#acceptance)
 * [Links](#links)
@@ -248,111 +250,150 @@ abstracted, replaced, or kept temporarily for backward compatibility.
 
 ### System-policy-governed
 
-| Package                                  | Why it matters                 | Notes                               |
-|------------------------------------------|--------------------------------|-------------------------------------|
-| `aiohttp`                                | HTTPS client/server            | stdlib `ssl` path unless overridden |
-| `asyncpg`                                | PostgreSQL client              | TLS via libpq/OpenSSL               |
-| `authlib`                                | OAuth/OIDC/JWT helpers         | protocol crypto only                |
-| `azure-core`                             | Azure HTTP transport           | HTTPS path                          |
-| `azure-identity`                         | Azure auth/token flows         | auth crypto only                    |
-| `boto3`                                  | AWS API client                 | HTTPS path                          |
-| `botocore`                               | AWS signing + transport        | classical signing + HTTPS           |
-| `cffi`                                   | crypto FFI support             | dependency enabler                  |
-| `cryptography`                           | X.509 / asymmetric crypto      | OpenSSL-backed                      |
-| `datasets`                               | network transport/checksums    | HTTPS path                          |
-| `dnspython`                              | DNS/DNSSEC-capable library     | crypto-adjacent                     |
-| `fastapi`                                | web framework                  | not TLS itself                      |
-| `google-auth`                            | auth/signing                   | classical crypto                    |
-| `google-api-core`                        | Google API transport support   | HTTPS path                          |
-| `google-cloud-*`                         | cloud clients                  | HTTPS path                          |
-| `grpcio`                                 | gRPC transport                 | may negotiate TLS                   |
-| `httpcore`                               | HTTP transport core            | underlying TLS path                 |
-| `httpx`                                  | HTTP/HTTPS client              | stdlib `ssl` path                   |
-| `httpx-sse`                              | SSE over HTTP                  | inherits HTTPX TLS                  |
-| `joserfc`                                | JWS/JWE/JWK/JWKS               | classical crypto                    |
-| `kubernetes`                             | Kubernetes API client          | HTTPS path                          |
-| `msal`                                   | OAuth/OpenID client            | auth crypto                         |
-| `msal-extensions`                        | auth helpers                   | auth-adjacent                       |
-| `oauthlib`                               | OAuth helpers                  | auth crypto                         |
-| `openai`                                 | API client                     | HTTPS path                          |
-| `opentelemetry-exporter-otlp`            | telemetry export               | HTTP or gRPC TLS path               |
-| `opentelemetry-exporter-otlp-proto-grpc` | OTLP/gRPC export               | TLS via gRPC                        |
-| `opentelemetry-exporter-otlp-proto-http` | OTLP/HTTP export               | TLS via HTTP                        |
-| `psycopg2-binary`                        | PostgreSQL client              | TLS via libpq/OpenSSL               |
-| `pyasn1`                                 | ASN.1 parsing                  | cert/auth parsing                   |
-| `pyasn1-modules`                         | ASN.1 modules                  | cert/auth parsing                   |
-| `pyjwt`                                  | JWT signing/verification       | classical crypto                    |
-| `requests`                               | HTTPS client                   | urllib3/ssl path                    |
-| `requests-oauthlib`                      | OAuth over requests            | auth crypto                         |
-| `s3transfer`                             | AWS transfer helper            | HTTPS path                          |
-| `sentry-sdk`                             | telemetry transport            | HTTPS path                          |
-| `sqlalchemy`                             | DB abstraction                 | indirect TLS via drivers            |
-| `starlette`                              | ASGI framework                 | not TLS itself                      |
-| `truststore`                             | system trust store integration | system-rooted trust                 |
-| `urllib3`                                | HTTP/HTTPS transport           | stdlib `ssl` path                   |
-| `uvicorn`                                | ASGI server                    | TLS termination via cert/key        |
-| `websocket-client`                       | WSS client                     | stdlib `ssl` path                   |
-| `websockets`                             | WS/WSS client/server           | stdlib `ssl` path                   |
+Versions are pinned from `uv.lock` (as off commit 4d2db67cab20f8ae4ce9e88847f7f0d111cad7b3).
+
+| Package                                  | Version      | Why it matters                 | Notes                               |
+|------------------------------------------|--------------|--------------------------------|-------------------------------------|
+| `aiohttp`                                | 3.14.5       | HTTPS client/server            | stdlib `ssl` path unless overridden |
+| `asyncpg`                                | 0.32.0       | PostgreSQL client              | TLS via libpq/OpenSSL               |
+| `authlib`                                | 1.9.5        | OAuth/OIDC/JWT helpers         | protocol crypto only                |
+| `azure-core`                             | 1.41.0       | Azure HTTP transport           | HTTPS path                          |
+| `azure-identity`                         | 1.27.0       | Azure auth/token flows         | auth crypto only                    |
+| `boto3`                                  | 1.44.0       | AWS API client                 | HTTPS path                          |
+| `botocore`                               | 1.44.0       | AWS signing + transport        | classical signing + HTTPS           |
+| `cffi`                                   | 2.1.1        | crypto FFI support             | dependency enabler                  |
+| `cryptography`                           | 50.0.2       | X.509 / asymmetric crypto      | OpenSSL-backed; transitive-only (not imported in `src/`) |
+| `datasets`                               | 5.2.0        | network transport/checksums    | HTTPS path                          |
+| `dnspython`                              | 2.9.2        | DNS/DNSSEC-capable library     | crypto-adjacent                     |
+| `fastapi`                                | 0.162.4      | web framework                  | not TLS itself                      |
+| `google-auth`                            | 2.62.2       | auth/signing                   | classical crypto                    |
+| `google-api-core`                        | 2.44.0       | Google API transport support   | HTTPS path                          |
+| `google-cloud-*`                         | (see below)  | cloud clients                  | HTTPS path; per-package versions in crypto-adjacent table |
+| `grpcio`                                 | 1.85.1       | gRPC transport                 | may negotiate TLS                   |
+| `httpcore`                               | 1.0.9        | HTTP transport core            | underlying TLS path                 |
+| `httpx`                                  | 0.28.1       | HTTP/HTTPS client              | stdlib `ssl` path                   |
+| `httpx-sse`                              | 0.4.3        | SSE over HTTP                  | inherits HTTPX TLS                  |
+| `joserfc`                                | 1.8.0        | JWS/JWE/JWK/JWKS               | classical crypto                    |
+| `kubernetes`                             | 36.0.3       | Kubernetes API client          | HTTPS path                          |
+| `msal`                                   | 1.39.0       | OAuth/OpenID client            | auth crypto                         |
+| `msal-extensions`                        | 1.3.1        | auth helpers                   | auth-adjacent                       |
+| `oauthlib`                               | 4.0.1        | OAuth helpers                  | auth crypto                         |
+| `openai`                                 | 3.49.0       | API client                     | HTTPS path                          |
+| `opentelemetry-exporter-otlp`            | 1.45.2       | telemetry export               | HTTP or gRPC TLS path               |
+| `opentelemetry-exporter-otlp-proto-grpc` | 1.45.2       | OTLP/gRPC export               | TLS via gRPC                        |
+| `opentelemetry-exporter-otlp-proto-http` | 1.45.2       | OTLP/HTTP export               | TLS via HTTP                        |
+| `psycopg2-binary`                        | 2.9.13       | PostgreSQL client              | TLS via libpq/OpenSSL               |
+| `pyasn1`                                 | 0.6.5        | ASN.1 parsing                  | cert/auth parsing; transitive-only  |
+| `pyasn1-modules`                         | 0.4.2        | ASN.1 modules                  | cert/auth parsing; transitive-only  |
+| `pyjwt`                                  | 2.15.1       | JWT signing/verification       | classical crypto; transitive-only (JWT handled via `authlib`) |
+| `requests`                               | 2.34.2       | HTTPS client                   | urllib3/ssl path                    |
+| `requests-oauthlib`                      | 2.0.0        | OAuth over requests            | auth crypto; transitive-only        |
+| `s3transfer`                             | 0.19.3       | AWS transfer helper            | HTTPS path                          |
+| `sentry-sdk`                             | 2.74.0       | telemetry transport            | HTTPS path                          |
+| `sqlalchemy`                             | 2.1.8        | DB abstraction                 | indirect TLS via drivers            |
+| `starlette`                              | 1.10.0       | ASGI framework                 | not TLS itself                      |
+| `truststore`                             | 0.10.5       | system trust store integration | system-rooted trust                 |
+| `urllib3`                                | 2.8.0        | HTTP/HTTPS transport           | stdlib `ssl` path                   |
+| `uvicorn`                                | 0.54.0       | ASGI server                    | TLS termination via cert/key        |
+| `websocket-client`                       | 1.9.2        | WSS client                     | stdlib `ssl` path                   |
+| `websockets`                             | 17.4         | WS/WSS client/server           | stdlib `ssl` path                   |
 
 ### Vendored
 
-| Package   | Why it matters   | Notes                |
-|-----------|------------------|----------------------|
-| `certifi` | bundled CA roots | vendored trust store |
+| Package   | Version      | Why it matters   | Notes                |
+|-----------|--------------|------------------|----------------------|
+| `certifi` | 2026.10.23   | bundled CA roots | vendored trust store — **the only vendored CA bundle in the dependency set** |
 
 ### Crypto-adjacent / inspect if used
 
-| Package                                                 | Why it matters            | Notes              |
-|---------------------------------------------------------|---------------------------|--------------------|
-| `bandit`                                                | security linting          | not runtime crypto |
-| `google-resumable-media`                                | upload/download transport | HTTPS path         |
-| `google-cloud-storage`                                  | API transport             | HTTPS path         |
-| `google-cloud-aiplatform`                               | API transport             | HTTPS path         |
-| `google-cloud-bigquery`                                 | API transport             | HTTPS path         |
-| `google-cloud-core`                                     | API transport support     | HTTPS path         |
-| `google-cloud-resource-manager`                         | API transport             | HTTPS path         |
-| `google-crc32c`                                         | checksum                  | integrity, not TLS |
-| `grpcio-status`                                         | gRPC support              | transport-adjacent |
-| `h2`, `hpack`, `hyperframe`                             | HTTP/2 stack              | TLS-adjacent       |
-| `httpx2`, `httpcore2`, `httpx2-jsfetch`, `fastmcp-slim` | alternate transport stack | inspect usage      |
-| `opentelemetry-instrumentation-httpx`                   | transport instrumentation | not crypto itself  |
-| `opentelemetry-util-http`                               | helpers                   | not crypto itself  |
-| `requests-toolbelt`                                     | requests helpers          | not crypto itself  |
-| `sse-starlette`                                         | streaming transport       | TLS via ASGI stack |
-| `trustme`                                               | test CA/cert generation   | test-only crypto   |
+| Package                               | Version       | Why it matters            | Notes              |
+|---------------------------------------|---------------|---------------------------|--------------------|
+| `bandit`                              | 1.9.4         | security linting          | not runtime crypto |
+| `google-resumable-media`              | 2.11.0        | upload/download transport | HTTPS path         |
+| `google-cloud-storage`                | 3.17.1        | API transport             | HTTPS path         |
+| `google-cloud-aiplatform`             | 2.8.0         | API transport             | HTTPS path         |
+| `google-cloud-bigquery`               | 3.47.0        | API transport             | HTTPS path         |
+| `google-cloud-core`                   | 2.8.0         | API transport support     | HTTPS path         |
+| `google-cloud-resource-manager`       | 1.19.0        | API transport             | HTTPS path         |
+| `google-crc32c`                       | 1.9.0         | checksum                  | integrity, not TLS |
+| `grpcio-status`                       | 1.85.1        | gRPC support              | transport-adjacent |
+| `h2`, `hpack`, `hyperframe`           | not locked    | HTTP/2 stack              | **not present in `uv.lock`** — HTTP/2 stack is not a dependency |
+| `httpx2`, `httpcore2`                 | 2.16.0        | alternate transport stack | inspect usage      |
+| `httpx2-jsfetch`                      | 1.0           | alternate transport stack | inspect usage      |
+| `fastmcp-slim`                        | 3.4.11        | alternate transport stack | inspect usage      |
+| `opentelemetry-instrumentation-httpx` | 0.66b2        | transport instrumentation | not crypto itself  |
+| `opentelemetry-util-http`             | 0.66b2        | helpers                   | not crypto itself  |
+| `requests-toolbelt`                   | 1.0.0         | requests helpers          | not crypto itself  |
+| `sse-starlette`                       | 3.7.0         | streaming transport       | TLS via ASGI stack |
+| `trustme`                             | 1.2.1         | test CA/cert generation   | test-only crypto   |
 
 ## TLS/HTTPS paths in `src/`
 
 ### Outbound HTTPS / TLS clients
 
-| File                                                                      | Path                         | Mechanism                                | Classification         | Notes                                |
-|---------------------------------------------------------------------------|------------------------------|------------------------------------------|------------------------|--------------------------------------|
-| `src/providers/inference/watsonx/pai_provider.py`                         | outbound to Watsonx          | `httpx.AsyncClient(...)`                 | system-policy-governed | relies on HTTPX/stdlib TLS           |
-| `src/providers/inference/watsonx/auth.py`                                 | token refresh / auth request | `httpx.AsyncClient()`                    | system-policy-governed | HTTPS auth flow                      |
-| `src/pydantic_ai_lightspeed/ogx/_provider.py`                             | outbound OGX HTTP            | `httpx.AsyncClient(...)`                 | system-policy-governed | default HTTPX TLS                    |
-| `src/pydantic_ai_lightspeed/capabilities/granite_guardian/_capability.py` | outbound HTTP                | `httpx.AsyncClient(verify=...)`          | system-policy-governed | explicit TLS verification toggle     |
-| `src/observability/splunk.py`                                             | outbound telemetry           | `aiohttp.ClientSession(...)`             | system-policy-governed | `TCPConnector(ssl=...)` controls TLS |
-| `src/observability/sentry.py`                                             | outbound telemetry           | Sentry SDK                               | system-policy-governed | CA bundle path supported             |
-| `src/authentication/jwk_token.py`                                         | JWKS retrieval               | `aiohttp.ClientSession()`                | system-policy-governed | HTTPS fetch of keys                  |
-| `src/utils/mcp/mcp_tools.py`                                              | MCP HTTP client              | `httpx.Timeout(...)` / HTTPX client path | system-policy-governed | inspect callsites for URL transport  |
-| `src/client/ogx.py`                                                       | OGX request client           | HTTP request path                        | system-policy-governed | inspect implementation for transport |
-| `src/authentication/k8s.py`                                               | Kubernetes API requests      | `k8s_config.verify_ssl`, `ssl_ca_cert`   | system-policy-governed | explicit CA and verify controls      |
+Exact `file:line` references verified against the tree as off commit 4d2db67cab20f8ae4ce9e88847f7f0d111cad7b3.
+
+| File:line                                                                      | Path                         | Mechanism                                                   | Classification         | Notes                                              |
+|--------------------------------------------------------------------------------|------------------------------|-------------------------------------------------------------|------------------------|----------------------------------------------------|
+| `src/providers/inference/watsonx/auth.py:94`                                   | IBM IAM token request        | `httpx.AsyncClient()` (default verify) → `IAM_TOKEN_URL` (`auth.py:16`) | system-policy-governed | HTTPS auth flow; certifi trust                     |
+| `src/providers/inference/watsonx/pai_provider.py:63`                           | outbound to Watsonx ML       | `httpx.AsyncClient(auth=WatsonxIAMAuth(...))` → `AsyncOpenAI` | system-policy-governed | default verify=True                                |
+| `src/pydantic_ai_lightspeed/ogx/_provider.py:140`                             | outbound OGX (service mode)  | `create_async_http_client()` → `AsyncOpenAI(base_url=...)`  | system-policy-governed | default HTTPX/certifi TLS                           |
+| `src/pydantic_ai_lightspeed/ogx/_provider.py:122-124`                         | in-process OGX library        | `httpx.AsyncClient(transport=..., base_url="http://ogx-library")` | N/A (loopback)          | **plaintext loopback transport, no network TLS**   |
+| `src/pydantic_ai_lightspeed/ogx/_transport.py:117`                            | OGX server transport wrapper | `httpx.AsyncClient(transport=OgxServerTransport, ...)`      | system-policy-governed | inherits parent client TLS                         |
+| `src/client/ogx.py:155`                                                        | OGX request client           | `AsyncOgxClient(base_url=..., api_key=..., timeout=...)`    | system-policy-governed | underlying client default verify=True              |
+| `src/pydantic_ai_lightspeed/capabilities/granite_guardian/_capability.py:395` | Granite Guardian inference   | `httpx.AsyncClient(verify=self.config.verify_ssl, ...)`     | system-policy-governed | **configurable verify** — see Exceptions           |
+| `src/observability/splunk.py:74`                                             | Splunk HEC telemetry         | `aiohttp.TCPConnector(ssl=splunk_config.verify_ssl)`       | system-policy-governed | **configurable verify** — see Exceptions           |
+| `src/observability/sentry.py:106`                                            | Sentry ingest telemetry      | `sentry_sdk.init(ca_certs=ca_certs)` (`sentry.py:85-106`)  | system-policy-governed | optional custom CA via env — see Exceptions         |
+| `src/authentication/jwk_token.py:52`                                         | JWKS retrieval               | `aiohttp.ClientSession()` (default) → `session.get` (`:54`) | system-policy-governed | HTTPS fetch of keys; system trust                  |
+| `src/utils/mcp/mcp_tools.py:72`                                              | MCP streamable HTTP          | `httpx.AsyncClient(...)` → `streamable_http_client`        | system-policy-governed | default verify=True                                |
+| `src/utils/mcp/mcp_tools.py:89`                                              | MCP SSE fallback             | `sse_client(endpoint, headers=...)` (MCP SDK default httpx) | system-policy-governed | SDK-default TLS context                            |
+| `src/utils/mcp/mcp_oauth_probe.py:110`                                       | MCP OAuth 401 probe          | `aiohttp.ClientSession(timeout=...)` (default)             | system-policy-governed | default verify=True                                |
+| `src/authentication/k8s.py:127-138`                                          | Kubernetes API requests      | `k8s_config.verify_ssl`, `ssl_ca_cert` → `ApiClient`       | system-policy-governed | **configurable verify + custom CA** — see Exceptions |
 
 ### Database TLS paths
 
-| File                                      | Path                  | Mechanism                         | Classification         | Notes                           |
-|-------------------------------------------|-----------------------|-----------------------------------|------------------------|---------------------------------|
-| `src/quota/connect_pg.py`                 | PostgreSQL connection | `sslmode=...`                     | system-policy-governed | TLS policy controlled by config |
-| `src/cache/postgres_cache.py`             | PostgreSQL connection | `sslmode=...`, `sslrootcert=...`  | system-policy-governed | possible custom CA bundle       |
-| `src/telemetry/configuration_snapshot.py` | config surface only   | `database.postgres.ssl_mode` etc. | system-policy-governed | records TLS settings            |
+| File:line                                    | Path                  | Mechanism                                              | Classification         | Notes                                                        |
+|----------------------------------------------|-----------------------|-------------------------------------------------------|------------------------|--------------------------------------------------------------|
+| `src/app/database.py:134,143-144`            | Primary Postgres DB   | `?sslmode={ssl_mode}&gssencmode=...`; `sslrootcert` (if set) | system-policy-governed | SQLAlchemy/psycopg2; custom CA honored                       |
+| `src/cache/postgres_cache.py:216-217`        | Postgres conv. cache  | `psycopg2.connect(sslmode=..., sslrootcert=...)`      | system-policy-governed | custom CA bundle honored                                     |
+| `src/quota/connect_pg.py:44-45`              | Postgres quota store  | `psycopg2.connect(sslmode=...)`; `sslrootcert` **commented out** | system-policy-governed | **custom CA silently ignored here** — see Exceptions         |
+| `src/telemetry/configuration_snapshot.py`    | config surface only   | `database.postgres.ssl_mode` etc.                     | system-policy-governed | records TLS settings (masking/telemetry)                     |
+
+Default `ssl_mode` is `"prefer"` (`src/constants.py:194`): TLS is **opportunistic and
+unverified** — `prefer`/`allow` negotiate TLS when available but do **not** validate the
+server certificate; only `verify-ca`/`verify-full` check the CA.
 
 ### Inbound TLS / termination paths
 
-| File                                      | Path                          | Mechanism                                                        | Classification                     | Notes                               |
-|-------------------------------------------|-------------------------------|------------------------------------------------------------------|------------------------------------|-------------------------------------|
-| `src/telemetry/configuration_snapshot.py` | server TLS config surface     | `server.tls_cafile`, `server.tls_certfile`, `server.tls_keyfile` | system-policy-governed             | config-only evidence of termination |
-| `src/constants.py`                        | Sentry CA bundle path env var | CA bundle path                                                   | vendored if file-bundled           | path-based trust override           |
-| `src/observability/sentry.py`             | CA bundle config              | CA certificate bundle path                                       | vendored or system-policy-governed | depends on path source              |
+| File:line                                    | Path                          | Mechanism                                                        | Classification         | Notes                                                       |
+|----------------------------------------------|-------------------------------|------------------------------------------------------------------|------------------------|-------------------------------------------------------------|
+| `src/runners/uvicorn.py:44-46`               | inbound HTTPS listener        | `uvicorn.run(ssl_keyfile=..., ssl_certfile=..., ssl_keyfile_password=...)` | system-policy-governed | **only** cert/key/password — no TLS min-version, cipher, or curve/group pinning; falls back to plain HTTP when unset |
+| `src/telemetry/configuration_snapshot.py`    | server TLS config surface     | `server.tls_certfile`, `server.tls_keyfile`, `server.tls_cafile` | system-policy-governed | config-only evidence of termination (masking/telemetry)     |
+| `src/constants.py:384`                        | Sentry CA bundle env var      | `SENTRY_CA_CERTS_ENV_VAR = "SENTRY_CA_CERTS"`                    | system-policy-governed | path-based trust **override**, not vendored material         |
+| `src/observability/sentry.py:85-106`          | Sentry CA bundle config       | `ca_certs` from env, else system trust                          | system-policy-governed | custom path overrides system CA; not a bundled trust store   |
+
+### Exceptions and CA trust
+
+**Verification-disable switches — all default to secure (verification ON):**
+
+| Switch | Call site | Config field | Default |
+|--------|-----------|--------------|---------|
+| Granite Guardian verify | `_capability.py:395` (`verify=self.config.verify_ssl`) | `GraniteGuardianConfig.verify_ssl` (`src/models/config.py:3638`, `bool \| str`) | `True` (a `str` value = custom CA bundle path) |
+| Splunk HEC verify | `splunk.py:74` (`ssl=splunk_config.verify_ssl`) | `SplunkConfiguration.verify_ssl` (`src/models/config.py:1285`, `bool`) | `True` |
+| Kubernetes verify | `k8s.py:127-128` (`verify_ssl = not skip_tls_verification`) | `AuthenticationConfiguration.skip_tls_verification` (`src/models/config.py:1769`, `bool`) | `False` (i.e. verify ON) |
+
+Each is an operator-controlled escape hatch for self-signed/internal
+endpoints; all ship secure-by-default. Any deployment setting one insecurely is the
+exception that needs sign-off.
+
+**Custom / bundled CA usage (trust override, not disable):**
+
+- Kubernetes `ssl_ca_cert` — `k8s.py:130-135`, field `src/models/config.py:1783` (`k8s_ca_cert_path`).
+- Postgres `sslrootcert` — `app/database.py:143-144` and `cache/postgres_cache.py:217`, field `src/models/config.py:255` (`ca_cert_path`).
+- Sentry `ca_certs` — `sentry.py:85-106` via env `SENTRY_CA_CERTS` (`constants.py:384`).
+
+**No certificate pinning** anywhere in `src/`, and **no `verify=False` literal** — the
+only ways to disable verification are the three config switches above.
 
 ## Deployment surfaces
 
@@ -381,19 +422,63 @@ These packages/paths rely on classical algorithms:
 - `requests-oauthlib`
 - TLS stacks using RSA/ECDSA/ECDH, SHA-256/SHA-384, HMAC, X.509, PKCS#7/PKCS#12
 
+Note: of the above, `cryptography`, `pyjwt`, `pyasn1(-modules)`, `oauthlib`,
+`requests-oauthlib` are **transitive-only** — never imported directly in `src/` (see
+Focus-area findings). They are pulled in by `authlib`, `msal`, `google-auth`, and `boto*`.
+
+## Focus-area findings
+
+Resolves the review items listed under [Focus areas](#focus-areas) using the verified
+`src/` audit (2026-11-11).
+
+* **JWT libraries.** Token verification runs through `authlib.jose`
+  (`src/authentication/jwk_token.py:241`, `jwt.decode(...)`). `pyjwt` is present only
+  transitively and is **not** used by LCS code. The accepted signature algorithm is
+  **not** a hardcoded string and there is **no `algorithms=` allowlist** — the accepted
+  `alg` is driven by the JWK set, with the resolver enforcing `key.alg == header.alg`
+  (`jwk_token.py:107-143`), which mitigates algorithm-confusion attacks. Key selection is
+  abstracted into `key_resolver_func`, but algorithm *policy* is inline rather than
+  configuration-driven. JWKS is re-fetched over HTTPS at runtime
+  (`jwk_token.py:52-54`), so rotating/expanding key sets — and larger PQ signatures —
+  are consumed without code change. **Crypto-agility gap:** there is no central place to
+  restrict or select signature-algorithm families; a PQ-signature migration would be
+  driven by whatever the JWKS publisher advertises.
+
+* **`cryptography` library.** No direct `import cryptography` / `from cryptography ...`
+  anywhere in `src/` — it is purely transitive. There is **no direct RSA / ECDSA /
+  Ed25519 / X25519 / ECDH usage in application code**, so there is nothing to wrap behind
+  an interface for key exchange or signatures today.
+
+* **In-code cipher / group / curve selection.** **None.** No `SSLContext`,
+  `set_ciphers`, `set_ecdh_curve`, or `ssl.TLSVersion` anywhere in `src/`. Every TLS
+  surface is a config pass-through (cert/key paths, `sslmode`/`sslrootcert`, verify
+  booleans, CA paths). **This is the core crypto-agility finding:** key-exchange group
+  negotiation (including ML-KEM / hybrid) is entirely delegated to OpenSSL and the system
+  crypto policy, so PQC key-exchange readiness lights up at the platform layer with no
+  change to this repo — and conversely the app offers no hook to enforce PQ groups.
+
+* **OAuth/OIDC client libs.** `oauthlib` / `requests-oauthlib` / `msal` are transitive
+  only; the active OIDC path is the JWKS flow above, which already consumes changing key
+  sets at runtime.
+
+* **Reverse proxy / ingress TLS stack.** Out of repo — a **platform / deployment-owned**
+  surface (ingress controller, load balancer, service mesh). PQC/hybrid-TLS capability
+  there is a platform concern, not an LCS code concern.
+  
+* **Database drivers.** **N/A for at-rest crypto** — LCS stores no application-encrypted
+  ciphertext, versioned envelopes, or key metadata. Postgres usage is transport TLS only
+  (see Database TLS paths), so driver ciphertext-size / re-encryption concerns do not apply.
+
 ## Gaps
 
-- `uv.lock` package names are confirmed, but version-level transitive audit still needs the full lock metadata.
-- `certifi` is the only obvious vendored trust bundle.
-- `src/` contains multiple TLS policy knobs, but file-level termination/origin lines should be finalized with exact line references.
-- Any use of `verify=False`, bundled CA files, or pinned certificates should be treated as exceptions requiring explicit rationale.
+- **OpenSSL / system crypto-policy build capability** — whether the shipped build
+  negotiates ML-KEM / hybrid groups. Owner: platform.
+- **Peer PQ support** — LLM backends, Postgres, Splunk HEC, JWKS/OIDC, Kubernetes API.
+  Owner: respective service owners.
+- **Reverse-proxy / ingress TLS stack** — PQC/hybrid capability at the termination layer.
+  Owner: platform/deployment.
 
-## Acceptance
-
-- Every crypto-relevant package in `uv.lock` is classified at package-name level.
-- Vendored trust material is identified.
-- TLS/HTTPS origin and termination paths are enumerated from `src/`.
-- Classical algorithm dependencies are documented.
+These are platform/peer-owned, outside this repo's code
 
 # Links
 
