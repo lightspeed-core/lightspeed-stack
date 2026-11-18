@@ -91,11 +91,11 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Requests](https://lightspeed-core.github.io/lightspeed-stack/models/requests.html)
 
-[Successful responses](https://lightspeed-core.github.io/lightspeed-stack/models/responses_succ.html)
+[Successful responses](https://lightspeed-core.github.io/lightspeed-stack/models/successful_responses.html)
 
-[Error responses](https://lightspeed-core.github.io/lightspeed-stack/models/responses_errors.html)
+[Error responses](https://lightspeed-core.github.io/lightspeed-stack/models/error_responses.html)
 
-[Compaction](https://lightspeed-core.github.io/lightspeed-stack/models/compaction.html)
+[Conversation summary](https://lightspeed-core.github.io/lightspeed-stack/models/conversation_summary.html)
 
 #### Class diagrams
 
