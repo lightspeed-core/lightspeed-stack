@@ -413,7 +413,7 @@ Feature: Responses endpoint API tests
       And The responses output does not include any tool invocation item types
       And The token metrics have increased
 
-  Scenario: Check if responses endpoint with tool_choice auto answers a knowledge question using file search
+  Scenario: Check if responses endpoint with client-provided file_search and tool_choice auto answers a knowledge question
     Given The system is in default state
       And I capture the current token metrics
     When I use "responses" to ask question with authorization header
@@ -423,6 +423,7 @@ Feature: Responses endpoint API tests
       "model": "{PROVIDER}/{MODEL}",
       "stream": false,
       "instructions": "You are an assistant. You MUST use the file_search tool to answer. Answer in lowercase.",
+      "tools": [{"type": "file_search", "vector_store_ids": ["e2e-test-docs"]}],
       "tool_choice": "auto"
     }
     """
@@ -433,7 +434,7 @@ Feature: Responses endpoint API tests
         | great work                |
       And The token metrics have increased
 
-  Scenario: Check if responses endpoint with tool_choice required still invokes document search for a basic question
+  Scenario: Check if responses endpoint with client-provided file_search and tool_choice required invokes document search for a basic question
     Given The system is in default state
       And I capture the current token metrics
     When I use "responses" to ask question with authorization header
@@ -442,6 +443,7 @@ Feature: Responses endpoint API tests
       "input": "Hello World!",
       "model": "{PROVIDER}/{MODEL}",
       "stream": false,
+      "tools": [{"type": "file_search", "vector_store_ids": ["e2e-test-docs"]}],
       "tool_choice": "required"
     }
     """
@@ -449,7 +451,7 @@ Feature: Responses endpoint API tests
       And The responses output includes an item with type "file_search_call"
       And The token metrics have increased
 
-  Scenario: Check if responses endpoint with file search as the chosen tool answers using file search
+  Scenario: Check if responses endpoint with client-provided file_search selected by tool_choice answers a knowledge question
     Given The system is in default state
       And I capture the current token metrics
     When I use "responses" to ask question with authorization header
@@ -459,6 +461,7 @@ Feature: Responses endpoint API tests
       "model": "{PROVIDER}/{MODEL}",
       "stream": false,
       "instructions": "You are an assistant. You MUST use the file_search tool to answer. Answer in lowercase.",
+      "tools": [{"type": "file_search", "vector_store_ids": ["e2e-test-docs"]}],
       "tool_choice": {"type": "file_search"}
     }
     """
@@ -469,7 +472,7 @@ Feature: Responses endpoint API tests
         | great work                |
       And The token metrics have increased
 
-  Scenario: Check if responses endpoint with allowed tools in automatic mode answers knowledge question using file search
+  Scenario: Check if responses endpoint with client-provided file_search allowed in automatic mode answers a knowledge question
     Given The system is in default state
       And I capture the current token metrics
     When I use "responses" to ask question with authorization header
@@ -479,6 +482,7 @@ Feature: Responses endpoint API tests
       "model": "{PROVIDER}/{MODEL}",
       "stream": false,
       "instructions": "You are an assistant. You MUST use the file_search tool to answer. Answer in lowercase.",
+      "tools": [{"type": "file_search", "vector_store_ids": ["e2e-test-docs"]}],
       "tool_choice": {
         "type": "allowed_tools",
         "mode": "auto",
@@ -493,7 +497,7 @@ Feature: Responses endpoint API tests
         | great work                |
       And The token metrics have increased
 
-  Scenario: Check if responses endpoint with allowed tools in required mode invokes file search for a basic question
+  Scenario: Check if responses endpoint with client-provided file_search allowed in required mode invokes document search for a basic question
     Given The system is in default state
       And I capture the current token metrics
     When I use "responses" to ask question with authorization header
@@ -502,6 +506,7 @@ Feature: Responses endpoint API tests
       "input": "Hello world!",
       "model": "{PROVIDER}/{MODEL}",
       "stream": false,
+      "tools": [{"type": "file_search", "vector_store_ids": ["e2e-test-docs"]}],
       "tool_choice": {
         "type": "allowed_tools",
         "mode": "required",

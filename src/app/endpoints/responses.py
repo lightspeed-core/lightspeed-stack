@@ -983,6 +983,22 @@ async def shield_violation_generator(
     yield f"event: response.completed\ndata: {data_json}\n\n"
 
 
+def _get_client_tool_types(original_request: ResponsesRequest) -> set[str]:
+    """Return the types of tools supplied in the original client request.
+
+    Args:
+        original_request: Original request received from the client.
+
+    Returns:
+        Set of client-provided tool types.
+
+    """
+    if original_request.tools is None:
+        return set()
+
+    return {tool.type for tool in original_request.tools}
+
+
 def _sanitize_response_dict(
     response_dict: dict[str, Any],
     configured_mcp_labels: set[str],
@@ -1005,18 +1021,26 @@ def _sanitize_response_dict(
         response_dict["instructions"] = SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
     # else: leave instructions as-is (echo back client's value)
 
+    client_tool_types = _get_client_tool_types(original_request)
+
     if tools := response_dict.get("tools"):
         response_dict["tools"] = [
             tool
             for tool in tools
-            if tool.get("server_label") not in configured_mcp_labels
+            if not (
+                tool.get("server_label") in configured_mcp_labels
+                or "file_search" not in client_tool_types
+                and tool.get("type") == "file_search"
+            )
         ]
 
     if output := response_dict.get("output"):
         response_dict["output"] = [
             item
             for item in output
-            if not _is_server_mcp_output_item(item, configured_mcp_labels)
+            if not _is_server_tool_output_item(
+                item, configured_mcp_labels, client_tool_types
+            )
         ]
 
     if original_request.model is None:
@@ -1025,68 +1049,86 @@ def _sanitize_response_dict(
             response_dict["model"] = model.rsplit("/", 1)[-1]
 
 
-def _is_server_mcp_output_item(
-    item: dict[str, Any], configured_mcp_labels: set[str]
+def _is_server_tool_output_item(
+    item: dict[str, Any],
+    configured_mcp_labels: set[str],
+    client_tool_types: set[str],
 ) -> bool:
-    """Check if a serialized output item is a server-deployed MCP tool call.
+    """Check if a serialized output item is server-managed tool output.
 
     Args:
         item: A dict from the serialized response output array.
         configured_mcp_labels: Set of server_label names configured in LCS.
+        client_tool_types: Tool types supplied in the original client request.
 
     Returns:
-        True if the item is an MCP call/list/approval from a server-deployed MCP server.
+        True if the item belongs to a server-managed MCP server or tool.
 
     """
     item_type = item.get("type")
     if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
         return item.get("server_label") in configured_mcp_labels
-    return False
+    return item_type == "file_search_call" and "file_search" not in client_tool_types
 
 
-def _should_filter_mcp_chunk(
+def _should_filter_server_tool_chunk(
     chunk: OpenAIResponseObjectStream,
     configured_mcp_labels: set[str],
-    server_mcp_output_indices: set[int],
+    client_tool_types: set[str],
+    server_tool_output_indices: set[int],
 ) -> bool:
-    """Check if a streaming chunk is a server-deployed MCP event that should be filtered.
+    """Check if a streaming chunk is server-managed tool output that should be filtered.
 
     Args:
         chunk: The streaming chunk to check.
-        event_type: The event type of the chunk.
         configured_mcp_labels: Set of server_label names configured in LCS.
-        server_mcp_output_indices: Tracked output indices of server-deployed MCP calls.
+        client_tool_types: Tool types supplied in the original client request.
+        server_tool_output_indices: Tracked output indices of server-managed tool output.
 
     Returns:
         True if the chunk should be filtered out from the client stream.
 
     """
+    response_item_types_to_filter = (
+        "mcp_call",
+        "mcp_list_tools",
+        "mcp_approval_request",
+        "file_search_call",
+    )
+
     if chunk.type == "response.output_item.added":
         item_added_chunk = cast("OutputItemAddedChunk", chunk)
         item = item_added_chunk.item
         item_type = getattr(item, "type", None)
-        if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
+        if item_type in response_item_types_to_filter:
             server_label = getattr(item, "server_label", None)
-            if server_label in configured_mcp_labels:
-                server_mcp_output_indices.add(item_added_chunk.output_index)
+            is_file_search_client_provided = "file_search" in client_tool_types
+            is_server_managed_tool = (
+                server_label in configured_mcp_labels
+                or not is_file_search_client_provided
+                and item_type == "file_search_call"
+            )
+            if is_server_managed_tool:
+                server_tool_output_indices.add(item_added_chunk.output_index)
                 return True
 
     if chunk.type and (
-        chunk.type.startswith("response.mcp_call.")
+        chunk.type.startswith("response.file_search_call.")
+        or chunk.type.startswith("response.mcp_call.")
         or chunk.type.startswith("response.mcp_list_tools.")
         or chunk.type.startswith("response.mcp_approval_request.")
     ):
         output_index = getattr(chunk, "output_index", None)
-        if output_index in server_mcp_output_indices:
+        if output_index in server_tool_output_indices:
             return True
 
     if chunk.type == "response.output_item.done":
         item_done_chunk = cast("OutputItemDoneChunk", chunk)
         item = item_done_chunk.item
         item_type = getattr(item, "type", None)
-        if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
-            if item_done_chunk.output_index in server_mcp_output_indices:
-                server_mcp_output_indices.discard(item_done_chunk.output_index)
+        if item_type in response_item_types_to_filter:
+            if item_done_chunk.output_index in server_tool_output_indices:
+                server_tool_output_indices.discard(item_done_chunk.output_index)
                 return True
 
     return False
@@ -1160,8 +1202,9 @@ async def response_generator(
     latest_response_object: Optional[OpenAIResponseObject] = None
     sequence_number = 0
     configured_mcp_labels = {s.name for s in configuration.mcp_servers}
-    # Track output indices of server-deployed MCP calls to filter their events
-    server_mcp_output_indices: set[int] = set()
+    client_tool_types = _get_client_tool_types(original_request)
+    # Track output indices of server-deployed tool calls to filter their events
+    server_tool_output_indices: set[int] = set()
     inference_metric_recorded = False
 
     try:
@@ -1174,8 +1217,11 @@ async def response_generator(
                 # Filter out streaming events for server-deployed MCP tools.
                 # These are handled internally by LCS and should not be forwarded
                 # to clients that don't understand the mcp_call item type.
-                if _should_filter_mcp_chunk(
-                    chunk, configured_mcp_labels, server_mcp_output_indices
+                if _should_filter_server_tool_chunk(
+                    chunk,
+                    configured_mcp_labels,
+                    client_tool_types,
+                    server_tool_output_indices,
                 ):
                     continue
 
