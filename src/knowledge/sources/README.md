@@ -20,3 +20,7 @@ OKP knowledge source backed by the OKP MCP server.
 
 pgvector knowledge source that reads OGX ``remote::pgvector`` tables.
 
+## [utils.py](utils.py)
+
+Helpers for building knowledge sources from RAG configuration.
+

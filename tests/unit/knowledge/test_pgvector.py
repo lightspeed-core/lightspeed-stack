@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any, Optional, cast
 
 import asyncpg
@@ -15,11 +16,19 @@ from pydantic_ai.embeddings import (
 )
 from pydantic_ai.embeddings.result import EmbedInputType
 
+import constants
 from knowledge.sources.pgvector import (
     PgVectorKnowledgeSource,
     PgVectorVectorStore,
 )
 from knowledge.types import KnowledgeMatch
+from models.config import (
+    ByokConfiguration,
+    RagConfiguration,
+    RagStore,
+    RetrievalConfiguration,
+    RetrievalStrategyConfiguration,
+)
 
 _STORE_ID = "My-Store"
 _DEFAULT_METADATA: Any = object()
@@ -739,3 +748,77 @@ class TestPgVectorKnowledgeSource:
         await source.close()
 
         assert pool.closed is True
+
+
+class TestPgVectorKnowledgeSourceFromRagConfiguration:
+    """Tests for building a pgvector source from RAG configuration."""
+
+    def test_maps_connection_fields_and_retrieval_mode(self) -> None:
+        """Connection settings, cutoff, chunk limit, and mode come from config."""
+        store = RagStore(
+            rag_id="rh-docs",
+            backend="pgvector",
+            vector_db_id="vs_rh",
+            host="db.example",
+            port="5433",
+            db="knowledge",
+            user="reader",
+            password=SecretStr("secret"),
+            relevance_cutoff_score=0.55,
+            embedding_dimension=16,
+            score_multiplier=0.5,
+        )
+        rag = RagConfiguration(
+            byok=ByokConfiguration(stores=[store], max_chunks=4),
+            retrieval=RetrievalConfiguration(
+                tool=RetrievalStrategyConfiguration(sources=["rh-docs"]),
+            ),
+        )
+
+        source = PgVectorKnowledgeSource.from_rag_configuration(rag, store)
+
+        assert source.name == "rh-docs"
+        assert source.mode == {"tool"}
+        assert source.max_matches == 4
+        assert source.score_threshold == 0.55
+        assert source.score_multiplier == 0.5
+        assert source.embedding_settings == {"dimensions": 16}
+        assert source.embedder.model == (
+            f"sentence-transformers:{constants.DEFAULT_EMBEDDING_MODEL}"
+        )
+        pgvector = source._pgvector  # pylint: disable=protected-access
+        assert pgvector.vector_store_id == "vs_rh"
+        assert pgvector._host == "db.example"  # pylint: disable=protected-access
+        assert pgvector._port == 5433  # pylint: disable=protected-access
+        assert pgvector._database == "knowledge"  # pylint: disable=protected-access
+        assert pgvector._user == "reader"  # pylint: disable=protected-access
+        assert pgvector._password == "secret"  # pylint: disable=protected-access
+
+    def test_rejects_a_non_pgvector_store(self, tmp_path: Path) -> None:
+        """A FAISS store is not built as pgvector."""
+        store = RagStore(
+            rag_id="ocp-docs",
+            backend="faiss",
+            vector_db_id="vs_ocp",
+            db_path=str(tmp_path / "ocp.db"),
+        )
+        rag = RagConfiguration(byok=ByokConfiguration(stores=[store]))
+
+        with pytest.raises(ValueError, match="faiss"):
+            PgVectorKnowledgeSource.from_rag_configuration(rag, store)
+
+    def test_rejects_a_non_integer_port(self) -> None:
+        """A port that is not an integer fails before a connection is opened."""
+        store = RagStore(
+            rag_id="rh-docs",
+            backend="pgvector",
+            vector_db_id="vs_rh",
+            host="db.example",
+            port="not-a-port",
+            db="knowledge",
+            user="reader",
+        )
+        rag = RagConfiguration(byok=ByokConfiguration(stores=[store]))
+
+        with pytest.raises(ValueError, match="not-a-port"):
+            PgVectorKnowledgeSource.from_rag_configuration(rag, store)
