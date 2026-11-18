@@ -9,6 +9,7 @@ downstream components.
 import pytest
 from fastapi import Request
 from opentelemetry import context as otel_context
+from opentelemetry.context import Context, Token
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -29,7 +30,7 @@ def _clear_spans(otel_collector: InMemorySpanExporter) -> None:
     otel_collector.clear()
 
 
-def _inject_w3c_context(traceparent: str) -> object:
+def _inject_w3c_context(traceparent: str) -> Token[Context]:
     """Extract a W3C traceparent header into OTel context and attach it.
 
     Parameters:
@@ -67,7 +68,7 @@ async def test_incoming_trace_context_is_continued(
             mcp_headers={},
         )
     finally:
-        otel_context.detach(token)  # pyright: ignore[reportArgumentType]
+        otel_context.detach(token)
 
     spans = otel_collector.get_finished_spans()
     assert len(spans) > 0, "Expected at least one span"
@@ -100,7 +101,7 @@ async def test_root_span_is_child_of_incoming_parent(
             mcp_headers={},
         )
     finally:
-        otel_context.detach(token)  # pyright: ignore[reportArgumentType]
+        otel_context.detach(token)
 
     spans = otel_collector.get_finished_spans()
     root_spans = [s for s in spans if s.name == "query.handle_request"]
