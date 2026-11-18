@@ -176,7 +176,7 @@ def cluster_quota_went_down_by_the_turn(context: Context) -> None:
     "only by the tokens of this turn since I remembered it"
 )
 def rejected_request_cost_nothing(context: Context) -> None:
-    """A rejected request in between left the cluster balance alone.
+    """Check that a rejected request in between left the cluster balance alone.
 
     The balance can only be read through a served request, so the proof is
     that the served turn after the rejection is the only thing charged since
