@@ -29,7 +29,7 @@ class ToolsetInfo(BaseModel):
 
     type: ToolsetKind = Field(
         ...,
-        description=("Tool family: function, mcp, file_search, web_search, or skills"),
+        description=("Tool family: function, mcp, file_search, or skills"),
     )
     label: Optional[str] = Field(
         default=None,

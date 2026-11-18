@@ -35,7 +35,6 @@ ToolsetKind = Literal[
     "function",
     "mcp",
     "file_search",
-    "web_search",
     "skills",
 ]
 """Tool family for display (LCS/PAI surfaces: function_call, mcp_call, file_search_call)."""

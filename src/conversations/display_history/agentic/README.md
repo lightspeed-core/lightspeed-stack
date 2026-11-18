@@ -4,3 +4,10 @@
 
 Agentic display timeline (AgentTurn).
 
+## [models](models)
+
+Pydantic models for the agentic display-history API.
+
+## [projection](projection)
+
+Map PAI runs and messages onto agentic display-history contracts.
