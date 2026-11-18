@@ -2275,7 +2275,9 @@ class TestConversationsV1Otel:
         assert len(spans) == 1
         span = spans[0]
         assert span.name == "conversations_v1.list"
-        assert span.attributes["conversations.count"] == 1
+        attributes = span.attributes
+        assert attributes is not None
+        assert attributes["conversations.count"] == 1
 
     @pytest.mark.asyncio
     async def test_list_span_records_error(
@@ -2384,8 +2386,10 @@ class TestConversationsV1Otel:
         assert len(spans) == 1
         span = spans[0]
         assert span.name == "conversations_v1.get"
-        assert span.attributes["conversations.found"] is True
-        assert span.attributes["conversations.turns.count"] == 2
+        attributes = span.attributes
+        assert attributes is not None
+        assert attributes["conversations.found"] is True
+        assert attributes["conversations.turns.count"] == 2
 
     @pytest.mark.asyncio
     async def test_get_span_records_error_on_connection_failure(
@@ -2478,7 +2482,9 @@ class TestConversationsV1Otel:
         assert len(spans) == 1
         span = spans[0]
         assert span.name == "conversations_v1.delete"
-        assert span.attributes["conversations.deleted"] is True
+        attributes = span.attributes
+        assert attributes is not None
+        assert attributes["conversations.deleted"] is True
 
     @pytest.mark.asyncio
     async def test_delete_span_records_error(
@@ -2560,7 +2566,9 @@ class TestConversationsV1Otel:
         assert len(spans) == 1
         span = spans[0]
         assert span.name == "conversations_v1.update"
-        assert span.attributes["conversations.updated"] is True
+        attributes = span.attributes
+        assert attributes is not None
+        assert attributes["conversations.updated"] is True
 
     @pytest.mark.asyncio
     async def test_update_span_records_error(

@@ -278,7 +278,7 @@ def test_reject_image_attachments_in_compacted_mode_raises_422() -> None:
         cc.reject_image_attachments_in_compacted_mode(params, [object()])
 
     assert exc_info.value.status_code == 422
-    detail = exc_info.value.detail
+    detail = cast(dict[str, str], exc_info.value.detail)
     assert "Image attachments are not supported" in detail["response"]
     assert "compacted" in detail["cause"]
 

@@ -114,7 +114,7 @@ async def test_discover_models_keeps_catalog_name(
     "cause",
     [
         GoogleGenAIClientError(401, {"error": {"message": "unauthorized"}}),
-        DefaultCredentialsError("credentials unavailable"),
+        DefaultCredentialsError("credentials unavailable"),  # type: ignore[no-untyped-call]
     ],
     ids=["genai-client-error", "default-credentials-error"],
 )

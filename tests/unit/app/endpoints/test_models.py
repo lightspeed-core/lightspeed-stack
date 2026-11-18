@@ -1,6 +1,6 @@
 """Unit tests for the /models REST API endpoint."""
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from fastapi import HTTPException, Request, status
@@ -457,12 +457,11 @@ async def test_models_endpoint_ogx_connection_error(
         await models_endpoint_handler(
             request=request, auth=auth, model_type=ModelFilter(model_type=None)
         )
-        assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert e.value.detail["response"] == "Unable to connect to OGX"  # type: ignore
-        assert (
-            "Connection error while trying to reach backend service."
-            in e.value.detail["cause"]
-        )  # type: ignore
+
+    detail = cast(dict[str, str], e.value.detail)
+    assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert detail["response"] == "Unable to connect to OGX"
+    assert "Connection error while trying to reach backend service." in detail["cause"]
 
 
 class TestModelsEndpointOtel:
