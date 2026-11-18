@@ -8,13 +8,11 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
-from ogx_client import ApiException
 from opentelemetry import trace
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -29,9 +27,9 @@ from models.api.responses.successful import (
 )
 from models.common import (
     HealthStatus,
-    ProviderHealthStatus,
 )
 from models.config import Action
+from providers.inference.registry import ProviderRegistry
 from utils.types import Responses
 
 logger = get_logger(__name__)
@@ -54,68 +52,6 @@ get_liveness_responses: Responses = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
-
-
-async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
-    """
-    Retrieve the health status of all configured providers.
-
-    Returns:
-        list[ProviderHealthStatus]: A list containing the health
-        status of each provider. If provider health cannot be
-        determined, returns a single entry indicating an error.
-
-    """
-    try:
-        client = AsyncOgxClientHolder().get_client()
-
-        providers = await client.providers.list()
-        logger.debug("Found %d providers", len(providers))
-
-        return [
-            ProviderHealthStatus(
-                provider_id=provider.provider_id,
-                status=str(provider.health.get("status", "unknown")),
-                message=str(provider.health.get("message", "")),
-            )
-            for provider in providers
-        ]
-
-    except ApiException as e:
-        logger.error("Failed to check providers health: %s", e)
-        return [
-            ProviderHealthStatus(
-                provider_id="unknown",
-                status=HealthStatus.ERROR.value,
-                message=f"Failed to initialize health check: {e!s}",
-            )
-        ]
-
-
-async def check_default_model_available() -> tuple[bool, str]:
-    """Check that the configured default model is registered in the model registry.
-
-    Retrieves the default model and provider from configuration and delegates
-    the availability check to the client holder.
-
-    Returns:
-        A tuple of (available, reason) where available is True if the default
-        model was found or no default model is configured, and reason describes
-        the outcome.
-
-    """
-    inference = configuration.inference
-    if (
-        inference is None
-        or not inference.default_model
-        or not inference.default_provider
-    ):
-        return True, "No default model configured"
-
-    expected_model_id = f"{inference.default_provider}/{inference.default_model}"
-
-    client_holder = AsyncOgxClientHolder()
-    return await client_holder.check_model_available(expected_model_id)
 
 
 @router.get("/readiness", responses=get_readiness_responses)
@@ -154,53 +90,52 @@ async def readiness_probe_get_method(
     with tracer.start_as_current_span("readiness.handle_request") as span:
         logger.info("Response to /readiness endpoint")
 
-        provider_statuses = await get_providers_health_statuses()
-        unhealthy_providers = [
-            p for p in provider_statuses if p.status == HealthStatus.ERROR.value
-        ]
+        registry = ProviderRegistry()
 
-        if unhealthy_providers:
-            # Check if this is a connection error (provider_id="unknown")
-            is_connection_error = any(
-                p.provider_id == "unknown" for p in unhealthy_providers
-            )
-
-            if is_connection_error:
-                reason = "Cannot connect to backend service"
-                impacts = [
+        # ProviderRegistry is not initialized which we should never encounter
+        if not registry.is_initialized:
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            span.set_attribute("http.status_code", 503)
+            return ReadinessResponse(
+                ready=False,
+                reason="Provider registry is not initialized",
+                overall_status=HealthStatus.UNHEALTHY,
+                impacts=[
                     "LLM inference unavailable",
-                    "Provider health checks unavailable",
-                ]
-            else:
-                unhealthy_provider_names = [p.provider_id for p in unhealthy_providers]
-                reason = f"Providers not healthy: {', '.join(unhealthy_provider_names)}"
-                impacts = [
-                    f"Provider {p.provider_id}: {p.message}"
-                    for p in unhealthy_providers
-                ]
-
-            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-            span.set_attribute("http.status_code", 503)
-            return ReadinessResponse(
-                ready=False,
-                reason=reason,
-                overall_status=HealthStatus.UNHEALTHY,
-                impacts=impacts,
-                providers=unhealthy_providers if not is_connection_error else [],
-            )
-
-        # Check that the default model is registered in the model registry
-        model_available, model_reason = await check_default_model_available()
-        if not model_available:
-            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-            span.set_attribute("http.status_code", 503)
-            return ReadinessResponse(
-                ready=False,
-                reason=model_reason,
-                overall_status=HealthStatus.UNHEALTHY,
-                impacts=["Default model not available in registry"],
+                ],
                 providers=[],
             )
+
+        # Check if the default model is available when it's provided
+        if (default_provider := configuration.inference.default_provider) and (
+            default_model := configuration.inference.default_model
+        ):
+            if provider := registry.find_provider(default_provider):
+                if provider.get_catalog_model(default_model, "llm") is None:
+                    response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+                    span.set_attribute("http.status_code", 503)
+                    return ReadinessResponse(
+                        ready=False,
+                        reason="Default model is not found from the given provider",
+                        overall_status=HealthStatus.UNHEALTHY,
+                        impacts=[
+                            "Default model not available in the given provider",
+                        ],
+                        providers=[],
+                    )
+
+            else:
+                response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+                span.set_attribute("http.status_code", 503)
+                return ReadinessResponse(
+                    ready=False,
+                    reason="Default provider is not registered",
+                    overall_status=HealthStatus.UNHEALTHY,
+                    impacts=[
+                        "Default provider not available in registry",
+                    ],
+                    providers=[],
+                )
 
         # All healthy
         span.set_attribute("http.status_code", 200)
