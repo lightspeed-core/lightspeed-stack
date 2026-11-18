@@ -61,6 +61,11 @@ def test_disabled_configuration_builds_nothing() -> None:
     assert build_tiered_compaction(config, TestModel(), 128_000) is None
 
 
+def test_builder_returns_the_signalling_capability() -> None:
+    """The built capability announces compaction on the run stream (LCORE-4693)."""
+    assert isinstance(_build(), SignallingTieredCompaction)
+
+
 def test_tiers_come_in_fixed_order() -> None:
     """Clamp, then clear tool results, then summarize."""
     tiers = _build().tiers

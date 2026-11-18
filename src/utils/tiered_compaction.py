@@ -117,7 +117,8 @@ def build_tiered_compaction(
             falls back to ``DEFAULT_CONTEXT_WINDOW``.
 
     Returns:
-        The capability, or None when compaction is disabled.
+        The capability, a :class:`SignallingTieredCompaction` so that streaming
+        clients learn when it compacts, or None when compaction is disabled.
 
     Raises:
         ValueError: If the harness rejects the configuration (for example
@@ -142,7 +143,7 @@ def build_tiered_compaction(
     )
     if config.summary_prompt is not None:
         summarizer = replace(summarizer, summary_prompt=config.summary_prompt)
-    return TieredCompaction[object](
+    return SignallingTieredCompaction[object](
         tiers=[
             ClampOversizedMessages[object](
                 max_part_tokens=CLAMP_MAX_PART_TOKENS, tokenizer=estimate_tokens
