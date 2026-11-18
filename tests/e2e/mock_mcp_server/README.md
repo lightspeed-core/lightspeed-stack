@@ -2,5 +2,5 @@
 
 ## [server.py](server.py)
 
-Minimal mock MCP server for E2E tests with OAuth support.
+Minimal mock MCP server for E2E tests with OAuth support and two tool sets.
 

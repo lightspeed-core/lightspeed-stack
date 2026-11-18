@@ -73,6 +73,7 @@ can shard by config (fewer restarts per job). See
 | `lightspeed-stack-mcp-invalid.yaml` | Invalid MCP file token |
 | `lightspeed-stack-mcp-api-auth.yaml` | MCP server API auth |
 | `lightspeed-stack-mcp-{file,kubernetes,client,oauth}-auth.yaml` | Per-auth MCP (`mcp.feature`) |
+| `lightspeed-stack-mcp-two-servers.yaml` | Two MCP servers in one request, both file-token (`mcp.feature`, LCORE-4782 regression) |
 | `lightspeed-stack-byok-pdf.yaml` | BYOK PDF (library only) |
 | `lightspeed-stack-tls.yaml` / `-degraded.yaml` | TLS / degraded mode (server only) |
 | `lightspeed-stack-shields.yaml` | LCORE shields (`question_validity`, `redaction`, `granite_guardian`). CI points `granite_guardian` at `mock-guardian`. |
