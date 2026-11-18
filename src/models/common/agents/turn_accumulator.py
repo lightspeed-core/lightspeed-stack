@@ -24,6 +24,8 @@ class AgentTurnAccumulator:  # pylint: disable=too-many-instance-attributes
         emitted_tool_call_ids: Tool call IDs already sent or recorded.
         emitted_tool_result_ids: Tool result IDs already sent or recorded.
         seen_docs: Referenced-document keys already added (deduplication).
+        conversation_id: Conversation the turn belongs to, for events that
+            name it (streaming only).
 
     """
 
@@ -38,6 +40,7 @@ class AgentTurnAccumulator:  # pylint: disable=too-many-instance-attributes
     emitted_tool_call_ids: set[str] = field(default_factory=set)
     emitted_tool_result_ids: set[str] = field(default_factory=set)
     seen_docs: set[tuple[str, str]] = field(default_factory=set)
+    conversation_id: Optional[str] = None
 
     def increment_round_if_pending(self) -> None:
         """Increment tool_round if round_increment_pending is True."""

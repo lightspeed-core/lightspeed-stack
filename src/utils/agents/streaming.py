@@ -33,6 +33,7 @@ from constants import MEDIA_TYPE_JSON
 from log import get_logger
 from models.common.agents import (
     AgentTurnAccumulator,
+    CompactionStreamPayload,
     EndStreamPayload,
     ErrorStreamPayload,
     InterruptedStreamPayload,
@@ -88,6 +89,7 @@ from utils.stream_interrupts import (
     persist_interrupted_turn,
     register_interrupt_callback,
 )
+from utils.tiered_compaction import CompactionStartedEvent
 from utils.token_counter import TokenCounter
 
 if TYPE_CHECKING:
@@ -430,6 +432,7 @@ async def agent_response_generator(
             vector_store_ids=context.vector_store_ids,
             rag_id_mapping=context.rag_id_mapping,
             turn_summary=turn_summary,
+            conversation_id=context.conversation_id,
         )
         reject_image_attachments_in_compacted_mode(responses_params, image_attachments)
         if image_attachments:
@@ -593,6 +596,29 @@ def _(
     state.chunk_id += 1
     state.turn_summary.next_chunk_id = state.chunk_id
     return payload
+
+
+@dispatch_stream_event.register
+def _(
+    event: CompactionStartedEvent,
+    state: AgentTurnAccumulator,
+) -> Optional[StreamEventPayload]:
+    """Announce that the compaction capability started compacting (LCORE-4693).
+
+    Args:
+        event: Start event the signalling compaction capability emitted.
+        state: Mutable accumulator for stream processing.
+
+    Returns:
+        Compaction stream payload, the same body the pre-agent path sends.
+
+    """
+    logger.debug(
+        "Compaction started: %d messages toward %d tokens",
+        event.message_count,
+        event.target_tokens,
+    )
+    return CompactionStreamPayload.create(conversation_id=state.conversation_id or "")
 
 
 @dispatch_stream_event.register
