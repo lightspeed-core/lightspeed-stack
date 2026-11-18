@@ -1,1 +1,1 @@
-"""Unit tests for conversations.display_history.agentic.models."""
+"""Tests for agentic display history models."""
