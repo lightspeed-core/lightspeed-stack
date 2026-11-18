@@ -1,10 +1,12 @@
 """Unit tests for utils/tiered_compaction."""
 
+import asyncio
 from typing import Optional
 
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.messages import (
+    CapabilityEvent,
     ModelMessage,
     ModelRequest,
     ModelResponse,
@@ -22,7 +24,12 @@ from pydantic_ai_harness.compaction import (
 
 from constants import DEFAULT_CONTEXT_WINDOW
 from models.config import CompactionConfiguration
-from utils.tiered_compaction import CLAMP_MAX_PART_TOKENS, build_tiered_compaction
+from utils.tiered_compaction import (
+    CLAMP_MAX_PART_TOKENS,
+    CompactionStartedEvent,
+    SignallingTieredCompaction,
+    build_tiered_compaction,
+)
 from utils.token_estimator import estimate_tokens
 
 ENABLED = CompactionConfiguration(
@@ -167,3 +174,106 @@ async def test_capability_summarizes_history_inside_an_agent() -> None:
     assert "SUMMARY" in repr(sent[-1])
     assert "current question" in repr(sent[-1])
     assert "q0 " not in repr(sent[-1])
+
+
+def _long_history(turns: int = 3) -> list[ModelMessage]:
+    """Build a history of *turns* user/assistant pairs, each far above keep_tokens."""
+    history: list[ModelMessage] = []
+    for turn in range(turns):
+        history.append(
+            ModelRequest(parts=[UserPromptPart(content=f"q{turn} " + "x " * 300)])
+        )
+        history.append(
+            ModelResponse(parts=[TextPart(content=f"a{turn} " + "y " * 300)])
+        )
+    return history
+
+
+def _signalling(
+    summarizer_model: TestModel | FunctionModel,
+) -> TieredCompaction[object]:
+    """Build the signalling capability with the builder's summarizer settings and a tiny window."""
+    summarizer = SummarizingCompaction[object](
+        model=summarizer_model,
+        max_messages=1,
+        keep_messages=6,
+        keep_tokens=250,
+        tokenizer=estimate_tokens,
+        incremental=True,
+        preserve_first_user_message=True,
+        keep_user_messages=True,
+    )
+    return SignallingTieredCompaction[object](
+        tiers=[summarizer],
+        target_fraction=0.5,
+        context_window=1_000,
+        tokenizer=estimate_tokens,
+    )
+
+
+class TestCompactionStartedEvent:
+    """The start event announces compaction on the run stream (LCORE-4693)."""
+
+    def test_event_kind_is_namespaced(self) -> None:
+        """The event registers under the LCORE compaction namespace."""
+        event = CompactionStartedEvent(message_count=6, target_tokens=500)
+        assert event.kind == "lcore_compaction.compaction_started"
+        assert event.event_dispatch == "stream"
+
+    async def test_event_precedes_the_answer_on_the_stream(self) -> None:
+        """The start event is yielded once, before the first part of the answer."""
+        summarized = asyncio.Event()
+
+        def summarize(_: list[ModelMessage], __: AgentInfo) -> ModelResponse:
+            """Summarize and record that the summarizer ran."""
+            summarized.set()
+            return ModelResponse(parts=[TextPart(content="SUMMARY")])
+
+        compaction = _signalling(FunctionModel(summarize))
+        agent = Agent(TestModel(custom_output_text="answer"), capabilities=[compaction])
+        kinds: list[str] = []
+        started: list[CompactionStartedEvent] = []
+        async with agent.run_stream_events(
+            "current question", message_history=_long_history()
+        ) as stream:
+            async for event in stream:
+                if isinstance(event, CompactionStartedEvent):
+                    started.append(event)
+                    kinds.append(event.kind)
+                else:
+                    kinds.append(event.event_kind)
+        assert summarized.is_set()
+        assert len(started) == 1
+        assert started[0].message_count == 7
+        assert started[0].target_tokens == 500
+        assert started[0].capability_id
+        assert kinds.index("lcore_compaction.compaction_started") < kinds.index(
+            "part_start"
+        )
+
+    async def test_no_event_when_the_history_fits(self) -> None:
+        """A history under the target leaves the stream without a start event."""
+        compaction = _signalling(TestModel(custom_output_text="SUMMARY"))
+        agent = Agent(TestModel(custom_output_text="answer"), capabilities=[compaction])
+        kinds: list[str] = []
+        async with agent.run_stream_events("hi") as stream:
+            async for event in stream:
+                if isinstance(event, CapabilityEvent):
+                    kinds.append(event.kind)
+        assert "lcore_compaction.compaction_started" not in kinds
+
+    async def test_history_is_still_compacted(self) -> None:
+        """Signalling does not change what the chat model receives."""
+        sent: list[list[ModelMessage]] = []
+
+        def chat(messages: list[ModelMessage], _: AgentInfo) -> ModelResponse:
+            """Record the request and answer."""
+            sent.append(messages)
+            return ModelResponse(parts=[TextPart(content="answer")])
+
+        compaction = _signalling(TestModel(custom_output_text="SUMMARY"))
+        await Agent(FunctionModel(chat), capabilities=[compaction]).run(
+            "current question", message_history=_long_history()
+        )
+        assert "SUMMARY" in repr(sent[-1])
+        assert "q0 " not in repr(sent[-1])
