@@ -23,6 +23,12 @@ authentication:
 inference:
   default_provider: openai
   default_model: gpt-5.6-luna
+  providers:
+    - type: openai
+      id: openai
+      api_key_env: OPENAI_API_KEY
+      allowed_models:
+        - ${env.E2E_OPENAI_MODEL:=gpt-5.6-luna}
   # Compaction e2e (LCORE-1673): a deliberately small window for every
   # model the e2e workflows run against, so the third query of the
   # compaction scenarios crosses the trigger threshold. The real windows

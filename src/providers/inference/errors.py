@@ -72,6 +72,25 @@ class NoModelConfiguredError(Exception):
         self.model_type = model_type
 
 
+class DefaultModelNotAvailableError(Exception):
+    """Raised when the configured default model is not in the registry."""
+
+    def __init__(self, provider_id: ProviderId, model_id: str) -> None:
+        """Initialize with the missing default model identity.
+
+        Args:
+            provider_id: Configured default provider ID.
+            model_id: Configured default model name.
+
+        """
+        super().__init__(
+            f"Configured default model {model_id!r} not found for provider "
+            f"{provider_id!r} in the registry; aborting startup"
+        )
+        self.provider_id = provider_id
+        self.model_id = model_id
+
+
 class ModelDiscoveryError(Exception):
     """Raised when a provider cannot discover available models."""
 

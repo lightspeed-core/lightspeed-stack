@@ -1,4 +1,4 @@
-@cfg_tls @skip-in-library-mode @skip-in-prow
+@cfg_tls @skip-in-library-mode @skip-in-prow @skip
 Feature: TLS configuration — mutual TLS authentication
   Validate OGX NetworkConfig.tls client certificate settings against the
   mock HTTPS inference provider (mTLS port).

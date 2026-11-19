@@ -98,7 +98,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     initialize_sentry()
     initialize_pyroscope()
 
-    await ProviderRegistry().initialize(configuration.inference)
+    registry = ProviderRegistry()
+    await registry.initialize(configuration.inference)
 
     ogx_config = configuration.configuration.ogx
     await AsyncOgxClientHolder().load(ogx_config)
@@ -130,10 +131,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         azure_base_url = await AsyncOgxClientHolder().get_azure_base_url()
         AzureEntraIDManager().set_base_url(azure_base_url)
 
-    try:
-        await setup_model_metrics()
-    except ApiException as e:
-        logger.warning("Failed to set up model metrics: %s", e, exc_info=True)
+    await setup_model_metrics()
 
     logger.info("App startup complete")
 

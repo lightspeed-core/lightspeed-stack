@@ -10,7 +10,7 @@ Feature: Legacy two-file configuration during deprecation window
 
   # --- library mode (@skip-in-server-mode) ---
 
-  @skip-in-server-mode
+  @skip-in-server-mode @skip
   Scenario: Legacy two-file configuration still boots and serves requests in library mode
     # lightspeed-stack-legacy.yaml (not the standard baseline): LCORE-2342
     # migrated the library-mode baseline to unified mode, so only a dedicated

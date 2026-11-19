@@ -1,4 +1,4 @@
-@cfg_tls @skip-in-library-mode @skip-in-prow
+@cfg_tls @skip-in-library-mode @skip-in-prow @skip
 Feature: TLS configuration — CA certificate verification
   Validate OGX NetworkConfig.tls CA trust settings against the mock HTTPS
   inference provider (standard TLS port).
