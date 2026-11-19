@@ -7,11 +7,7 @@ from typing import Optional
 
 from pydantic_ai.messages import ModelMessage
 
-from conversations.agent_history.ids import (
-    new_conversation_id,
-    new_run_id,
-    with_conversation_prefix,
-)
+from conversations.agent_history.ids import new_id, with_conversation_prefix
 
 
 @dataclass(frozen=True)
@@ -36,7 +32,7 @@ class ResolvedAgentRun:
     @classmethod
     def stateless(cls) -> ResolvedAgentRun:
         """Start a one-off response with no saved conversation."""
-        return cls(run_id=new_run_id(), conversation_id=None, message_history=[])
+        return cls(run_id=new_id("run"), conversation_id=None, message_history=[])
 
     @classmethod
     def new_conversation(
@@ -46,8 +42,8 @@ class ResolvedAgentRun:
     ) -> ResolvedAgentRun:
         """Start a new saved conversation and response."""
         return cls(
-            run_id=new_run_id(),
-            conversation_id=new_conversation_id(),
+            run_id=new_id("run"),
+            conversation_id=new_id("conversation"),
             message_history=message_history or [],
         )
 
@@ -60,7 +56,7 @@ class ResolvedAgentRun:
     ) -> ResolvedAgentRun:
         """Keep the same conversation and start a new response."""
         return cls(
-            run_id=new_run_id(),
+            run_id=new_id("run"),
             conversation_id=with_conversation_prefix(conversation_id),
             message_history=message_history,
         )
