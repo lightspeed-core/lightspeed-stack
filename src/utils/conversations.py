@@ -64,6 +64,7 @@ from models.common.conversation import (
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import ToolCallSummary, ToolResultSummary
 from models.database.conversations import UserTurn
+from utils.blocked_turns import mark_blocked
 from utils.responses import parse_arguments_string
 
 type FunctionCallOutputPart = InputTextContent | InputImageContent | InputFileContent
@@ -541,6 +542,8 @@ async def append_turn_items_to_conversation(
     conversation_id: str,
     user_input: ResponseInput,
     llm_output: Sequence[OpenAIResponseOutput],
+    *,
+    blocked: bool = False,
 ) -> None:
     """
     Append a turn (user input + LLM output) to a conversation in LLS database.
@@ -550,6 +553,9 @@ async def append_turn_items_to_conversation(
         conversation_id: The OGX conversation ID.
         user_input: User input text or list of ResponseItem.
         llm_output: Output from the LLM: a list of OpenAIResponseOutput.
+        blocked: Whether a shield blocked the turn. Its messages are then
+            stored with the blocked mark, which keeps them out of what
+            conversation compaction sends to the model (LCORE-3788).
 
     """
     if isinstance(user_input, str):
@@ -560,6 +566,8 @@ async def append_turn_items_to_conversation(
         items = [item.model_dump(exclude_none=True) for item in user_input]
 
     items.extend(item.model_dump(exclude_none=True) for item in llm_output)
+    if blocked:
+        items = mark_blocked(items)
     try:
         await client.items.create(
             conversation_id,
