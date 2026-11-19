@@ -68,6 +68,8 @@ class MockFastAPI(FastAPI):
         default_response_class: Optional[Any] = None,
         callbacks: Optional[list[BaseRoute]] = None,
         generate_unique_id_function: Optional[Callable[[routing.APIRoute], str]] = None,
+        max_body_size: Optional[int] = None,
+        form_limits: Optional[Any] = None,
     ) -> None:
         """Register new router.
 
