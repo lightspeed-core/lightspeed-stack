@@ -48,6 +48,7 @@ from models.api.requests import QueryRequest
 from models.api.responses.error import PromptTooLongResponse
 from models.common.agents import (
     AgentTurnAccumulator,
+    CompactionStreamPayload,
     TokenStreamPayload,
     ToolCallStreamPayload,
     ToolResultStreamPayload,
@@ -68,6 +69,8 @@ from utils.agents.streaming import (
 )
 from utils.otel_tracing import SpanAttributes, SpanEvents
 from utils.pending_turn import PendingTurn
+from utils.streaming_sse import stream_compaction_event
+from utils.tiered_compaction import CompactionStartedEvent
 from utils.token_counter import TokenCounter
 
 INTERRUPTED_INDICATOR = f"\n\n*{INTERRUPTED_RESPONSE_MESSAGE}*"
@@ -257,6 +260,23 @@ class TestDispatchStreamEvent:
         unknown = type("UnknownEvent", (), {"event_kind": "unknown"})()
 
         assert dispatch_stream_event(unknown, turn_state) is None  # type: ignore[arg-type]
+
+    def test_compaction_started_emits_the_public_compaction_event(self) -> None:
+        """The run-stream start event maps to today's SSE compaction payload (LCORE-4693)."""
+        state = AgentTurnAccumulator(
+            vector_store_ids=[],
+            rag_id_mapping={},
+            turn_summary=TurnSummary(),
+            conversation_id=TEST_CONVERSATION_ID,
+        )
+        event = CompactionStartedEvent(message_count=7, target_tokens=500)
+
+        payload = dispatch_stream_event(event, state)
+
+        assert isinstance(payload, CompactionStreamPayload)
+        assert payload.serialize_json() == stream_compaction_event(TEST_CONVERSATION_ID)
+        assert payload.serialize_text() == ""
+        assert state.chunk_id == 0
 
     def test_part_start_text_emits_token(
         self, turn_state: AgentTurnAccumulator
@@ -1231,6 +1251,49 @@ class TestAgentResponseGenerator:
         assert turn_summary.id == "resp-stream-1"
         assert turn_summary.token_usage.input_tokens == 4
         assert turn_summary.token_usage.output_tokens == 2
+
+    @pytest.mark.asyncio
+    async def test_compaction_start_event_precedes_the_tokens(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+        make_agent_run_result: Callable[..., Any],
+        patch_recording_metrics: None,
+    ) -> None:
+        """A compaction start event on the run stream becomes the compaction SSE (LCORE-4693)."""
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+        run_result = make_agent_run_result(content="Answer", response_id="resp-c2")
+        events = [
+            CompactionStartedEvent(message_count=7, target_tokens=500),
+            PartStartEvent(index=0, part=TextPart(content="Answer")),
+            AgentRunResultEvent(result=run_result),
+        ]
+        mock_agent = mocker.Mock()
+        mock_agent.run_stream_events.return_value = _mock_run_stream(events)
+        mocker.patch(
+            "utils.agents.streaming.get_agent_finish_reason",
+            return_value=AgentFinishReason.SUCCESS,
+        )
+        mocker.patch(
+            "utils.agents.streaming.deduplicate_referenced_documents",
+            side_effect=lambda docs: docs,
+        )
+
+        result = [
+            event
+            async for event in agent_response_generator(
+                mock_agent,
+                responses_params,
+                context,
+                turn_summary,
+                ENDPOINT_PATH_STREAMING_QUERY,
+            )
+        ]
+
+        assert _sse_event_types(result) == ["compaction", "token", "turn_complete"]
+        assert result[0] == stream_compaction_event(context.conversation_id)
 
     @pytest.mark.asyncio
     async def test_compacted_input_streams_with_prompt_text(

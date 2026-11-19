@@ -49,6 +49,13 @@ class InterruptedEventData(BaseModel):
     request_id: str
 
 
+class CompactionEventData(BaseModel):
+    """Payload for event: "compaction"."""
+
+    status: Literal["started"] = "started"
+    conversation_id: str
+
+
 class EndEventData(BaseModel):
     """Nested data for event: "end"."""
 
@@ -145,6 +152,31 @@ class InterruptedStreamPayload(StreamPayloadBase):
 
         """
         return cls(data=InterruptedEventData(request_id=request_id))
+
+
+class CompactionStreamPayload(StreamPayloadBase):
+    """SSE compaction body: conversation compaction started (LCORE-4693).
+
+    Same shape as ``stream_compaction_event`` in ``utils.streaming_sse``; this
+    is the form the agent stream projector emits when the compaction
+    capability announces itself on the run event stream.
+    """
+
+    event: Literal["compaction"] = "compaction"
+    data: CompactionEventData
+
+    @classmethod
+    def create(cls, *, conversation_id: str) -> Self:
+        """Create a compaction-started payload.
+
+        Args:
+            conversation_id: The conversation being compacted.
+
+        Returns:
+            Compaction stream payload instance.
+
+        """
+        return cls(data=CompactionEventData(conversation_id=conversation_id))
 
 
 class EndStreamPayload(StreamPayloadBase):
@@ -283,6 +315,7 @@ type StreamEventPayload = Annotated[
     | EndStreamPayload
     | ErrorStreamPayload
     | InterruptedStreamPayload
-    | StartStreamPayload,
+    | StartStreamPayload
+    | CompactionStreamPayload,
     Field(discriminator="event"),
 ]

@@ -2,6 +2,8 @@
 
 from models.common.agents.run_deps import AgentRunContextStatus, AgentRunDeps
 from models.common.agents.stream_payloads import (
+    CompactionEventData,
+    CompactionStreamPayload,
     EndEventData,
     EndStreamPayload,
     ErrorEventData,
@@ -24,6 +26,8 @@ __all__ = [
     "AgentRunContextStatus",
     "AgentRunDeps",
     "AgentTurnAccumulator",
+    "CompactionEventData",
+    "CompactionStreamPayload",
     "EndEventData",
     "EndStreamPayload",
     "ErrorEventData",
