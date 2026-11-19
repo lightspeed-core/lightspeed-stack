@@ -124,7 +124,7 @@ def anonymize_value(value: str, max_length: int = 50) -> str:
     secret = os.environ.get(OTEL_ANONYMIZATION_SECRET_ENV_VAR)
     if not secret:
         # If OTEL SDK is disabled, anonymization is not needed - return placeholder
-        if os.environ.get("OTEL_SDK_DISABLED", "").lower() in ("true", "1"):
+        if os.environ.get("OTEL_SDK_DISABLED") != "false":
             return f"[otel-disabled:len={len(value)}]"
 
         raise ValueError(

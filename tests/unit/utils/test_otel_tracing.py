@@ -151,20 +151,24 @@ class TestAnonymizeValue:
         """Test that missing OTEL_ANONYMIZATION_SECRET raises a clear error."""
         # Remove the secret that was set by the autouse fixture
         monkeypatch.delenv("OTEL_ANONYMIZATION_SECRET", raising=False)
-        # Ensure OTEL SDK is not disabled
-        monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
+        # Explicitly enable tracing
+        monkeypatch.setenv("OTEL_SDK_DISABLED", "false")
         with pytest.raises(
             ValueError,
             match=r"OTEL anonymization secret not configured.*OTEL_ANONYMIZATION_SECRET",
         ):
             anonymize_value("test-value")
 
-    def test_missing_secret_with_otel_disabled_returns_placeholder(
-        self, monkeypatch: pytest.MonkeyPatch
+    @pytest.mark.parametrize("otel_sdk_disabled", [None, "true", "1", "FALSE", ""])
+    def test_missing_secret_with_tracing_disabled_returns_placeholder(
+        self, monkeypatch: pytest.MonkeyPatch, otel_sdk_disabled: str | None
     ) -> None:
-        """Test that missing secret with OTEL_SDK_DISABLED returns placeholder."""
+        """Test missing secret returns a placeholder unless tracing is enabled."""
         monkeypatch.delenv("OTEL_ANONYMIZATION_SECRET", raising=False)
-        monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
+        if otel_sdk_disabled is None:
+            monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
+        else:
+            monkeypatch.setenv("OTEL_SDK_DISABLED", otel_sdk_disabled)
         result = anonymize_value("test-value")
         assert result == "[otel-disabled:len=10]"
         assert "test-value" not in result
