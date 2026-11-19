@@ -35,10 +35,6 @@ SAMPLE_TURN: Final[dict[str, Any]] = {
     "response_id": TEST_RESPONSE_ID,
 }
 
-SAMPLE_AGENTIC_INPUT_ITEMS: Final[list[dict[str, Any]]] = [
-    {"id": "u1", "kind": "message", "role": "user", "content": []},
-]
-
 
 def new_conversation() -> UserConversation:
     """Return a fresh UserConversation from SAMPLE_CONVERSATION."""
@@ -51,7 +47,7 @@ def new_turn() -> UserTurn:
 
 
 def seed_sample_conversation_and_turn(session: Session) -> tuple[str, int]:
-    """Insert the sample conversation and turn using an open SQLAlchemy session.
+    """Insert the sample conversation and turn with an open database session.
 
     Use this when a test needs parent rows (foreign keys) before exercising turn
     or agentic persistence. Repository tests call this on the in-memory engine;

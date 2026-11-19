@@ -4,6 +4,10 @@
 
 Streaming payload models and event type exports.
 
+## [run_deps.py](run_deps.py)
+
+Mutable per-run collector for custom capability results (PAI ``deps``).
+
 ## [stream_payloads.py](stream_payloads.py)
 
 Typed JSON bodies for SSE streaming events.

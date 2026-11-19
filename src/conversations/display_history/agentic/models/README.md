@@ -6,7 +6,11 @@ Pydantic models for the agentic display-history API.
 
 ## [agent_turn.py](agent_turn.py)
 
-Single agent run projected into display history.
+Public agent-run contract assembled from envelopes and persisted summary.
+
+## [agent_turn_summary.py](agent_turn_summary.py)
+
+PAI-to-database translation of one agent run.
 
 ## [content.py](content.py)
 
