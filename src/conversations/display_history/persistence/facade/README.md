@@ -6,5 +6,8 @@ Display-history persistence entry points.
 
 ## [agentic_turn.py](agentic_turn.py)
 
-Store an agentic display turn next to the conversation/turn envelope.
+Project a PAI run and persist agentic display history for a turn envelope.
 
+## [conversation.py](conversation.py)
+
+Read and mutate display-history conversations for the v3 Conversations API.
