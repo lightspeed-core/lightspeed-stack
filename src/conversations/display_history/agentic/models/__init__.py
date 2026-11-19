@@ -1,6 +1,9 @@
-"""Pydantic models for the agentic display-history API."""
+"""Display-history models for agentic conversations."""
 
 from conversations.display_history.agentic.models.agent_turn import AgentTurn, TurnUsage
+from conversations.display_history.agentic.models.agent_turn_summary import (
+    AgentTurnSummary,
+)
 from conversations.display_history.agentic.models.content import (
     FileContentPart,
     ImageContentPart,
@@ -40,6 +43,7 @@ from conversations.display_history.agentic.models.types import (
 __all__ = [
     "AgentTurn",
     "AgentTurnStatus",
+    "AgentTurnSummary",
     "ApprovalRequestTurnItem",
     "ApprovalResultTurnItem",
     "ContextStatus",

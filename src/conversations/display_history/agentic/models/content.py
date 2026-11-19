@@ -15,18 +15,22 @@ class TextContentPart(BaseModel):
 class ImageContentPart(BaseModel):
     """Image reference for display (not raw bytes).
 
-    Matches how clients render history: a URL and/or an uploaded file_id.
+    Clients render a URL (http or data URI) and/or an uploaded file id.
     Inference-only fields such as vision detail are not stored in display history.
     """
 
     type: Literal["image"] = "image"
     image_url: Optional[AnyUrl] = Field(
         default=None,
-        description="URL of the image when the client supplied a link",
+        description="URL of the image, including data URIs for inline bytes",
     )
     file_id: Optional[str] = Field(
         default=None,
         description="Uploaded file identifier when the image is stored by LCORE",
+    )
+    media_type: Optional[str] = Field(
+        default=None,
+        description="MIME type of the image when known, for example image/png",
     )
 
     @model_validator(mode="after")
@@ -68,5 +72,5 @@ type MessageContent = list[MessageContentPart]
 
 
 def message_content_to_text(content: MessageContent) -> str:
-    """Return concatenated text from all TextContentPart entries."""
+    """Return concatenated text from all text parts in a message."""
     return "".join(part.text for part in content if isinstance(part, TextContentPart))
