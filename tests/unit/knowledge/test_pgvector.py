@@ -566,7 +566,7 @@ class TestPgVectorKnowledgeSource:
 
         assert source.name == "docs"
         assert source.mode == {"tool"}
-        assert source.top_k == 5
+        assert source.max_matches == 5
         assert source.score_threshold == 0.0
         assert source.embedding_settings is None
         assert isinstance(source.store, PgVectorVectorStore)
@@ -597,7 +597,7 @@ class TestPgVectorKnowledgeSource:
 
     @pytest.mark.asyncio
     async def test_honors_explicit_mode_and_search_options(self) -> None:
-        """Explicit mode, settings, top_k, and threshold are stored."""
+        """Explicit mode, settings, max_matches, and threshold are stored."""
         embedder, _model = _embedder()
         settings: EmbeddingSettings = {"dimensions": 2}
         pool, connection = _pool()
@@ -606,7 +606,7 @@ class TestPgVectorKnowledgeSource:
             _STORE_ID,
             embedder,
             embedding_settings=settings,
-            top_k=1,
+            max_matches=1,
             score_threshold=0.9,
             mode={"tool", "auto"},
             pool=cast(asyncpg.Pool, pool),
@@ -616,7 +616,7 @@ class TestPgVectorKnowledgeSource:
 
         assert source.mode == {"tool", "auto"}
         assert source.embedding_settings == {"dimensions": 2}
-        assert source.top_k == 1
+        assert source.max_matches == 1
         assert source.score_threshold == 0.9
         assert "embedding <=> $1::vector" in connection.calls[0][0]
 
@@ -640,8 +640,8 @@ class TestPgVectorKnowledgeSource:
         assert [(match.id, match.score) for match in matches] == [("chunk-alpha", 2.0)]
 
     @pytest.mark.asyncio
-    async def test_search_applies_top_k_and_score_threshold(self) -> None:
-        """``top_k`` and ``score_threshold`` are passed through to the store."""
+    async def test_search_applies_max_matches_and_score_threshold(self) -> None:
+        """``max_matches`` and ``score_threshold`` are passed through to the store."""
         pool, connection = _pool(
             [
                 [
@@ -654,7 +654,7 @@ class TestPgVectorKnowledgeSource:
             "docs",
             _STORE_ID,
             _embedder()[0],
-            top_k=1,
+            max_matches=1,
             score_threshold=3.0,
             pool=cast(asyncpg.Pool, pool),
         )
@@ -675,7 +675,7 @@ class TestPgVectorKnowledgeSource:
             _STORE_ID,
             embedder,
             embedding_settings=settings,
-            top_k=1,
+            max_matches=1,
             pool=cast(asyncpg.Pool, pool),
         )
 

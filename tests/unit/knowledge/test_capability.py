@@ -18,6 +18,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import ModelRequestContext
 from pytest_mock import AsyncMockType, MockerFixture, MockType
 
+import constants
 from knowledge.capability import Knowledge
 from knowledge.sources.base import KnowledgeSource
 from knowledge.toolset import KnowledgeToolset
@@ -241,6 +242,7 @@ class TestKnowledgeBeforeModelRequestAutoMode:
             [auto_docs, auto_wiki],
             "how do I restart?",
             None,
+            limit=constants.DEFAULT_INLINE_RAG_MAX_CHUNKS,
         )
         assert len(earlier.parts) == 1
 
@@ -257,7 +259,12 @@ class TestKnowledgeBeforeModelRequestAutoMode:
 
         await capability.before_model_request(mocker.Mock(), request_context)
 
-        search_sources.assert_awaited_once_with([both], "how do I restart?", None)
+        search_sources.assert_awaited_once_with(
+            [both],
+            "how do I restart?",
+            None,
+            limit=constants.DEFAULT_INLINE_RAG_MAX_CHUNKS,
+        )
 
     @pytest.mark.asyncio
     async def test_forwards_reranker_to_search_sources(
@@ -273,7 +280,12 @@ class TestKnowledgeBeforeModelRequestAutoMode:
 
         await capability.before_model_request(mocker.Mock(), request_context)
 
-        search_sources.assert_awaited_once_with([auto], "how do I restart?", reranker)
+        search_sources.assert_awaited_once_with(
+            [auto],
+            "how do I restart?",
+            reranker,
+            limit=constants.DEFAULT_INLINE_RAG_MAX_CHUNKS,
+        )
 
     @pytest.mark.asyncio
     async def test_appends_formatted_knowledge_to_latest_request(
@@ -452,7 +464,11 @@ class TestGetToolset:
 
         result = Knowledge(sources=[source], reranker=reranker).get_toolset()
 
-        mock_toolset_cls.assert_called_once_with([source], reranker=reranker)
+        mock_toolset_cls.assert_called_once_with(
+            [source],
+            reranker=reranker,
+            max_matches=constants.DEFAULT_TOOL_RAG_MAX_CHUNKS,
+        )
         assert result is mock_toolset_cls.return_value
 
     def test_passes_none_reranker_by_default(self, mocker: MockerFixture) -> None:
@@ -465,4 +481,8 @@ class TestGetToolset:
 
         Knowledge(sources=[source]).get_toolset()
 
-        mock_toolset_cls.assert_called_once_with([source], reranker=None)
+        mock_toolset_cls.assert_called_once_with(
+            [source],
+            reranker=None,
+            max_matches=constants.DEFAULT_TOOL_RAG_MAX_CHUNKS,
+        )

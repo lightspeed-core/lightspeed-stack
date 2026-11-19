@@ -224,6 +224,89 @@ class TestSearchSources:
         assert [match.id for match in result] == ["first", "second", "third"]
 
     @pytest.mark.asyncio
+    async def test_limit_keeps_the_highest_ranked_matches(self) -> None:
+        """The cap keeps the highest scores the sources already returned."""
+        sources = _sources(
+            _FakeSource(
+                name="docs",
+                matches=[
+                    _match("low", 0.2, match_id="low"),
+                    _match("high", 0.8, match_id="high"),
+                ],
+            )
+        )
+
+        result = await search_sources(sources, "prompt", limit=1)
+
+        assert [match.id for match in result] == ["high"]
+        assert result[0].score == pytest.approx(0.8)
+
+    @pytest.mark.asyncio
+    async def test_multiplies_scores_after_ranking(self) -> None:
+        """Source weights scale the ranked scores and leave search hits unchanged."""
+        original = _match("boosted", 0.4, match_id="boosted")
+        sources = _sources(
+            _FakeSource(
+                name="docs",
+                score_multiplier=3.0,
+                matches=[original],
+            ),
+            _FakeSource(
+                name="wiki",
+                matches=[_match("plain", 0.9, match_id="plain")],
+            ),
+        )
+
+        result = await search_sources(sources, "prompt")
+
+        assert original.score == 0.4
+        assert [match.id for match in result] == ["plain", "boosted"]
+        assert result[0].score == pytest.approx(0.9)
+        assert result[1].score == pytest.approx(1.2)
+
+    @pytest.mark.asyncio
+    async def test_multiplies_reranked_scores_without_changing_order(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Rerank order is kept; each returned score is then weighted."""
+        reranked = [
+            _match(
+                "wiki",
+                0.2,
+                match_id="wiki",
+                metadata={"knowledge_source": "wiki"},
+            ),
+            _match(
+                "docs",
+                0.8,
+                match_id="docs",
+                metadata={"knowledge_source": "docs"},
+            ),
+        ]
+        mocker.patch(
+            "knowledge.search.rerank",
+            new_callable=mocker.AsyncMock,
+            return_value=reranked,
+        )
+        sources = _sources(
+            _FakeSource(
+                name="docs",
+                score_multiplier=3.0,
+                matches=[_match("docs", 0.1, match_id="docs")],
+            ),
+            _FakeSource(
+                name="wiki",
+                matches=[_match("wiki", 0.9, match_id="wiki")],
+            ),
+        )
+
+        result = await search_sources(sources, "prompt", reranker=mocker.Mock())
+
+        assert [match.id for match in result] == ["wiki", "docs"]
+        assert result[0] is reranked[0]
+        assert result[1].score == pytest.approx(2.4)
+
+    @pytest.mark.asyncio
     async def test_does_not_call_rerank_when_reranker_is_none(
         self, mocker: MockerFixture
     ) -> None:

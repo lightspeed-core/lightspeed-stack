@@ -145,6 +145,7 @@ class TestKnowledgeToolset:
         assert list(called_sources) == [source]
         assert called_query == "how do I restart?"
         assert called_reranker is reranker
+        assert mock_search.await_args.kwargs == {"limit": None}
 
     @pytest.mark.asyncio
     async def test_search_defaults_reranker_to_none(

@@ -25,6 +25,7 @@ from pydantic_ai.tools import AgentDepsT, RunContext
 from pydantic_ai.toolsets import AgentToolset
 from sentence_transformers import CrossEncoder
 
+import constants
 from knowledge.search import search_sources
 from knowledge.sources.base import KnowledgeSource
 from knowledge.toolset import KnowledgeToolset
@@ -44,6 +45,19 @@ class Knowledge(AbstractCapability[AgentDepsT]):
     `'cross-encoder/ms-marco-MiniLM-L-6-v2'`) used to rerank matches by
     relevance to the query before they're returned or injected. Loaded
     lazily on first use; requires the `sentence-transformers` package."""
+
+    auto_max_matches: int = constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
+    """Maximum merged matches injected for auto-mode sources.
+
+    This is ``rag.retrieval.inline.max_chunks``: the cap after per-source
+    fetch and optional reranking, not the per-store fetch size.
+    """
+
+    tool_max_matches: int = constants.DEFAULT_TOOL_RAG_MAX_CHUNKS
+    """Maximum merged matches returned by the search tool.
+
+    This is ``rag.retrieval.tool.max_chunks``.
+    """
 
     async def before_model_request(
         self,
@@ -89,7 +103,12 @@ class Knowledge(AbstractCapability[AgentDepsT]):
         if not prompt:
             return request_context
 
-        matches = await search_sources(auto_sources, prompt, self.reranker)
+        matches = await search_sources(
+            auto_sources,
+            prompt,
+            self.reranker,
+            limit=self.auto_max_matches,
+        )
         if message := to_message(matches):
             append_latest_message(request_context.messages, message)
 
@@ -99,7 +118,11 @@ class Knowledge(AbstractCapability[AgentDepsT]):
         """Provide a `search_knowledge` tool spanning every `'tool'`-mode source."""
         tool_sources = [source for source in self.sources if "tool" in source.mode]
         return (
-            KnowledgeToolset(tool_sources, reranker=self.reranker)
+            KnowledgeToolset(
+                tool_sources,
+                reranker=self.reranker,
+                max_matches=self.tool_max_matches,
+            )
             if tool_sources
             else None
         )

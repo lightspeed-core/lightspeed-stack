@@ -30,6 +30,14 @@ class KnowledgeSource(ABC):
     source's matches as bounded, delimited context on every model request.
     """
 
+    score_multiplier: float = field(default=1.0, kw_only=True)
+    """Weight applied to this source's scores after merged matches are ranked.
+
+    ``search`` returns the raw score, and the cutoff uses that raw score.
+    Values above 1 boost this source against the others; values below 1
+    reduce it. OKP stays at 1 because its scores are not on the BYOK scale.
+    """
+
     @abstractmethod
     async def search(self, prompt: str) -> list[KnowledgeMatch]:
         """Search the knowledge source for matches."""
@@ -72,21 +80,25 @@ class VectorStoreKnowledgeSource(KnowledgeSource):
     embedding_settings: Optional[EmbeddingSettings] = None
     """Settings to use for the embedding."""
 
-    top_k: int = 5
+    max_matches: int = 5
     """Maximum number of matches to return."""
 
     score_threshold: float = 0.0
     """Minimum similarity score to return."""
 
     async def search(self, prompt: str) -> list[KnowledgeMatch]:
-        """Search the vector store for matches."""
+        """Search the vector store for matches.
+
+        Hits below `score_threshold` are dropped using the raw score.
+        `score_multiplier` is not applied here.
+        """
         embedding_result = await self.embedder.embed_query(
             prompt, settings=self.embedding_settings
         )
         embeddings = [list(vector) for vector in embedding_result.embeddings]
         return await self.store.search(
             embeddings,
-            limit=self.top_k,
+            limit=self.max_matches,
             threshold=self.score_threshold,
         )
 

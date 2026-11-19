@@ -21,24 +21,30 @@ class KnowledgeToolset(FunctionToolset[AgentDepsT]):
     tagged with the originating source's name (via
     `metadata['knowledge_source']`) so matches stay attributable, and
     returned ranked highest-score-first -- by cross-encoder score if
-    `reranker` is set, otherwise by each source's own similarity score.
+    `reranker` is set, otherwise by each source's raw similarity score.
+    Those ranked scores are then scaled by each source's `score_multiplier`,
+    and the list is truncated to `max_matches` when that cap is set.
     """
 
     def __init__(
         self,
         sources: Sequence[KnowledgeSource],
         reranker: Optional[CrossEncoder] = None,
+        *,
+        max_matches: Optional[int] = None,
     ) -> None:
         """Register `search_knowledge` over `sources`, optionally reranking matches.
 
         Args:
             sources: Tool-mode knowledge sources to search together.
             reranker: Optional cross-encoder used to rerank merged matches.
+            max_matches: Maximum merged matches to return. ``None`` keeps all.
 
         """
         super().__init__(id=f"knowledge:{'+'.join(source.name for source in sources)}")
         self._sources = list(sources)
         self._reranker = reranker
+        self._max_matches = max_matches
         self.add_function(
             self._search,
             name="search_knowledge",
@@ -61,4 +67,9 @@ class KnowledgeToolset(FunctionToolset[AgentDepsT]):
             query: Natural-language search query.
 
         """
-        return await search_sources(self._sources, query, self._reranker)
+        return await search_sources(
+            self._sources,
+            query,
+            self._reranker,
+            limit=self._max_matches,
+        )

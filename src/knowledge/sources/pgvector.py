@@ -255,8 +255,9 @@ class PgVectorKnowledgeSource(VectorStoreKnowledgeSource):
         user: str = "postgres",
         password: Optional[str | SecretStr] = None,
         embedding_settings: Optional[EmbeddingSettings] = None,
-        top_k: int = 5,
+        max_matches: int = 5,
         score_threshold: float = 0.0,
+        score_multiplier: float = 1.0,
         mode: Optional[set[Literal["tool", "auto"]]] = None,
         pool: Optional[asyncpg.Pool] = None,
     ) -> None:
@@ -272,8 +273,10 @@ class PgVectorKnowledgeSource(VectorStoreKnowledgeSource):
             user: PostgreSQL user.
             password: PostgreSQL password. ``SecretStr`` is unwrapped.
             embedding_settings: Optional settings to use for the embedding.
-            top_k: Maximum number of matches to return.
+            max_matches: Maximum number of matches to return.
             score_threshold: Minimum similarity score to return.
+            score_multiplier: Weight applied after merged matches are ranked.
+                The cutoff uses the raw score.
             mode: How this source is exposed -- ``'tool'``, ``'auto'``, or
                 both. Defaults to ``{'tool'}``.
             pool: Existing asyncpg pool. When omitted, the store opens one.
@@ -293,8 +296,9 @@ class PgVectorKnowledgeSource(VectorStoreKnowledgeSource):
             store=store,
             embedder=embedder,
             embedding_settings=embedding_settings,
-            top_k=top_k,
+            max_matches=max_matches,
             score_threshold=score_threshold,
+            score_multiplier=score_multiplier,
             mode=mode if mode is not None else {"tool"},
         )
         self._pgvector = store
