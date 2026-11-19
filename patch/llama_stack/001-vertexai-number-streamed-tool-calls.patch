@@ -1,0 +1,37 @@
+Number streamed Vertex AI tool calls sequentially
+
+Backport of https://github.com/ogx-ai/ogx/pull/6775
+(fixes https://github.com/ogx-ai/ogx/issues/6774).
+
+Gemini sends each function call whole, and the tool call positions restart
+at 0 in every streamed chunk. When parallel function calls arrive in
+separate chunks they all get index 0, and consumers merge them into a
+single call whose arguments are concatenated (invalid) JSON. Assign
+indices sequentially across the stream.
+
+Drop this patch once llama-stack includes the upstream fix.
+
+--- a/providers/remote/inference/vertexai/vertexai.py
++++ b/providers/remote/inference/vertexai/vertexai.py
+@@ -522,13 +522,20 @@ class VertexAIInferenceAdapter(NeedsRequestProviderData, BaseModel):
+         async def _iter() -> AsyncIterator[OpenAIChatCompletionChunk]:
+             is_first_chunk = True
+             last_chunk: Any = None
++            next_tool_call_index = 0
+             async for chunk in stream:
+-                yield converters.convert_gemini_stream_chunk_to_openai(
++                openai_chunk = converters.convert_gemini_stream_chunk_to_openai(
+                     chunk=chunk,
+                     model=model,
+                     completion_id=completion_id,
+                     is_first_chunk=is_first_chunk,
+                 )
++                # Gemini sends whole function calls, and positions restart in each chunk.
++                for choice in openai_chunk.choices:
++                    for tool_call in choice.delta.tool_calls or []:
++                        tool_call.index = next_tool_call_index
++                        next_tool_call_index += 1
++                yield openai_chunk
+                 is_first_chunk = False
+                 last_chunk = chunk
+ 
