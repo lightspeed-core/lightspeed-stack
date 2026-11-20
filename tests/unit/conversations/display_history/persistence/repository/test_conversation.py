@@ -6,6 +6,13 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from conversations.display_history.agentic.models.agent_turn_summary import (
+    AgentTurnSummary,
+)
+from conversations.display_history.persistence.repository.agentic_turn import (
+    insert_agentic_turn,
+    list_agentic_turns_for_conversation,
+)
 from conversations.display_history.persistence.repository.conversation import (
     delete_conversation,
     get_conversation_by_id,
@@ -15,6 +22,9 @@ from conversations.display_history.persistence.repository.conversation import (
     list_conversations_for_user,
     update_conversation_metadata,
     update_conversation_topic_summary,
+)
+from conversations.display_history.persistence.repository.turn import (
+    list_turns_for_conversation,
 )
 from tests.unit.conversations.display_history.persistence.sample_rows import (
     SAMPLE_CONVERSATION,
@@ -113,3 +123,25 @@ def test_conversation_repository_round_trip(memory_engine: Engine) -> None:
 
     assert delete_conversation(TEST_CONVERSATION_ID) is True
     assert get_conversation_by_id(TEST_CONVERSATION_ID) is None
+
+
+@pytest.mark.usefixtures("patch_display_history_session")
+def test_delete_conversation_removes_turns_and_agentic_rows(
+    memory_engine: Engine,
+) -> None:
+    """Delete removes child rows without relying on database CASCADE."""
+    with Session(memory_engine) as session:
+        conversation_id, turn_number = seed_sample_conversation_and_turn(session)
+
+    insert_agentic_turn(
+        conversation_id,
+        turn_number,
+        AgentTurnSummary(status="completed"),
+    )
+    assert list_turns_for_conversation(conversation_id)
+    assert list_agentic_turns_for_conversation(conversation_id)
+
+    assert delete_conversation(conversation_id) is True
+    assert get_conversation_by_id(conversation_id) is None
+    assert list_turns_for_conversation(conversation_id) == []
+    assert list_agentic_turns_for_conversation(conversation_id) == []

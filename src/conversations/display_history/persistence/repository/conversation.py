@@ -3,8 +3,9 @@
 from datetime import datetime
 from typing import Optional
 
+from conversations.display_history.persistence.models import UserAgenticTurn
 from conversations.display_history.persistence.session import display_history_session
-from models.database.conversations import UserConversation
+from models.database.conversations import UserConversation, UserTurn
 
 
 def get_conversation_by_id(conversation_id: str) -> Optional[UserConversation]:
@@ -110,13 +111,24 @@ def update_conversation_topic_summary(conversation_id: str, topic_summary: str) 
 
 
 def delete_conversation(conversation_id: str) -> bool:
-    """Delete a conversation. Returns True if one was removed."""
+    """Remove a conversation and all of its turns and agentic history.
+
+    Returns:
+        True when a conversation was deleted, False when the id was not found.
+
+    """
     with display_history_session("delete conversation") as session:
         db_conversation = (
             session.query(UserConversation).filter_by(id=conversation_id).first()
         )
         if db_conversation is None:
             return False
+        session.query(UserAgenticTurn).filter_by(
+            conversation_id=conversation_id
+        ).delete(synchronize_session=False)
+        session.query(UserTurn).filter_by(conversation_id=conversation_id).delete(
+            synchronize_session=False
+        )
         session.delete(db_conversation)
         session.commit()
         return True
