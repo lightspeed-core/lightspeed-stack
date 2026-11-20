@@ -138,6 +138,7 @@ src/
 │   │   │   ├── query.py                          # Request models for query and streaming interrupt endpoints
 │   │   │   ├── responses_openai.py               # Request model for the OpenAI-compatible Responses API
 │   │   │   ├── rlsapi.py                         # Models for rlsapi v1 REST API requests
+│   │   │   ├── saved_prompts.py                  # Request models for saved prompt endpoints
 │   │   │   └── vector_stores.py                  # Request models for vector store and file endpoints
 │   │   └── responses/                            # HTTP response models
 │   │       ├── constants.py                      # OpenAPI description strings and shared example-label lists for API responses
@@ -165,7 +166,7 @@ src/
 │   │           ├── query.py                      # Successful response models for synchronous query and streaming query documentation
 │   │           ├── responses_openai.py           # Successful response model for the OpenAI-compatible Responses API
 │   │           ├── rlsapi.py                     # Models for rlsapi v1 REST API responses
-│   │           ├── saved_prompts.py              # Successful responses for saved prompts configuration
+│   │           ├── saved_prompts.py              # Successful responses for saved prompts CRUD and configuration
 │   │           └── vector_stores.py              # Successful responses for vector stores and vector store files
 │   ├── common/                                   # Shared cross-layer models
 │   │   ├── agents/                               # Streaming payload models and event type exports

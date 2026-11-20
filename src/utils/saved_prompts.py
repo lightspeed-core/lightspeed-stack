@@ -207,11 +207,17 @@ def create_saved_prompt(
                     ) from exc
                 # A concurrent create may have transiently taken the computed
                 # position; retry once with a fresh maximum. A name conflict
-                # is not transient and fails again on the next commit.
+                # is not transient and fails again on the next commit. The
+                # concurrent create also counts toward the quota, so re-check
+                # it before retrying.
                 logger.debug(
                     "Saved prompt insert conflict for user_id=%s, retrying",
                     user_id,
                 )
+                current_count = (
+                    session.query(SavedPrompt).filter_by(user_id=user_id).count()
+                )
+                validate_saved_prompt_quota(current_count, max_prompts_per_user)
                 saved_prompt.position = _next_position(session, user_id)
                 session.add(saved_prompt)
 

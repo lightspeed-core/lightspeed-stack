@@ -138,6 +138,12 @@ class "SavedPromptCreateRequest" as src.models.api.requests.saved_prompts.SavedP
   model_config : dict
   name : str
 }
+class "SavedPromptUpdateRequest" as src.models.api.requests.saved_prompts.SavedPromptUpdateRequest {
+  content : str
+  model_config : dict
+  name : str
+  position : int
+}
 class "StreamingInterruptRequest" as src.models.api.requests.query.StreamingInterruptRequest {
   model_config : dict
   request_id : str

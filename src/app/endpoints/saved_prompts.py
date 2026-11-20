@@ -29,7 +29,7 @@ from models.api.responses.successful import (
     SavedPromptsConfigResponse,
     SavedPromptsListResponse,
 )
-from models.config import Action
+from models.config import Action, SavedPromptsConfiguration
 from utils.endpoints import check_configuration_loaded
 from utils.saved_prompts import (
     SavedPromptAccessDeniedError,
@@ -131,12 +131,17 @@ def check_valid_saved_prompt_id(prompt_id: str) -> None:
         raise HTTPException(**error_response.model_dump())
 
 
-def _validated_prompt_name(name: str, content: str) -> str:
+def _validate_prompt_name(
+    name: str,
+    content: str,
+    saved_prompts_config: SavedPromptsConfiguration,
+) -> str:
     """Validate prompt name and content against configured limits.
 
     Parameters:
         name: Prompt display name from the request body.
         content: Prompt body from the request body.
+        saved_prompts_config: Loaded saved-prompts limits.
 
     Returns:
         The stripped display name.
@@ -145,7 +150,6 @@ def _validated_prompt_name(name: str, content: str) -> str:
         HTTPException: with status 422 when validation fails.
 
     """
-    saved_prompts_config = configuration.configuration.saved_prompts
     try:
         validated_name = validate_saved_prompt_name(
             name,
@@ -293,7 +297,8 @@ async def create_saved_prompts_handler(
     _ = request
     check_configuration_loaded(configuration)
 
-    name = _validated_prompt_name(body.name, body.content)
+    saved_prompts_config = configuration.configuration.saved_prompts
+    name = _validate_prompt_name(body.name, body.content, saved_prompts_config)
 
     user_id = auth[0]
     logger.info("Creating saved prompt")
@@ -304,7 +309,7 @@ async def create_saved_prompts_handler(
             user_id,
             name,
             body.content,
-            configuration.configuration.saved_prompts.max_prompts_per_user,
+            saved_prompts_config.max_prompts_per_user,
         )
     except SavedPromptLimitExceededError as exc:
         error_response = UnprocessableEntityResponse(
@@ -456,7 +461,8 @@ async def update_saved_prompts_handler(
 
     check_valid_saved_prompt_id(prompt_id)
 
-    name = _validated_prompt_name(body.name, body.content)
+    saved_prompts_config = configuration.configuration.saved_prompts
+    name = _validate_prompt_name(body.name, body.content, saved_prompts_config)
 
     user_id = auth[0]
     logger.info("Updating saved prompt id=%s", prompt_id)

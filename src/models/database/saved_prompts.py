@@ -12,12 +12,14 @@ class SavedPrompt(Base):  # pylint: disable=too-few-public-methods
     """Model for storing a user's saved (frequently used) prompts.
 
     The ``position`` column holds the per-user ordering (1-based, no gaps
-    after normalization). It is nullable at the database level because
-    ``ALTER TABLE ADD COLUMN`` cannot add a NOT NULL constraint without a
-    default on existing deployments, and SQLite cannot add constraints to
-    existing tables at all; application code always assigns it and the
-    startup migration backfills every existing row (see
-    ``app/schema_migrations.py``).
+    after normalization). It is nullable — and typed ``int | None`` to match —
+    because ``ALTER TABLE ADD COLUMN`` cannot add a NOT NULL constraint
+    without a default on existing deployments, and SQLite cannot add
+    constraints to existing tables at all; application code always assigns
+    it, the startup migration and the read path heal every NULL row (see
+    ``app/schema_migrations.py``), and loaders never return rows with a
+    NULL position.
+
     """
 
     __tablename__ = "saved_prompt"
@@ -34,7 +36,7 @@ class SavedPrompt(Base):  # pylint: disable=too-few-public-methods
 
     content: Mapped[str] = mapped_column(Text())
 
-    position: Mapped[int] = mapped_column(nullable=True)
+    position: Mapped[int | None] = mapped_column(nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

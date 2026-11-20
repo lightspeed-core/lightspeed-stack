@@ -389,6 +389,78 @@ class TestCreateSavedPromptPosition:
         assert created.position == 2
         assert len(calls) == 2
 
+    def test_create_rechecks_quota_after_retry(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        """Test quota is re-checked after a conflict retry.
+
+        A concurrent create can commit between the pre-insert count and the
+        insert; the retried insert must not silently exceed the per-user
+        maximum when the conflict that triggered the retry came from that
+        concurrent create.
+        """
+        engine = create_engine(f"sqlite:///{tmp_path / 'quota-race.db'}")
+        try:
+            Base.metadata.create_all(engine)
+            session_factory = sessionmaker(
+                autocommit=False, autoflush=False, bind=engine
+            )
+            with session_factory() as session:
+                session.add(
+                    SavedPrompt(
+                        id="seed",
+                        user_id="user-1",
+                        name="seed",
+                        content="c",
+                        position=1,
+                    )
+                )
+                session.commit()
+            mocker.patch("utils.saved_prompts.get_session", side_effect=session_factory)
+
+            real_next_position = (
+                saved_prompts_utils._next_position  # pylint: disable=protected-access
+            )
+            calls: list[int] = []
+
+            def next_with_concurrent_create(session: Session, user_id: str) -> int:
+                """Commit a concurrent create before computing the position.
+
+                Parameters:
+                    session: DAL session.
+                    user_id: Owner of the prompt.
+
+                Returns:
+                    A position colliding with the concurrent create.
+
+                """
+                calls.append(len(calls) + 1)
+                if len(calls) == 1:
+                    with engine.connect() as connection:
+                        connection.execute(
+                            text(
+                                "INSERT INTO saved_prompt "
+                                "(id, user_id, name, content, position) "
+                                "VALUES ('concurrent', 'user-1', 'cc', 'c', 2)"
+                            )
+                        )
+                        connection.commit()
+                    return 2  # collides with the just-committed row
+                return real_next_position(session, user_id)
+
+            mocker.patch(
+                "utils.saved_prompts._next_position",
+                side_effect=next_with_concurrent_create,
+            )
+
+            # Entry count (1) passes the limit of 2; the concurrent create
+            # committed by the mocked helper makes the real count 2, so the
+            # retry must reject instead of creating a third prompt.
+            with pytest.raises(SavedPromptLimitExceededError):
+                create_saved_prompt("user-1", "new", "c", max_prompts_per_user=2)
+        finally:
+            engine.dispose()
+
 
 @pytest.mark.usefixtures("patch_saved_prompts_get_session")
 class TestListSavedPromptsByUser:

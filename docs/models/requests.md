@@ -1142,6 +1142,30 @@ Attributes:
 | content | string | Prompt body text |
 
 
+## SavedPromptUpdateRequest
+
+
+Request body to update a user-scoped saved prompt in place.
+
+Full-replace semantics: the caller sends the complete prompt object and
+every field is required; omitting a field is a validation error rather
+than "leave unchanged". Length limits are enforced by the endpoint using
+configured saved-prompts limits, not by static field constraints here.
+
+Attributes:
+    name: Display name of the saved prompt.
+    content: Prompt body text.
+    position: Target position in the user's list (1-based); values above
+        the number of prompts the user holds move the prompt to the end.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Display name of the saved prompt |
+| content | string | Prompt body text |
+| position | integer | Target position in the user's list (1-based) |
+
+
 ## SearchRankingOptions
 
 

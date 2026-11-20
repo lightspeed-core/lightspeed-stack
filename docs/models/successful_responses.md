@@ -93,6 +93,29 @@ Note: this is not a real model, just an enumeration of all action names.
 
 
 
+## AgentStepPersistenceNoopConfiguration
+
+
+Agent step persistence disabled (no harness store).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+
+
+## AgentStepPersistenceSqliteConfiguration
+
+
+SQLite-backed harness step store.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| sqlite |  | SQLite file for harness step persistence. |
+
+
 ## AllowedModel
 
 
@@ -454,6 +477,7 @@ Global service configuration.
 | customization |  | It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules. |
 | inference |  | One LLM provider and one its model might be selected as default ones. When no provider+model pair is specified in REST API calls (query endpoints), the default provider and model are used. |
 | conversation_cache |  |  |
+| agent_step_persistence |  | Pydantic AI harness StepPersistence storage for agent run history. |
 | compaction |  | Controls when conversation history is summarized to keep the model's input below the context window limit. Disabled by default — when disabled, requests that exceed the window continue to surface as HTTP 413. |
 | approvals |  | Settings for human-in-the-loop approval of MCP tool invocations |
 | vector_store |  | Dynamic vector-store provider capacity for runtime POST /v1/vector-stores creates. Not the same as rag.byok.stores (static registered corpora). When providers is non-empty, default_provider is required and must match one of providers[].id. Applied in unified synthesis only. |
@@ -2652,6 +2676,7 @@ Attributes:
     id: Unique identifier of the saved prompt.
     name: Display name of the saved prompt.
     content: Prompt body text.
+    position: Position of the prompt in the user's list (1-based).
     created_at: When the prompt was created.
     updated_at: When the prompt was last updated.
 
@@ -2661,6 +2686,7 @@ Attributes:
 | id | string | Unique identifier of the saved prompt |
 | name | string | Display name of the saved prompt |
 | content | string | Prompt body text |
+| position | integer | Position of the prompt in the user's list (1-based) |
 | created_at | string | When the prompt was created |
 | updated_at | string | When the prompt was last updated |
 
@@ -2711,12 +2737,12 @@ Attributes:
 List of saved prompts belonging to the authenticated user.
 
 Attributes:
-    prompts: Saved prompts ordered by created_at descending (newest first).
+    prompts: Saved prompts ordered by position ascending.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| prompts | array | Saved prompts for the authenticated user |
+| prompts | array | Saved prompts for the authenticated user, ordered by position |
 
 
 ## SearchRankingOptions

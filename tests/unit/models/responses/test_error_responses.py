@@ -297,12 +297,13 @@ class TestForbiddenResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 9
+        assert expected_count == 10
 
         # Verify all labeled examples are present
         assert "conversation read" in examples
         assert "conversation delete" in examples
         assert "saved prompt delete" in examples
+        assert "saved prompt update" in examples
         assert "endpoint" in examples
         assert "prompt read" in examples
         assert "prompt manage" in examples
@@ -541,7 +542,7 @@ class TestNotFoundResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 9
+        assert expected_count == 10
 
         # Verify all labeled examples are present
         assert "conversation" in examples
@@ -553,6 +554,7 @@ class TestNotFoundResponse:
         assert "file" in examples
         assert "prompt" in examples
         assert "mcp server" in examples
+        assert "saved prompt" in examples
 
         # Verify example structure for one example
         conversation_example = examples["conversation"]
