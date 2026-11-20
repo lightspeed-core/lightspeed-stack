@@ -8,3 +8,11 @@ Store and load conversation data used by display history.
 
 Database sessions for display history persistence.
 
+## [facade](facade)
+
+v3 conversation read and mutate entry points.
+
+## [mapping](mapping)
+
+Map stored rows onto v3 API models.
+
