@@ -19,15 +19,17 @@ import asyncio
 import json
 import re
 from collections.abc import Mapping
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Self
 
 import asyncpg
 from pydantic import SecretStr
 from pydantic_ai.embeddings import Embedder, EmbeddingSettings
 
 from knowledge.sources.base import VectorStore, VectorStoreKnowledgeSource
+from knowledge.sources.utils import embedder_for_model, retrieval_mode
 from knowledge.types import KnowledgeMatch, KnowledgeReadiness
 from log import get_logger
+from models.config import RagConfiguration, RagStore
 
 logger = get_logger(__name__)
 
@@ -335,6 +337,94 @@ class PgVectorKnowledgeSource(VectorStoreKnowledgeSource):
     async def close(self) -> None:
         """Close the pool this source opened, if it owns one."""
         await self._pgvector.close()
+
+    @classmethod
+    def from_rag_configuration(cls, rag: RagConfiguration, store: RagStore) -> Self:
+        """Build a pgvector source for one BYOK store.
+
+        Args:
+            rag: RAG configuration. Supplies retrieval mode and the BYOK
+                chunk limit used as ``max_matches``.
+            store: pgvector store entry to read. Connection fields and
+                ``score_multiplier`` are taken from the store. The cutoff
+                uses the raw score; the multiplier is applied after merged
+                matches are ranked.
+
+        Returns:
+            A source named ``store.rag_id``. The connection pool opens on
+            the first search or readiness check.
+
+        Raises:
+            ValueError: If ``store`` is not a pgvector store, or a required
+                connection field is missing or the port is not an integer.
+
+        """
+        if store.backend != "pgvector":
+            raise ValueError(
+                "Cannot build a pgvector knowledge source for backend "
+                f"{store.backend!r}"
+            )
+        return cls(
+            name=store.rag_id,
+            vector_store_id=store.vector_db_id,
+            embedder=embedder_for_model(store.embedding_model),
+            host=_required_text(store.host, "host", store.rag_id),
+            port=_connection_port(store.port, store.rag_id),
+            database=_required_text(store.db, "db", store.rag_id),
+            user=_required_text(store.user, "user", store.rag_id),
+            password=store.password,
+            embedding_settings={"dimensions": store.embedding_dimension},
+            max_matches=rag.byok.max_chunks,
+            score_threshold=store.relevance_cutoff_score,
+            score_multiplier=store.score_multiplier,
+            mode=retrieval_mode(rag, store.rag_id),
+        )
+
+
+def _required_text(value: Optional[str], field_name: str, rag_id: str) -> str:
+    """Return a required pgvector connection string.
+
+    Args:
+        value: Configured field value.
+        field_name: Configuration field name, used in the error.
+        rag_id: Store whose field is missing.
+
+    Returns:
+        ``value`` when it is a non-empty string.
+
+    Raises:
+        ValueError: If ``value`` is missing or empty.
+
+    """
+    if not value:
+        raise ValueError(f"{field_name} is required for pgvector store {rag_id!r}")
+    return value
+
+
+def _connection_port(port: Optional[str | int], rag_id: str) -> int:
+    """Return a pgvector port as an integer.
+
+    Args:
+        port: Configured port, either an int or a decimal string.
+        rag_id: Store whose port is being read.
+
+    Returns:
+        The port number.
+
+    Raises:
+        ValueError: If ``port`` is missing or not an integer.
+
+    """
+    if isinstance(port, int):
+        return port
+    if isinstance(port, str):
+        try:
+            return int(port)
+        except ValueError as error:
+            raise ValueError(
+                f"port for pgvector store {rag_id!r} must be an integer, got {port!r}"
+            ) from error
+    raise ValueError(f"port is required for pgvector store {rag_id!r}")
 
 
 def _interleaved_content_as_str(content: Any) -> str:
