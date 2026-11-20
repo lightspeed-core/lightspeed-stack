@@ -14,13 +14,14 @@ from models.api.responses.successful.saved_prompts import (
 
 
 def test_saved_prompt_response_serializes_expected_fields() -> None:
-    """SavedPromptResponse exposes id/name/content/timestamps and omits user_id."""
+    """SavedPromptResponse exposes id/name/content/position/timestamps."""
     created = datetime(2026, 7, 22, 16, 0, 0, tzinfo=UTC)
     updated = datetime(2026, 7, 22, 16, 5, 0, tzinfo=UTC)
     item = SavedPromptResponse(
         id="prompt-1",
         name="Deploy to staging",
         content="Help me write a deployment checklist",
+        position=1,
         created_at=created,
         updated_at=updated,
     )
@@ -31,12 +32,14 @@ def test_saved_prompt_response_serializes_expected_fields() -> None:
         "id",
         "name",
         "content",
+        "position",
         "created_at",
         "updated_at",
     }
     assert payload["id"] == "prompt-1"
     assert payload["name"] == "Deploy to staging"
     assert payload["content"] == "Help me write a deployment checklist"
+    assert payload["position"] == 1
     assert datetime.fromisoformat(payload["created_at"]) == created
     assert datetime.fromisoformat(payload["updated_at"]) == updated
     assert "user_id" not in payload
@@ -65,6 +68,7 @@ def test_saved_prompt_response_model_validate_from_orm_omits_user_id() -> None:
         user_id="user-1",
         name="Deploy to staging",
         content="Help me write a deployment checklist",
+        position=3,
         created_at=created,
         updated_at=updated,
     )
@@ -74,6 +78,7 @@ def test_saved_prompt_response_model_validate_from_orm_omits_user_id() -> None:
 
     assert payload["id"] == "prompt-1"
     assert payload["name"] == "Deploy to staging"
+    assert payload["position"] == 3
     assert "user_id" not in payload
 
 
@@ -88,6 +93,7 @@ def test_saved_prompts_list_response_empty_and_populated() -> None:
                 id="prompt-1",
                 name="one",
                 content="c1",
+                position=1,
                 created_at=created,
                 updated_at=created,
             )

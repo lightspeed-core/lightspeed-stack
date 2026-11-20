@@ -2648,6 +2648,7 @@ Attributes:
     id: Unique identifier of the saved prompt.
     name: Display name of the saved prompt.
     content: Prompt body text.
+    position: Position of the prompt in the user's list (1-based).
     created_at: When the prompt was created.
     updated_at: When the prompt was last updated.
 
@@ -2657,6 +2658,7 @@ Attributes:
 | id | string | Unique identifier of the saved prompt |
 | name | string | Display name of the saved prompt |
 | content | string | Prompt body text |
+| position | integer | Position of the prompt in the user's list (1-based) |
 | created_at | string | When the prompt was created |
 | updated_at | string | When the prompt was last updated |
 
@@ -2707,12 +2709,12 @@ Attributes:
 List of saved prompts belonging to the authenticated user.
 
 Attributes:
-    prompts: Saved prompts ordered by created_at descending (newest first).
+    prompts: Saved prompts ordered by position ascending.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| prompts | array | Saved prompts for the authenticated user |
+| prompts | array | Saved prompts for the authenticated user, ordered by position |
 
 
 ## SearchRankingOptions

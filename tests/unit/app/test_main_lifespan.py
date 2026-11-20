@@ -26,6 +26,8 @@ def configuration_mock_fixture(
         "initialize_pyroscope",
         "initialize_database",
         "create_tables",
+        "get_engine",
+        "run_startup_migrations",
         "sentry_sdk",
     ):
         mocker.patch(f"app.main.{name}")

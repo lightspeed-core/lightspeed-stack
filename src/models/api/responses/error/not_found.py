@@ -66,6 +66,16 @@ class NotFoundResponse(AbstractErrorResponse):
                     },
                 },
                 {
+                    "label": "saved prompt",
+                    "detail": {
+                        "response": "Saved Prompt not found",
+                        "cause": (
+                            "Saved Prompt with ID "
+                            "123e4567-e89b-12d3-a456-426614174000 does not exist"
+                        ),
+                    },
+                },
+                {
                     "label": "vector store",
                     "detail": {
                         "response": "Vector Store not found",

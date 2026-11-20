@@ -21,6 +21,7 @@ class "SavedPrompt" as src.models.database.saved_prompts.SavedPrompt {
   created_at : Mapped[datetime]
   id : Mapped[str]
   name : Mapped[str]
+  position : Mapped[int | None]
   updated_at : Mapped[datetime]
   user_id : Mapped[str]
 }

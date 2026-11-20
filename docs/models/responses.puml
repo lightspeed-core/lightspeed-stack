@@ -267,6 +267,7 @@ class "SavedPromptResponse" as src.models.api.responses.successful.saved_prompts
   id : str
   model_config : dict
   name : str
+  position : int
   updated_at : datetime
 }
 class "SavedPromptsConfigResponse" as src.models.api.responses.successful.saved_prompts.SavedPromptsConfigResponse {

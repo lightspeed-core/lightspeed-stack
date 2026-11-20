@@ -6491,13 +6491,14 @@
             },
             "SavedPromptResponse": {
                 "additionalProperties": false,
-                "description": "Single saved prompt returned to an authenticated user.\n\nAttributes:\n    id: Unique identifier of the saved prompt.\n    name: Display name of the saved prompt.\n    content: Prompt body text.\n    created_at: When the prompt was created.\n    updated_at: When the prompt was last updated.",
+                "description": "Single saved prompt returned to an authenticated user.\n\nAttributes:\n    id: Unique identifier of the saved prompt.\n    name: Display name of the saved prompt.\n    content: Prompt body text.\n    position: Position of the prompt in the user's list (1-based).\n    created_at: When the prompt was created.\n    updated_at: When the prompt was last updated.",
                 "examples": [
                     {
                         "content": "Help me write a deployment checklist\u2026",
                         "created_at": "2026-07-22T16:00:00+00:00",
                         "id": "abc123",
                         "name": "Deploy to staging",
+                        "position": 1,
                         "updated_at": "2026-07-22T16:00:00+00:00"
                     }
                 ],
@@ -6526,6 +6527,14 @@
                         "title": "Content",
                         "type": "string"
                     },
+                    "position": {
+                        "description": "Position of the prompt in the user's list (1-based)",
+                        "examples": [
+                            1
+                        ],
+                        "title": "Position",
+                        "type": "integer"
+                    },
                     "created_at": {
                         "description": "When the prompt was created",
                         "examples": [
@@ -6549,6 +6558,7 @@
                     "id",
                     "name",
                     "content",
+                    "position",
                     "created_at",
                     "updated_at"
                 ],
@@ -6636,7 +6646,7 @@
             },
             "SavedPromptsListResponse": {
                 "additionalProperties": false,
-                "description": "List of saved prompts belonging to the authenticated user.\n\nAttributes:\n    prompts: Saved prompts ordered by created_at descending (newest first).",
+                "description": "List of saved prompts belonging to the authenticated user.\n\nAttributes:\n    prompts: Saved prompts ordered by position ascending.",
                 "examples": [
                     {
                         "prompts": [
@@ -6645,6 +6655,7 @@
                                 "created_at": "2026-07-22T16:00:00+00:00",
                                 "id": "abc123",
                                 "name": "Deploy to staging",
+                                "position": 1,
                                 "updated_at": "2026-07-22T16:00:00+00:00"
                             }
                         ]
@@ -6655,7 +6666,7 @@
                 ],
                 "properties": {
                     "prompts": {
-                        "description": "Saved prompts for the authenticated user",
+                        "description": "Saved prompts for the authenticated user, ordered by position",
                         "items": {
                             "$ref": "`#/components/schemas/`SavedPromptResponse"
                         },

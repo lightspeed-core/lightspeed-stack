@@ -34,6 +34,7 @@ requests_models: list[type[BaseModel]] = [
     r.RlsapiV1SystemInfo,
     r.RlsapiV1Terminal,
     r.SavedPromptCreateRequest,
+    r.SavedPromptUpdateRequest,
     r.StreamingInterruptRequest,
     r.VectorStoreCreateRequest,
     r.VectorStoreFileCreateRequest,

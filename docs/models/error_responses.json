@@ -202,6 +202,13 @@
                     },
                     {
                         "detail": {
+                            "cause": "User 6789 does not have permission to update saved prompt with ID abc123",
+                            "response": "User does not have permission to perform this action"
+                        },
+                        "label": "saved prompt update"
+                    },
+                    {
+                        "detail": {
                             "cause": "User 6789 is not authorized to access this endpoint.",
                             "response": "User does not have permission to access this endpoint"
                         },
@@ -397,6 +404,13 @@
                             "response": "Mcp Server not found"
                         },
                         "label": "mcp server"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Saved Prompt with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                            "response": "Saved Prompt not found"
+                        },
+                        "label": "saved prompt"
                     },
                     {
                         "detail": {

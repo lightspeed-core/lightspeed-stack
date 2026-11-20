@@ -48,6 +48,16 @@ class ForbiddenResponse(AbstractErrorResponse):
                     },
                 },
                 {
+                    "label": "saved prompt update",
+                    "detail": {
+                        "response": "User does not have permission to perform this action",
+                        "cause": (
+                            "User 6789 does not have permission to update saved prompt "
+                            "with ID abc123"
+                        ),
+                    },
+                },
+                {
                     "label": "endpoint",
                     "detail": {
                         "response": "User does not have permission to access this endpoint",

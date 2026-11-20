@@ -8428,6 +8428,7 @@ Attributes:
     id: Unique identifier of the saved prompt.
     name: Display name of the saved prompt.
     content: Prompt body text.
+    position: Position of the prompt in the user's list (1-based).
     created_at: When the prompt was created.
     updated_at: When the prompt was last updated.
 
@@ -8437,8 +8438,33 @@ Attributes:
 | id | string | Unique identifier of the saved prompt |
 | name | string | Display name of the saved prompt |
 | content | string | Prompt body text |
+| position | integer | Position of the prompt in the user's list (1-based) |
 | created_at | string | When the prompt was created |
 | updated_at | string | When the prompt was last updated |
+
+
+## SavedPromptUpdateRequest
+
+
+Request body to update a user-scoped saved prompt in place.
+
+Full-replace semantics: the caller sends the complete prompt object and
+every field is required; omitting a field is a validation error rather
+than "leave unchanged". Length limits are enforced by the endpoint using
+configured saved-prompts limits, not by static field constraints here.
+
+Attributes:
+    name: Display name of the saved prompt.
+    content: Prompt body text.
+    position: Target position in the user's list (1-based); values above
+        the number of prompts the user holds move the prompt to the end.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Display name of the saved prompt |
+| content | string | Prompt body text |
+| position | integer | Target position in the user's list (1-based) |
 
 
 ## SavedPromptsConfigResponse
@@ -8487,12 +8513,12 @@ Attributes:
 List of saved prompts belonging to the authenticated user.
 
 Attributes:
-    prompts: Saved prompts ordered by created_at descending (newest first).
+    prompts: Saved prompts ordered by position ascending.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| prompts | array | Saved prompts for the authenticated user |
+| prompts | array | Saved prompts for the authenticated user, ordered by position |
 
 
 ## SearchRankingOptions
