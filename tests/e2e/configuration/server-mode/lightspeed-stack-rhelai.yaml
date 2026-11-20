@@ -21,6 +21,14 @@ authentication:
 inference:
   default_provider: vllm
   default_model: ${env.VLLM_MODEL}
+  providers:
+    - type: vllm
+      id: vllm
+      skip_model_discovery: true
+      allowed_models:
+        - name: ${env.VLLM_MODEL}
+          provider_model_id: ${env.VLLM_MODEL}
+          model_type: llm
 rag:
   byok:
     stores:
