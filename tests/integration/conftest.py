@@ -321,6 +321,8 @@ def create_agent_run_result(  # pylint: disable=too-many-arguments,too-many-posi
 
     messages = new_messages if new_messages is not None else [model_response]
     run_result = mocker.MagicMock(spec=AgentRunResult)
+    run_result.run_id = response_id
+    run_result.output = content
     run_result.response = model_response
     run_result.usage = RunUsage(
         input_tokens=input_tokens,

@@ -35,7 +35,7 @@ from a2a.utils import new_agent_text_message, new_task
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from ogx_client import ApiException, AsyncOgxClient
 from opentelemetry import trace
-from pydantic_ai import AgentRunResultEvent
+from pydantic_ai import Agent, AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (
     AgentStreamEvent,
@@ -60,6 +60,7 @@ from configuration import configuration
 from constants import ENDPOINT_PATH_A2A, MEDIA_TYPE_EVENT_STREAM
 from log import get_logger
 from models.api.requests import QueryRequest
+from models.common.agents import AgentRunDeps
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import Action
 from utils.agents.error_handler import map_agent_inference_error
@@ -521,6 +522,7 @@ class A2AAgentExecutor(AgentExecutor):
                     configuration,
                     shields=query_request.shield_ids,
                 )
+                run_deps = AgentRunDeps()
             except (
                 AgentRunError,
                 ApiException,
@@ -578,6 +580,7 @@ class A2AAgentExecutor(AgentExecutor):
             try:
                 async for a2a_event in self._convert_stream_to_events(
                     agent,
+                    run_deps,
                     prompt,
                     task_id,
                     context_id,
@@ -630,9 +633,10 @@ class A2AAgentExecutor(AgentExecutor):
                     final=True,
                 )
 
-    async def _convert_stream_to_events(
+    async def _convert_stream_to_events(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        agent: Any,
+        agent: Agent[AgentRunDeps, str],
+        run_deps: AgentRunDeps,
         prompt: str,
         task_id: str,
         context_id: str,
@@ -642,6 +646,7 @@ class A2AAgentExecutor(AgentExecutor):
 
         Parameters:
             agent: Pydantic-ai Agent to execute.
+            run_deps: Per-run deps passed to ``run_stream_events``.
             prompt: User input text.
             task_id: The task ID for this execution.
             context_id: The context ID for this execution.
@@ -659,7 +664,9 @@ class A2AAgentExecutor(AgentExecutor):
         run_result: Optional[AgentRunResult[str]] = None
 
         async with agent.run_stream_events(
-            prompt, conversation_id=conversation_id
+            prompt,
+            conversation_id=conversation_id,
+            deps=run_deps,
         ) as stream:
             async for event in stream:
                 if isinstance(event, AgentRunResultEvent):

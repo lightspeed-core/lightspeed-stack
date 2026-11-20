@@ -1695,21 +1695,6 @@ def _extract_text_from_content(
     return " ".join(text_fragments)
 
 
-def deduplicate_referenced_documents(
-    docs: list[ReferencedDocument],
-) -> list[ReferencedDocument]:
-    """Remove duplicate referenced documents based on URL and title."""
-    seen: set[tuple[Optional[str], Optional[str]]] = set()
-    out: list[ReferencedDocument] = []
-    for d in docs:
-        key = (str(d.doc_url) if d.doc_url else None, d.doc_title)
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(d)
-    return out
-
-
 async def create_new_conversation(
     client: AsyncOgxClient,
 ) -> str:

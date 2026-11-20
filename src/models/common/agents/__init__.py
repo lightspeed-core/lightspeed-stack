@@ -21,11 +21,13 @@ from models.common.agents.stream_payloads import (
     TurnCompleteStreamPayload,
 )
 from models.common.agents.turn_accumulator import AgentTurnAccumulator
+from models.common.agents.turn_artifacts import AgentTurnArtifacts
 
 __all__ = [
     "AgentRunContextStatus",
     "AgentRunDeps",
     "AgentTurnAccumulator",
+    "AgentTurnArtifacts",
     "CompactionEventData",
     "CompactionStreamPayload",
     "EndEventData",

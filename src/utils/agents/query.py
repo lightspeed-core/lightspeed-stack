@@ -24,7 +24,7 @@ from models.api.responses.error import (
     InternalServerErrorResponse,
     PromptTooLongResponse,
 )
-from models.common.agents import AgentTurnAccumulator
+from models.common.agents import AgentRunDeps, AgentTurnAccumulator, AgentTurnArtifacts
 from models.common.turn_summary import TurnSummary
 from utils.agents.error_handler import map_agent_inference_error
 from utils.agents.tool_processor import (
@@ -238,7 +238,7 @@ async def retrieve_agent_response(
     no_tools: bool = False,
     image_attachments: Optional[list[Attachment]] = None,
     shield_ids: Optional[list[str]] = None,
-) -> TurnSummary:
+) -> tuple[TurnSummary, AgentTurnArtifacts]:
     """Retrieve a turn summary from a blocking agent run.
 
     Args:
@@ -254,13 +254,14 @@ async def retrieve_agent_response(
         shield_ids: Optional list of shield names to run for this turn, mirroring
             ``QueryRequest.shield_ids``. If ``None``, all configured shields run.
     Returns:
-        Turn summary for the completed agent run.
+        Turn summary and PAI artifacts for the completed agent run.
 
     Raises:
         HTTPException: On agent or provider failure.
         ValueError: When the request is compacted and no pending turn is given.
 
     """
+    artifacts = AgentTurnArtifacts()
     if turn is None:
         turn = PendingTurn.for_request(client, responses_params)
     with tracer.start_as_current_span("llm.inference") as span:
@@ -290,6 +291,7 @@ async def retrieve_agent_response(
                 shields=shield_ids,
                 no_tools=no_tools,
             )
+            run_deps = AgentRunDeps()
             logger.debug("Starting agent non-streaming response processing")
             if image_attachments:
                 prompt = build_multimodal_input(
@@ -301,6 +303,7 @@ async def retrieve_agent_response(
             run_result = await agent.run(
                 prompt,
                 conversation_id=responses_params.conversation,
+                deps=run_deps,
             )
         except (AgentRunError, ApiException, RuntimeError) as exc:
             response = map_agent_inference_error(exc, responses_params.model)
@@ -319,6 +322,7 @@ async def retrieve_agent_response(
         # Capture the structured output items OGX returned so compacted mode can
         # persist the turn exactly as OGX would have (LCORE-3883).
         turn_summary.output_items = captured_output_items(agent)
+        artifacts.record(run_result, run_deps)
 
         set_span_attributes(
             span,
@@ -337,4 +341,4 @@ async def retrieve_agent_response(
         # buffer and the audit history intact for the next request (LCORE-3883).
         await turn.store_completed(turn_summary.output_items)
 
-        return turn_summary
+        return turn_summary, artifacts

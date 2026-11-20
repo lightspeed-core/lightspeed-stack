@@ -9,7 +9,7 @@ import datetime
 import time
 from collections.abc import AsyncIterator
 from functools import singledispatch
-from typing import TYPE_CHECKING, Any, Final, Optional
+from typing import TYPE_CHECKING, Final, Optional
 
 from fastapi import HTTPException
 from ogx_client import ApiException
@@ -32,7 +32,9 @@ from configuration import configuration
 from constants import MEDIA_TYPE_JSON
 from log import get_logger
 from models.common.agents import (
+    AgentRunDeps,
     AgentTurnAccumulator,
+    AgentTurnArtifacts,
     CompactionStreamPayload,
     EndStreamPayload,
     ErrorStreamPayload,
@@ -78,8 +80,8 @@ from utils.query import (
     store_query_results,
 )
 from utils.quota_utils import get_available_quotas
+from utils.referenced_documents import deduplicate_referenced_documents
 from utils.responses import (
-    deduplicate_referenced_documents,
     maybe_get_topic_summary,
 )
 from utils.stream_interrupts import (
@@ -112,8 +114,8 @@ async def retrieve_agent_response_generator(
     endpoint_path: str,
     no_tools: bool = False,
     image_attachments: Optional[list[Attachment]] = None,
-) -> tuple[AsyncIterator[str], TurnSummary]:
-    """Return the SSE generator and mutable turn summary for an agent run.
+) -> tuple[AsyncIterator[str], TurnSummary, AgentTurnArtifacts]:
+    """Return the SSE generator, turn summary, and PAI artifacts for an agent run.
 
     Args:
         responses_params: Prepared Responses API parameters.
@@ -123,10 +125,11 @@ async def retrieve_agent_response_generator(
         image_attachments: Image attachments for multimodal prompt construction.
 
     Returns:
-        Tuple of SSE async iterator and mutable turn summary.
+        Tuple of SSE async iterator, mutable turn summary, and PAI artifacts.
 
     """
     turn_summary = TurnSummary()
+    artifacts = AgentTurnArtifacts()
     try:
         agent = build_agent(
             context.client,
@@ -135,17 +138,21 @@ async def retrieve_agent_response_generator(
             shields=context.query_request.shield_ids,
             no_tools=no_tools,
         )
+        run_deps = AgentRunDeps()
 
         return (
             agent_response_generator(
                 agent,
+                run_deps,
                 responses_params,
                 context,
                 turn_summary,
                 endpoint_path,
+                artifacts,
                 image_attachments=image_attachments,
             ),
             turn_summary,
+            artifacts,
         )
     except (AgentRunError, ApiException, RuntimeError) as exc:
         response = map_agent_inference_error(exc, responses_params.model)
@@ -192,6 +199,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
+    artifacts: AgentTurnArtifacts,
     background_topic_summary_tasks: list[asyncio.Task[None]],
     root_span: trace.Span,
     emit_start: bool = True,
@@ -209,6 +217,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         context: The response generator context.
         responses_params: The Responses API parameters.
         turn_summary: TurnSummary populated during streaming.
+        artifacts: PAI run artifacts filled when the agent stream completes.
         background_topic_summary_tasks: Mutable list tracking fire-and-forget
             topic summary tasks for graceful shutdown.
         root_span: OpenTelemetry root span for this request.
@@ -372,6 +381,7 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
         query=context.query_request.query,
         skip_userid_check=context.skip_userid_check,
         topic_summary=topic_summary,
+        artifacts=artifacts,
     )
 
     # Set final OTEL root-span attributes (input set earlier; llm.* on llm.inference)
@@ -391,21 +401,25 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
 
 
 async def agent_response_generator(
-    agent: Agent[Any, str],
+    agent: Agent[AgentRunDeps, str],
+    run_deps: AgentRunDeps,
     responses_params: ResponsesApiParams,
     context: ResponseGeneratorContext,
     turn_summary: TurnSummary,
     endpoint_path: str,
+    artifacts: AgentTurnArtifacts,
     image_attachments: Optional[list[Attachment]] = None,
 ) -> AsyncIterator[str]:
     """Stream SSE events from an agent run and update the turn summary.
 
     Args:
         agent: Agent to execute.
+        run_deps: Per-run deps passed to ``agent.run_stream_events``.
         responses_params: Prepared Responses API parameters.
         context: Streaming request context.
         turn_summary: Mutable summary to fill while streaming.
         endpoint_path: Endpoint path used for metric labeling.
+        artifacts: PAI artifacts to record when the run completes.
         image_attachments: Image attachments for multimodal prompt construction.
 
     Yields:
@@ -445,6 +459,7 @@ async def agent_response_generator(
         async with agent.run_stream_events(
             prompt,
             conversation_id=responses_params.conversation,
+            deps=run_deps,
         ) as stream:
             async for event in stream:
                 if payload := dispatch_stream_event(event, dispatch_state):
@@ -461,6 +476,7 @@ async def agent_response_generator(
             return
 
         run_result = dispatch_state.run_result
+        artifacts.record(run_result, run_deps)
         turn_summary.token_usage = extract_agent_token_usage(
             run_result.usage,
             responses_params.model,
