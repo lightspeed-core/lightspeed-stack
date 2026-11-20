@@ -51,6 +51,7 @@ class ProviderRegistry(metaclass=Singleton):
     def __init__(self) -> None:
         """Initialize an empty registry."""
         self._providers: dict[ProviderId, InferenceProvider[Any, Any]] = {}
+        self._initialized: bool = False
 
     async def initialize(self, inference: InferenceConfiguration) -> None:
         """Register and initialize providers from configuration.
@@ -65,12 +66,19 @@ class ProviderRegistry(metaclass=Singleton):
             await provider.initialize()
             self._providers[provider.provider_id] = provider
 
+        self._initialized = True
+
         provider_ids = [provider.provider_id for provider in self.list_providers()]
         logger.info(
             "Inference provider registry initialized with %d provider(s): %s",
             len(provider_ids),
             provider_ids,
         )
+
+    @property
+    def is_initialized(self) -> bool:
+        """Whether the registry has been initialized."""
+        return self._initialized
 
     def find_provider(
         self, provider_id: ProviderId
