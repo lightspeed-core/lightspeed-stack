@@ -17,7 +17,7 @@ from conversations.display_history.agentic.projection.items import (
     turn_items_from_messages,
 )
 from models.common.agents import AgentRunDeps
-from utils.responses import deduplicate_referenced_documents
+from utils.referenced_documents import deduplicate_referenced_documents
 
 type AgentRunOutcome = AgentRunResult[Any] | RunCancelled
 """Completed agent run or a cancelled run that still has message history."""

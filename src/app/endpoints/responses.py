@@ -103,12 +103,12 @@ from utils.rag.vector_search import (
     append_inline_rag_context_to_responses_input,
     build_rag_context,
 )
+from utils.referenced_documents import deduplicate_referenced_documents
 from utils.responses import (
     apply_reasoning_for_resolved_tools,
     build_tool_call_summary,
     build_turn_summary,
     check_model_configured,
-    deduplicate_referenced_documents,
     extract_shield_moderation_text,
     extract_text_from_response_items,
     extract_token_usage,

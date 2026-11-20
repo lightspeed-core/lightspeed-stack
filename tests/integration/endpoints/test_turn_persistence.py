@@ -53,6 +53,7 @@ from app.endpoints.streaming_query import streaming_query_endpoint_handler
 from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import QueryRequest, ResponsesRequest
+from models.common.agents import AgentTurnArtifacts
 from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
@@ -1322,7 +1323,12 @@ class TestTurnNobodyStored:
         await _seed(test_config, mock_conversation_store, _compacted_conversation())
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
-            new=mocker.AsyncMock(return_value=TurnSummary(llm_response="An answer")),
+            new=mocker.AsyncMock(
+                return_value=(
+                    TurnSummary(llm_response="An answer"),
+                    AgentTurnArtifacts(),
+                )
+            ),
         )
 
         with pytest.raises(TurnNotStoredError, match=CONV_ID_LLAMA):

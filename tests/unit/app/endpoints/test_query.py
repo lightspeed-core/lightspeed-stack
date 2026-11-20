@@ -12,6 +12,7 @@ from app.endpoints.query import query_endpoint_handler
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.api.responses.successful import QueryResponse
+from models.common.agents import AgentTurnArtifacts
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import (
@@ -154,8 +155,8 @@ class TestQueryEndpointHandler:
 
         async def mock_retrieve_agent_response(
             *_args: Any, **_kwargs: Any
-        ) -> TurnSummary:
-            return mock_turn_summary
+        ) -> tuple[TurnSummary, AgentTurnArtifacts]:
+            return mock_turn_summary, AgentTurnArtifacts()
 
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
@@ -244,7 +245,9 @@ class TestQueryEndpointHandler:
         mock_turn_summary.token_usage = TokenCounter(input_tokens=3, output_tokens=7)
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
-            new=mocker.AsyncMock(return_value=mock_turn_summary),
+            new=mocker.AsyncMock(
+                return_value=(mock_turn_summary, AgentTurnArtifacts())
+            ),
         )
 
         mocker.patch(
@@ -340,7 +343,9 @@ class TestQueryEndpointHandler:
 
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
-            new=mocker.AsyncMock(return_value=mock_turn_summary),
+            new=mocker.AsyncMock(
+                return_value=(mock_turn_summary, AgentTurnArtifacts())
+            ),
         )
         mocker.patch("app.endpoints.query.store_query_results")
         mocker.patch("app.endpoints.query.consume_query_tokens")
@@ -412,7 +417,7 @@ class TestQueryEndpointHandler:
         )
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
-            new=mocker.AsyncMock(return_value=TurnSummary()),
+            new=mocker.AsyncMock(return_value=(TurnSummary(), AgentTurnArtifacts())),
         )
         mocker.patch("app.endpoints.query.store_query_results")
         mocker.patch("app.endpoints.query.consume_query_tokens")
@@ -490,8 +495,8 @@ class TestQueryEndpointHandler:
 
         async def mock_retrieve_agent_response(
             *_args: Any, **_kwargs: Any
-        ) -> TurnSummary:
-            return TurnSummary()
+        ) -> tuple[TurnSummary, AgentTurnArtifacts]:
+            return TurnSummary(), AgentTurnArtifacts()
 
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
@@ -557,7 +562,7 @@ class TestQueryEndpointHandler:
 
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
-            new=mocker.AsyncMock(return_value=TurnSummary()),
+            new=mocker.AsyncMock(return_value=(TurnSummary(), AgentTurnArtifacts())),
         )
         mock_maybe_get_topic_summary = mocker.patch(
             "app.endpoints.query.maybe_get_topic_summary",
@@ -644,8 +649,8 @@ class TestQueryEndpointHandler:
 
         async def mock_retrieve_agent_response(
             *_args: Any, **_kwargs: Any
-        ) -> TurnSummary:
-            return TurnSummary()
+        ) -> tuple[TurnSummary, AgentTurnArtifacts]:
+            return TurnSummary(), AgentTurnArtifacts()
 
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",

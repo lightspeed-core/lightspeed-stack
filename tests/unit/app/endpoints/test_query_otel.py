@@ -15,6 +15,7 @@ from app.endpoints.query import query_endpoint_handler
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.api.responses.error import QuotaExceededResponse
+from models.common.agents import AgentTurnArtifacts
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import TurnSummary
 from quota.quota_exceed_error import QuotaExceedError
@@ -99,7 +100,7 @@ def _patch_query_success(mocker: MockerFixture) -> None:
     turn_summary.llm_response = "Kubernetes is a container orchestration platform"
     mocker.patch(
         f"{MODULE}.retrieve_agent_response",
-        new=mocker.AsyncMock(return_value=turn_summary),
+        new=mocker.AsyncMock(return_value=(turn_summary, AgentTurnArtifacts())),
     )
 
     mocker.patch(f"{MODULE}.normalize_conversation_id", return_value="123")

@@ -52,6 +52,7 @@ from app.endpoints.a2a import (
     get_lightspeed_agent_card,
 )
 from configuration import AppConfig
+from models.common.agents import AgentRunDeps
 from models.config import Action
 from tests.unit.conftest import make_openai_model, make_openai_models_list_response
 
@@ -1031,7 +1032,12 @@ class TestA2AAgentExecutor:
         events = [
             e
             async for e in executor._convert_stream_to_events(
-                mock_agent, "hi", "task-1", "ctx-1", conversation_id=conversation_id
+                mock_agent,
+                AgentRunDeps(),
+                "hi",
+                "task-1",
+                "ctx-1",
+                conversation_id=conversation_id,
             )
         ]
 
@@ -1328,7 +1334,10 @@ class TestA2AOtelSpans:
         mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
         mock_agent = mocker.MagicMock()
         mock_agent.run_stream_events.return_value = mock_stream_ctx
-        mocker.patch("app.endpoints.a2a.build_agent", return_value=mock_agent)
+        mocker.patch(
+            "app.endpoints.a2a.build_agent",
+            return_value=mock_agent,
+        )
 
         await executor._process_task_streaming(
             context, task_updater, context.task_id, context.context_id
@@ -1445,7 +1454,10 @@ class TestA2AOtelSpans:
         mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
         mock_agent = mocker.MagicMock()
         mock_agent.run_stream_events.return_value = mock_stream_ctx
-        mocker.patch("app.endpoints.a2a.build_agent", return_value=mock_agent)
+        mocker.patch(
+            "app.endpoints.a2a.build_agent",
+            return_value=mock_agent,
+        )
 
         await executor._process_task_streaming(
             context, task_updater, context.task_id, context.context_id
@@ -1550,7 +1562,10 @@ class TestA2AOtelSpans:
         mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
         mock_agent = mocker.MagicMock()
         mock_agent.run_stream_events.return_value = mock_stream_ctx
-        mocker.patch("app.endpoints.a2a.build_agent", return_value=mock_agent)
+        mocker.patch(
+            "app.endpoints.a2a.build_agent",
+            return_value=mock_agent,
+        )
 
         await executor._process_task_streaming(
             context, task_updater, context.task_id, context.context_id
@@ -1774,7 +1789,10 @@ class TestA2AOtelSpans:
         mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
         mock_agent = mocker.MagicMock()
         mock_agent.run_stream_events.return_value = mock_stream_ctx
-        mocker.patch("app.endpoints.a2a.build_agent", return_value=mock_agent)
+        mocker.patch(
+            "app.endpoints.a2a.build_agent",
+            return_value=mock_agent,
+        )
 
         await executor._process_task_streaming(
             context, task_updater, context.task_id, context.context_id

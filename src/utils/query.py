@@ -17,6 +17,9 @@ from app.database import get_session
 from cache.cache_entry import CacheEntry
 from cache.cache_error import CacheError
 from configuration import configuration
+from conversations.display_history.persistence.facade.agentic_turn import (
+    store_agentic_turn,
+)
 from log import get_logger
 from models.api.requests import QueryRequest
 from models.api.responses.error import (
@@ -27,6 +30,7 @@ from models.api.responses.error import (
     QuotaExceededResponse,
     UnprocessableEntityResponse,
 )
+from models.common.agents import AgentTurnArtifacts
 from models.common.query import Attachment
 from models.common.turn_summary import TurnSummary
 from models.config import Action
@@ -176,7 +180,7 @@ def build_multimodal_input(
     return parts
 
 
-def store_query_results(  # pylint: disable=too-many-arguments
+def store_query_results(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     user_id: str,
     conversation_id: str,
     model: str,
@@ -187,6 +191,7 @@ def store_query_results(  # pylint: disable=too-many-arguments
     skip_userid_check: bool,
     attachments: Optional[list[Attachment]] = None,
     topic_summary: Optional[str] = None,
+    artifacts: Optional[AgentTurnArtifacts] = None,
 ) -> None:
     """
     Store query results: transcript, conversation details, and cache.
@@ -207,6 +212,7 @@ def store_query_results(  # pylint: disable=too-many-arguments
         skip_userid_check: Whether to skip user ID validation
         attachments: Optional list of attachments (for transcript only)
         topic_summary: Optional topic summary for the conversation
+        artifacts: Optional PAI run artifacts for agentic display history.
 
     Raises:
         HTTPException: On any database, cache, or IO errors during processing
@@ -237,7 +243,7 @@ def store_query_results(  # pylint: disable=too-many-arguments
     # Persist conversation details
     try:
         logger.info("Persisting conversation details")
-        persist_user_conversation_details(
+        turn_number = persist_user_conversation_details(
             user_id=user_id,
             conversation_id=conversation_id,
             started_at=started_at,
@@ -251,6 +257,9 @@ def store_query_results(  # pylint: disable=too-many-arguments
         logger.exception("Error persisting conversation details.")
         response = InternalServerErrorResponse.database_error()
         raise HTTPException(**response.model_dump()) from e
+
+    if artifacts is not None and artifacts.is_recorded():
+        store_agentic_turn(conversation_id, turn_number, artifacts.run, artifacts.deps)
 
     # Store conversation in cache
     cache_entry = CacheEntry(
@@ -367,7 +376,7 @@ def persist_user_conversation_details(
     provider_id: str,
     topic_summary: Optional[str],
     response_id: str,
-) -> None:
+) -> int:
     """Associate conversation to user in the database.
 
     Args:
@@ -379,6 +388,9 @@ def persist_user_conversation_details(
         provider_id: The provider identifier
         topic_summary: Optional topic summary for the conversation
         response_id: Response ID for the conversation
+
+    Returns:
+        The turn number assigned to the new UserTurn row.
 
     """
     # Normalize the conversation ID (strip 'conv_' prefix if present)
@@ -452,6 +464,7 @@ def persist_user_conversation_details(
         logger.debug(
             "Successfully committed conversation %s to database", normalized_id
         )
+        return turn_number
 
 
 def update_conversation_topic_summary(
