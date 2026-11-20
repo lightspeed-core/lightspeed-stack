@@ -13,16 +13,19 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
-from typing import Any
+from typing import Any, Optional, Self
 
 import httpx
 from mcp import ClientSession, McpError
 from mcp.client.streamable_http import streamable_http_client
 from mcp.types import CallToolResult
 
+from constants import OKP_RAG_ID, RH_SERVER_OKP_DEFAULT_URL
 from knowledge.sources.base import KnowledgeSource
+from knowledge.sources.utils import retrieval_mode
 from knowledge.types import KnowledgeMatch, KnowledgeReadiness
 from log import get_logger
+from models.config import RagConfiguration
 from utils.mcp.mcp_headers import ensure_bearer_prefix
 
 logger = get_logger(__name__)
@@ -95,6 +98,36 @@ class OkpKnowledgeSource(KnowledgeSource):
         """
         if self.rows < 1 or self.rows > 20:
             raise ValueError(f"rows must be between 1 and 20, got {self.rows}")
+
+    @classmethod
+    def from_rag_configuration(cls, rag: RagConfiguration) -> Optional[Self]:
+        """Build the OKP source when retrieval configuration includes it.
+
+        Args:
+            rag: RAG configuration. OKP is built only when ``"okp"`` is listed
+                in inline or tool retrieval sources. ``okp.max_chunks`` becomes
+                ``rows``, ``okp.offline`` selects the citation path, and
+                ``okp.rhokp_url`` is the MCP endpoint.
+
+        Returns:
+            The OKP source, or None when OKP is not a retrieval source.
+
+        """
+        mode = retrieval_mode(rag, OKP_RAG_ID)
+        if not mode:
+            return None
+        url = (
+            str(rag.okp.rhokp_url)
+            if rag.okp.rhokp_url is not None
+            else RH_SERVER_OKP_DEFAULT_URL
+        )
+        return cls(
+            name=OKP_RAG_ID,
+            base_url=url,
+            rows=rag.okp.max_chunks,
+            offline=rag.okp.offline,
+            mode=mode,
+        )
 
     @property
     def mcp_url(self) -> str:

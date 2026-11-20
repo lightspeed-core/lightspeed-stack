@@ -20,8 +20,16 @@ from pydantic_ai.embeddings import (
 )
 from pydantic_ai.embeddings.result import EmbedInputType
 
+import constants
 from knowledge.sources.faiss import FaissKnowledgeSource, FaissVectorStore
 from knowledge.types import KnowledgeMatch
+from models.config import (
+    ByokConfiguration,
+    RagConfiguration,
+    RagStore,
+    RetrievalConfiguration,
+    RetrievalStrategyConfiguration,
+)
 
 _STORE_ID = "vs-standard"
 _PDF_DB = Path(__file__).resolve().parents[2] / "e2e" / "rag" / "pdf_kv_store.db"
@@ -775,3 +783,97 @@ class TestFaissKnowledgeSource:
 
         assert readiness.status == "ready"
         assert readiness.message == "FAISS index loaded"
+
+
+class TestFaissKnowledgeSourceFromRagConfiguration:
+    """Tests for building a FAISS source from RAG configuration."""
+
+    def test_maps_a_faiss_store(self, tmp_path: Path) -> None:
+        """Store fields, retrieval mode, and the BYOK chunk limit are applied."""
+        db_path = tmp_path / "ocp.db"
+        _write_store(
+            db_path,
+            "vs_ocp",
+            [[1.0, 0.0]],
+            {0: {"content": "chunk", "chunk_id": "c1"}},
+        )
+        store = RagStore(
+            rag_id="ocp-docs",
+            backend="faiss",
+            vector_db_id="vs_ocp",
+            db_path=str(db_path),
+            relevance_cutoff_score=0.4,
+            embedding_model="openai:text-embedding-3-small",
+            score_multiplier=1.5,
+        )
+        rag = RagConfiguration(
+            byok=ByokConfiguration(stores=[store], max_chunks=7),
+            retrieval=RetrievalConfiguration(
+                inline=RetrievalStrategyConfiguration(sources=["ocp-docs"]),
+                tool=RetrievalStrategyConfiguration(sources=["ocp-docs"]),
+            ),
+        )
+
+        source = FaissKnowledgeSource.from_rag_configuration(rag, store)
+
+        assert source.name == "ocp-docs"
+        assert source.mode == {"auto", "tool"}
+        assert source.max_matches == 7
+        assert source.score_threshold == 0.4
+        assert source.score_multiplier == 1.5
+        assert source.embedding_settings == {
+            "dimensions": constants.DEFAULT_EMBEDDING_DIMENSION
+        }
+        assert source.embedder.model == "openai:text-embedding-3-small"
+        assert isinstance(source.store, FaissVectorStore)
+
+    def test_prefixes_a_local_embedding_model(self, tmp_path: Path) -> None:
+        """A model id without a provider prefix is a sentence-transformers model."""
+        db_path = tmp_path / "ocp.db"
+        _write_store(db_path, "vs_ocp", [[1.0, 0.0]], {0: {"content": "chunk"}})
+        store = RagStore(
+            rag_id="ocp-docs",
+            vector_db_id="vs_ocp",
+            db_path=str(db_path),
+        )
+        rag = RagConfiguration(byok=ByokConfiguration(stores=[store]))
+
+        source = FaissKnowledgeSource.from_rag_configuration(rag, store)
+
+        assert source.mode == set()
+        assert source.embedder.model == (
+            f"sentence-transformers:{constants.DEFAULT_EMBEDDING_MODEL}"
+        )
+
+    def test_rejects_a_non_faiss_store(self) -> None:
+        """A pgvector store is not built as FAISS."""
+        store = RagStore(
+            rag_id="rh-docs",
+            backend="pgvector",
+            vector_db_id="vs_rh",
+            host="db.example",
+            port=5432,
+            db="knowledge",
+            user="reader",
+        )
+        rag = RagConfiguration(byok=ByokConfiguration(stores=[store]))
+
+        with pytest.raises(ValueError, match="pgvector"):
+            FaissKnowledgeSource.from_rag_configuration(rag, store)
+
+    def test_rejects_a_missing_db_path(self) -> None:
+        """A FAISS store without a database path is rejected."""
+        store = RagStore.model_construct(
+            rag_id="ocp-docs",
+            backend="faiss",
+            embedding_model=constants.DEFAULT_EMBEDDING_MODEL,
+            embedding_dimension=constants.DEFAULT_EMBEDDING_DIMENSION,
+            vector_db_id="vs_ocp",
+            db_path=None,
+            score_multiplier=1.0,
+            relevance_cutoff_score=0.3,
+        )
+        rag = RagConfiguration()
+
+        with pytest.raises(ValueError, match="db_path"):
+            FaissKnowledgeSource.from_rag_configuration(rag, store)
