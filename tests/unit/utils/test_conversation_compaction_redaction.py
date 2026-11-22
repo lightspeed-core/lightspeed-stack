@@ -163,9 +163,11 @@ async def test_summarizer_gets_redacted_user_turns(mocker: MockerFixture) -> Non
         buffer_turns=2,
     )
 
-    summarized = summarize.await_args.args[2]
+    await_args = summarize.await_args
+    assert await_args is not None
+    summarized = await_args.args[2]
     assert [item.content for item in summarized] == [
         "ask [EMAIL]",
         "bob@example.org is out",
     ]
-    assert summarize.await_args.kwargs["summarized_through_turn"] == 4
+    assert await_args.kwargs["summarized_through_turn"] == 4
