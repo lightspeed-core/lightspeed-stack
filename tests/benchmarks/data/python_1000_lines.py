@@ -924,6 +924,7 @@ print_rag_response(response)
 
 llm = ChatOpenAI(model_name="gpt-5.6-luna")
 response = llm.invoke("Say Hi")
+print(type(response))
 print(response)
 
 
@@ -935,6 +936,7 @@ print(response)
 
 llm = ChatOpenAI(model_name="gpt-5.6-luna")
 response = llm.invoke("Say Hi")
+print(type(response))
 print(response)
 
 # ### Nastavení "teploty"
