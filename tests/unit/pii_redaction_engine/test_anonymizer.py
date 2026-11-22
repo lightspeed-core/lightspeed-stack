@@ -9,6 +9,7 @@ behavior is validated where the model is available.
 
 import pytest
 from presidio_analyzer import RecognizerResult
+from pytest_mock import MockerFixture
 
 from pii_redaction_engine.anonymizer import (
     DEFAULT_ENTITIES,
@@ -133,3 +134,116 @@ def test_is_allowed_regex_match() -> None:
     checker = _allow_checker(["rh.*"], match="regex")
     assert checker._is_allowed("RHEL") is True
     assert checker._is_allowed("Fedora") is False
+
+
+@pytest.fixture(name="anonymizer")
+def anonymizer_fixture(mocker: MockerFixture) -> PIIAnonymizer:
+    """Use the real registry and anonymizer with a model-free analyzer."""
+    mocker.patch.object(PIIAnonymizer, "_require_installed", return_value="mock_model")
+    mocker.patch("pii_redaction_engine.anonymizer.NlpEngineProvider")
+    mocker.patch("pii_redaction_engine.anonymizer.AnalyzerEngine")
+    return PIIAnonymizer(
+        RedactionConfig(
+            entities={"LOCATION", "PERSON", "IP_ADDRESS"},
+            allow_list=["RHEL"],
+            deny_list={"INTERNAL_PROJECT": ["project cedar"]},
+        )
+    )
+
+
+def test_anonymize_text_adds_recased_match_and_preserves_allowed_term(
+    anonymizer: PIIAnonymizer, mocker: MockerFixture
+) -> None:
+    """Apply new matches to the original text and preserve allow-listed spelling."""
+    analyze = mocker.patch.object(
+        anonymizer.analyzer,
+        "analyze",
+        side_effect=[
+            [],
+            [
+                RecognizerResult("LOCATION", 6, 17, 0.9),
+                RecognizerResult("LOCATION", 23, 27, 0.9),
+            ],
+        ],
+    )
+
+    assert anonymizer.anonymize_text("go to KATRINEHOLM with RHEL") == (
+        "go to <LOCATION> with RHEL"
+    )
+    original, recased = analyze.call_args_list
+    assert original.kwargs["text"] == "go to KATRINEHOLM with RHEL"
+    assert recased.kwargs["text"] == "go to Katrineholm with Rhel"
+    assert recased.kwargs["entities"] == ["LOCATION"]
+
+
+def test_anonymize_text_keeps_first_pass_overlap(
+    anonymizer: PIIAnonymizer, mocker: MockerFixture
+) -> None:
+    """A higher-scoring second-pass match cannot override a first-pass span."""
+    analyze = mocker.patch.object(
+        anonymizer.analyzer,
+        "analyze",
+        side_effect=[
+            [RecognizerResult("PERSON", 0, 4, 0.6)],
+            [RecognizerResult("LOCATION", 0, 4, 0.9)],
+        ],
+    )
+
+    assert anonymizer.anonymize_text("JANE arrived") == "<PERSON> arrived"
+    assert analyze.call_count == 2
+
+
+def test_anonymize_text_prefers_structural_match(
+    anonymizer: PIIAnonymizer, mocker: MockerFixture
+) -> None:
+    """Use the structural replacement even when the NER guess scores higher."""
+    mocker.patch.object(
+        anonymizer.analyzer,
+        "analyze",
+        return_value=[
+            RecognizerResult("IP_ADDRESS", 3, 12, 0.6),
+            RecognizerResult("PERSON", 3, 12, 0.9),
+        ],
+    )
+
+    assert anonymizer.anonymize_text("at 192.0.2.1 now") == "at <IP_ADDRESS> now"
+
+
+@pytest.mark.parametrize(
+    ("text", "case_normalization", "entities"),
+    [
+        ("visit ROME", False, ["LOCATION"]),
+        ("visit ROME", True, ["PERSON"]),
+        ("visit Rome", True, ["LOCATION"]),
+    ],
+    ids=["disabled", "no-eligible-entities", "unchanged-text"],
+)
+def test_anonymize_text_skips_unneeded_second_pass(
+    anonymizer: PIIAnonymizer,
+    mocker: MockerFixture,
+    text: str,
+    case_normalization: bool,
+    entities: list[str],
+) -> None:
+    """Call the analyzer once when case normalization cannot add matches."""
+    anonymizer.case_normalization = case_normalization
+    anonymizer.entities = entities
+    analyze = mocker.patch.object(anonymizer.analyzer, "analyze", return_value=[])
+
+    assert anonymizer.anonymize_text(text) == text
+    analyze.assert_called_once()
+
+
+def test_anonymize_text_registers_and_requests_deny_list_entity(
+    anonymizer: PIIAnonymizer, mocker: MockerFixture
+) -> None:
+    """Run the configured deny-list recognizer and redact its match."""
+    text = "open project cedar"
+    recognizer = anonymizer.registry.get_recognizers(
+        language="en", entities=["INTERNAL_PROJECT"]
+    )[0]
+    matches = recognizer.analyze(text, entities=["INTERNAL_PROJECT"])
+    analyze = mocker.patch.object(anonymizer.analyzer, "analyze", return_value=matches)
+
+    assert anonymizer.anonymize_text(text) == "open <INTERNAL_PROJECT>"
+    assert "INTERNAL_PROJECT" in analyze.call_args.kwargs["entities"]

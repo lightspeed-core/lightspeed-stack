@@ -7,9 +7,11 @@ import io
 from collections.abc import Iterator
 from typing import Any
 
+import httpx2
 import pytest
 from fastapi import HTTPException, Request, status
 from ogx_client import ApiException, BadRequestError
+from openai import APIStatusError
 from pytest_mock import MockerFixture
 
 from app.endpoints.vector_stores import (
@@ -218,13 +220,86 @@ async def test_create_vector_store_success(mocker: MockerFixture) -> None:
 
     request = get_test_request()
     auth = get_test_auth()
-    body = VectorStoreCreateRequest(name="test_store")
+    body = VectorStoreCreateRequest(
+        name="test_store",
+        provider_id="test-provider",
+        embedding_model="test-embedding",
+        embedding_dimension=768,
+    )
 
     response = await create_vector_store(request=request, auth=auth, body=body)
     assert response is not None
     assert response.id == "vs_123"
     assert response.name == "test_store"
     assert response.status == "active"
+    mock_client.vector_stores.create.assert_awaited_once_with(
+        name="test_store",
+        extra_body={
+            "provider_id": "test-provider",
+            "embedding_model": "test-embedding",
+            "embedding_dimension": 768,
+        },
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("method", "endpoint", "kwargs"),
+    [
+        (
+            "create",
+            create_vector_store,
+            {"body": VectorStoreCreateRequest(name="test")},
+        ),
+        ("list", list_vector_stores, {}),
+        ("retrieve", get_vector_store, {"vector_store_id": "vs_123"}),
+        (
+            "update",
+            update_vector_store,
+            {
+                "vector_store_id": "vs_123",
+                "body": VectorStoreUpdateRequest(name="test"),
+            },
+        ),
+        ("delete", delete_vector_store, {"vector_store_id": "vs_123"}),
+    ],
+    ids=["create", "list", "retrieve", "update", "delete"],
+)
+@pytest.mark.parametrize("backend", ["ogx", "openai"])
+async def test_vector_store_status_error_maps_to_quota_exceeded(
+    mocker: MockerFixture,
+    method: str,
+    endpoint: Any,
+    kwargs: dict[str, Any],
+    backend: str,
+) -> None:
+    """Translate upstream rate limits into the public quota error."""
+    mock_authorization_resolvers(mocker)
+    cfg = AppConfig()
+    cfg.init_from_dict(get_test_config())
+    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
+    client = mocker.AsyncMock()
+    mocker.patch(
+        "app.endpoints.vector_stores.AsyncOgxClientHolder.get_client",
+        return_value=client,
+    )
+    error: ApiException | APIStatusError
+    if backend == "ogx":
+        error = ApiException(status=429, reason="Rate limit exceeded")
+    else:
+        response = httpx2.Response(
+            429, request=httpx2.Request("GET", "https://example.test/vector_stores")
+        )
+        error = APIStatusError("Rate limit exceeded", response=response, body=None)
+    operation = getattr(client.vector_stores, method)
+    operation.side_effect = error
+
+    with pytest.raises(HTTPException) as exc_info:
+        await endpoint(request=get_test_request(), auth=get_test_auth(), **kwargs)
+
+    assert exc_info.value.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+    assert exc_info.value.__cause__ is error
+    operation.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -436,7 +511,7 @@ async def test_create_file_success(mocker: MockerFixture) -> None:
 
     # mock_client is a plain AsyncMock, not an AsyncOGXAsLibraryClient, so
     # create_file takes the service-client branch: a (filename, fileobj)
-    # tuple passed straight to client.files.create() for httpx to stream.
+    # tuple passed straight to client.files.create() for httpx2 to stream.
     file_arg = mock_client.files.create.call_args.kwargs["file"]
     filename_arg, fileobj_arg = file_arg
     assert filename_arg == "test.txt"
@@ -1163,6 +1238,34 @@ async def test_create_file_content_length_too_large(mocker: MockerFixture) -> No
 
     assert e.value.status_code == status.HTTP_413_CONTENT_TOO_LARGE
     assert "too large" in str(e.value.detail).lower()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reported_size", [None, 1], ids=["missing", "understated"])
+async def test_create_file_rejects_oversized_stream(
+    mocker: MockerFixture, reported_size: int | None
+) -> None:
+    """Reject the measured size before reading the stream or uploading it."""
+    mock_authorization_resolvers(mocker)
+    cfg = AppConfig()
+    cfg.init_from_dict(get_test_config())
+    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
+    mocker.patch("app.endpoints.vector_stores.DEFAULT_MAX_FILE_UPLOAD_SIZE", 4)
+    upload = mocker.patch(
+        "app.endpoints.vector_stores.AsyncOgxClientHolder.upload_file"
+    )
+    stream = io.BytesIO(b"12345")
+    read = mocker.spy(stream, "read")
+    file = mocker.AsyncMock(filename="upload.txt", size=reported_size, file=stream)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await create_file(request=get_test_request(), auth=get_test_auth(), file=file)
+
+    assert exc_info.value.status_code == status.HTTP_413_CONTENT_TOO_LARGE
+    assert stream.tell() == 0
+    read.assert_not_called()
+    file.read.assert_not_called()
+    upload.assert_not_awaited()
 
 
 @pytest.mark.asyncio

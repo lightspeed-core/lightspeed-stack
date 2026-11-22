@@ -24,7 +24,7 @@ IMAGE_B64 = "aW1hZ2UtYnl0ZXM="
 IMAGE_URL = f"data:image/png;base64,{IMAGE_B64}"
 IMAGE = ImageUrl(url=IMAGE_URL, media_type="image/png")
 IMAGE_PART = {"image_url": IMAGE_URL, "type": "input_image", "detail": "auto"}
-IMAGE_PROMPT = ["new question", IMAGE]
+IMAGE_PROMPT: list[str | ImageUrl] = ["new question", IMAGE]
 IMAGE_MESSAGES: list[ModelMessage] = [
     ModelRequest(parts=[UserPromptPart(content=IMAGE_PROMPT)])
 ]
@@ -139,12 +139,16 @@ async def test_image_prompt_adds_the_image_to_the_new_query(
         "role": "user",
         "content": [{"text": "new question", "type": "input_text"}, IMAGE_PART],
     }
+    extra_body = settings["extra_body"]
+    assert isinstance(extra_body, dict)
     assert result == {
         **settings,
-        "extra_body": {**settings["extra_body"], "input": [*HISTORY, new_query]},
+        "extra_body": {**extra_body, "input": [*HISTORY, new_query]},
     }
     # the settings passed in are not modified
-    assert settings["extra_body"]["input"][-1]["content"] == "new question"
+    original_input = extra_body["input"]
+    assert isinstance(original_input, list)
+    assert original_input[-1]["content"] == "new question"
 
 
 @pytest.mark.asyncio
