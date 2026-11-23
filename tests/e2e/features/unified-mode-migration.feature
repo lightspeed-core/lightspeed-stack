@@ -37,7 +37,6 @@ Feature: Legacy to unified configuration migration
   @skip-in-library-mode @openai-only
   Scenario: Migrated unified configuration boots and serves queries in server mode
     Given The service uses the lightspeed-stack-unified-migrated.yaml configuration
-      And OGX is restarted
       And Lightspeed Stack is restarted
      When I access endpoint "readiness" using HTTP GET method
      Then The status code of the response is 200
