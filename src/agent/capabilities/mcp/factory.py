@@ -284,6 +284,7 @@ class MCPFactory:
         authorization_token, headers = _process_headers(setting.headers)
 
         capability = MCP(
+            id=mcp.name,
             url=mcp.url,
             authorization_token=authorization_token,
             headers=headers,

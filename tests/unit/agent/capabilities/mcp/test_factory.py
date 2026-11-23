@@ -111,7 +111,7 @@ def _install_servers(
     def fake_mcp(**kwargs: object) -> SimpleNamespace:
         captured.append(kwargs)
         return SimpleNamespace(
-            id="mcp.example-sse",
+            id=kwargs["id"],
             url=kwargs["url"],
             local=_ProbeToolset(server_info="docs"),
         )
@@ -420,8 +420,10 @@ class TestMCPFactory:
         capability = await MCPFactory.build_capability(setting)
 
         assert capability is not None
+        assert capability.id == "docs"
         assert captured == [
             {
+                "id": "docs",
                 "url": "https://mcp.example/sse",
                 "authorization_token": "Bearer secret",
                 "headers": {"X-Trace": "trace"},
@@ -441,7 +443,7 @@ class TestMCPFactory:
 
         def fake_mcp(**kwargs: object) -> SimpleNamespace:
             return SimpleNamespace(
-                id="docs-sse",
+                id=kwargs["id"],
                 url=kwargs["url"],
                 local=_ProbeToolset(error=cause),
             )
@@ -451,6 +453,7 @@ class TestMCPFactory:
         with pytest.raises(MCPConnectionError) as raised:
             await MCPFactory.build_capability(MCPSettings(id="docs"))
 
+        assert raised.value.capability_id == "docs"
         assert raised.value.__cause__ is cause
 
     @pytest.mark.asyncio
@@ -473,8 +476,8 @@ class TestMCPFactory:
             ]
         )
 
-        assert capabilities is not None
-        assert len(capabilities) == 2
+        assert [capability.id for capability in capabilities] == ["one", "two"]
+        assert [item["id"] for item in captured] == ["one", "two"]
         assert [item["url"] for item in captured] == [
             "https://mcp.example/one",
             "https://mcp.example/two",
@@ -517,16 +520,17 @@ class TestMCPFactory:
             calls.append(url)
             error = httpx.ConnectError("refused") if url.endswith("/one") else None
             return SimpleNamespace(
-                id=url,
+                id=kwargs["id"],
                 url=url,
                 local=_ProbeToolset(error=error),
             )
 
         mocker.patch("agent.capabilities.mcp.factory.MCP", side_effect=fake_mcp)
 
-        with pytest.raises(MCPConnectionError):
+        with pytest.raises(MCPConnectionError) as raised:
             await MCPFactory.build_capabilities(
                 [MCPSettings(id="one"), MCPSettings(id="two")]
             )
 
+        assert raised.value.capability_id == "one"
         assert calls == ["https://mcp.example/one"]
