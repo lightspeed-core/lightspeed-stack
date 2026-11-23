@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
-"""Filter to fix the generated OpenAPI documentation with configuration schema."""
+"""Filter generated OpenAPI Markdown from stdin or files and write it to stdout.
+
+Remove exact Examples headings and JSON fences with their contents, preserve
+Python and text code blocks, and join table row continuation lines.
+"""
 
 import fileinput
 
