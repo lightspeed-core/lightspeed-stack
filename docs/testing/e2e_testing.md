@@ -348,9 +348,8 @@ All tag behaviour is implemented in **`features/environment.py`**: the hooks (`b
 You can put several tags on one scenario. To document why a scenario is skipped, add a Gherkin comment above the tags:
 
 ```gherkin
-  # WIP — needs a separate OGX container
-  @skip
-  Scenario: Check if service report proper readiness when OGX is not available
+ @skip @cfg_authorized
+  Scenario: V2 conversations endpoint WITHOUT no_tools (known bug - empty vector DB)
 ```
 
 ### Hooks (environment.py)
