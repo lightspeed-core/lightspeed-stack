@@ -60,7 +60,8 @@ def _span(spans: Sequence[ReadableSpan], name: str) -> ReadableSpan:
 
 def _attr(span: ReadableSpan, key: str) -> Any:
     """Return a span attribute value (fails if the attribute is absent)."""
-    assert span.attributes is not None and key in span.attributes, (
+    assert span.attributes is not None, "Attributes should be set"
+    assert key in span.attributes, (
         f"attribute {key!r} not on span {span.name!r}: "
         f"{dict(span.attributes or {})}"
     )

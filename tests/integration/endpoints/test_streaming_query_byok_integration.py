@@ -830,7 +830,8 @@ async def test_streaming_query_byok_score_multiplier_shifts_priority(  # pylint:
     prompt = mock_streaming_query_agent.run_stream_events.call_args.args[0]
     pos_b = prompt.find("Doc B low similarity boosted")
     pos_a = prompt.find("Doc A high similarity")
-    assert pos_b != -1 and pos_a != -1
+    assert pos_b != -1
+    assert pos_a != -1
     assert pos_b < pos_a
 
 

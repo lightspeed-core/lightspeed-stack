@@ -484,7 +484,8 @@ async def test_responses_byok_score_multiplier_shifts_chunk_priority(  # pylint:
     # Doc B (higher weighted score) should appear before Doc A in the context
     pos_b = input_text.find("Doc B content - low similarity")
     pos_a = input_text.find("Doc A content - high similarity")
-    assert pos_b != -1 and pos_a != -1
+    assert pos_b != -1
+    assert pos_a != -1
     assert (
         pos_b < pos_a
     ), "Doc B should appear before Doc A due to higher weighted score"
