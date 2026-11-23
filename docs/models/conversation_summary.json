@@ -23,6 +23,7 @@
                     "token_count": {
                         "description": "Number of tokens in summary_text.",
                         "minimum": 0,
+                        "exclusiveMinimum": true,
                         "title": "Token count",
                         "type": "integer"
                     },
