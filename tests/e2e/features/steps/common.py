@@ -185,6 +185,26 @@ def reset_mcp_configuration_for_new_scenario(context: Context) -> None:
     context.lightspeed_stack_skip_restart = False
 
 
+@given("OGX is restarted")
+def restart_ogx(context: Context) -> None:
+    """Restart the OGX container.
+
+    No-ops when ``configure_service`` set ``lightspeed_stack_skip_restart``
+    (same Lightspeed YAML as the previous scenario). Does not clear that
+    flag — ``The service is restarted`` still consumes it.
+    """
+    if getattr(context, "lightspeed_stack_skip_restart", False):
+        print("Skipping Llama Stack restart (Lightspeed config unchanged)")
+        return
+    restart_container("ogx")
+
+
+@given("Lightspeed Stack is restarted")
+def restart_lightspeed_stack(context: Context) -> None:
+    """Restart the Lightspeed Stack container."""
+    restart_container("lightspeed-stack")
+
+
 @given("The service is restarted")
 def restart_service(context: Context) -> None:
     """Restart the lightspeed-stack container and wait for it to be healthy.

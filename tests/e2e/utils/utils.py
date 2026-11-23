@@ -566,12 +566,6 @@ def restart_container(container_name: str) -> None:
     """
     if is_prow_environment():
         restart_pod(container_name)
-        if container_name == "ogx":
-            from tests.e2e.features.steps.health import (
-                reset_ogx_disrupt_once_tracking,
-            )
-
-            reset_ogx_disrupt_once_tracking()
         return
 
     try:
@@ -599,13 +593,6 @@ def restart_container(container_name: str) -> None:
     # rather than only in the proxy steps.
     if container_name == "lightspeed-stack":
         wait_for_lightspeed_stack_http_ready()
-
-    if container_name == "ogx":
-        from tests.e2e.features.steps.health import (
-            reset_ogx_disrupt_once_tracking,
-        )
-
-        reset_ogx_disrupt_once_tracking()
 
 
 def wait_for_lightspeed_stack_http_ready(

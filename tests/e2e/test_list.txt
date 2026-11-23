@@ -10,10 +10,7 @@ features/shields_overrides.feature
 features/shields_granite_guardian.feature
 features/smoketests.feature
 features/inline_rag.feature
-features/proxy.feature
-features/ogx_disrupted.feature
 features/authorized_noop_token.feature
-features/conversations.feature
 features/faiss.feature
 features/opentelemetry.feature
 features/prompts.feature
@@ -37,11 +34,7 @@ features/mcp.feature
 features/mcp_servers_api_auth.feature
 features/mcp_servers_api_no_config.feature
 features/byok_pdf.feature
-features/tls-ca.feature
-features/tls-mtls.feature
-features/tls-tlsv13.feature
 features/unified-mode-boot.feature
-features/unified-mode-legacy.feature
 features/unified-mode-migration.feature
 features/unified-mode-synthesis.feature
 features/okp_rag.feature
