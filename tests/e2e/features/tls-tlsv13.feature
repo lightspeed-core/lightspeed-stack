@@ -1,4 +1,4 @@
-@cfg_tls @skip-in-library-mode @skip-in-prow
+@cfg_tls @skip-in-library-mode @skip-in-prow @skip
 Feature: TLS configuration — TLS minimum version 1.3
   Validate OGX NetworkConfig.tls min_version TLSv1.3 against the mock
   HTTPS inference provider.

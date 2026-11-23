@@ -22,3 +22,11 @@ authentication:
 inference:
   default_provider: tls-openai
   default_model: mock-tls-model
+  providers:
+    - type: openai
+      id: tls-openai
+      skip_model_discovery: true
+      allowed_models:
+        - name: mock-tls-model
+          provider_model_id: mock-tls-model
+          model_type: llm

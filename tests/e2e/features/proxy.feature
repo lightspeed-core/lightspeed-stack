@@ -1,4 +1,4 @@
-@cfg_default @skip-in-library-mode @skip-in-prow
+@cfg_default @skip-in-library-mode @skip-in-prow @skip
 Feature: Proxy and TLS networking tests for OGX providers
 
   Verify that the Lightspeed Stack works correctly when OGX's

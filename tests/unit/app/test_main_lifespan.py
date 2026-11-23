@@ -40,6 +40,8 @@ def configuration_mock_fixture(
         mocker.patch(f"app.main.{name}", new=mocker.AsyncMock())
     config = mocker.patch("app.main.configuration")
     config.configuration.azure_entra_id = None
+    config.inference.default_provider = None
+    config.inference.default_model = None
     return config
 
 

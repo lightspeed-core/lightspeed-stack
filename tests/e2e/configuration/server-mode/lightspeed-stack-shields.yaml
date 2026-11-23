@@ -26,6 +26,12 @@ authentication:
 inference:
   default_provider: openai
   default_model: gpt-5.6-luna
+  providers:
+    - type: openai
+      id: openai
+      api_key_env: OPENAI_API_KEY
+      allowed_models:
+        - ${env.E2E_OPENAI_MODEL:=gpt-5.6-luna}
 shields:
   - name: topic-guard
     provider_id: question_validity

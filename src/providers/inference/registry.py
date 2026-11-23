@@ -11,6 +11,7 @@ from log import get_logger
 from providers.inference.azure.provider import AzureInferenceProvider
 from providers.inference.bedrock.provider import BedrockInferenceProvider
 from providers.inference.errors import (
+    DefaultModelNotAvailableError,
     NoModelConfiguredError,
     ProviderNotFoundError,
 )
@@ -66,6 +67,14 @@ class ProviderRegistry(metaclass=Singleton):
             self._providers[provider.provider_id] = provider
 
         provider_ids = [provider.provider_id for provider in self.list_providers()]
+
+        # Validate default model
+        if (default_provider := inference.default_provider) and (
+            default_model := inference.default_model
+        ):
+            if not self._is_llm_available(default_provider, default_model):
+                raise DefaultModelNotAvailableError(default_provider, default_model)
+
         logger.info(
             "Inference provider registry initialized with %d provider(s): %s",
             len(provider_ids),
