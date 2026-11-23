@@ -866,7 +866,8 @@ class TestBuildAddItemsRequest:
         assert items[0].type == "message"
         assert items[0].role == "user"
         assert items[0].content == "Hello"
-        assert items[1].type == "message" and items[1].role == "assistant"
+        assert items[1].type == "message"
+        assert items[1].role == "assistant"
         assert items[1].content == "I cannot help with that"
 
     def test_skips_invalid_dicts(self) -> None:
@@ -912,9 +913,11 @@ class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-metho
         assert isinstance(request, AddItemsRequest)
         items = list(request)
         assert len(items) == 2
-        assert items[0].type == "message" and items[0].role == "user"
+        assert items[0].type == "message"
+        assert items[0].role == "user"
         assert items[0].content == "Hello"
-        assert items[1].type == "message" and items[1].role == "assistant"
+        assert items[1].type == "message"
+        assert items[1].role == "assistant"
         assert items[1].content == "I cannot help with that"
 
     @pytest.mark.asyncio
@@ -965,9 +968,11 @@ class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
         assert isinstance(request, AddItemsRequest)
         items = list(request)
         assert len(items) == 2
-        assert items[0].type == "message" and items[0].role == "user"
+        assert items[0].type == "message"
+        assert items[0].role == "user"
         assert items[0].content == "Hello"
-        assert items[1].type == "message" and items[1].role == "assistant"
+        assert items[1].type == "message"
+        assert items[1].role == "assistant"
         assert items[1].content == "I cannot help with that"
 
 
@@ -1021,7 +1026,8 @@ class TestReplaceLastAssistantMessage:
         assert isinstance(request, AddItemsRequest)
         items = list(request)
         assert len(items) == 1
-        assert items[0].type == "message" and items[0].role == "assistant"
+        assert items[0].type == "message"
+        assert items[0].role == "assistant"
         assert items[0].content == "Blocked by guardrail."
 
     @pytest.mark.asyncio
