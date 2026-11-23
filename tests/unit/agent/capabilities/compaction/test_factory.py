@@ -3,15 +3,8 @@
 from types import SimpleNamespace
 
 import pytest
-from pydantic_ai_harness.compaction import (
-    ClampOversizedMessages,
-    ClearToolResults,
-    SummarizingCompaction,
-    TieredCompaction,
-)
-from pytest_mock import MockerFixture
+from pytest_mock import MockerFixture, MockType
 
-import constants
 from agent.capabilities.compaction.factory import CompactionFactory
 from agent.types.settings import CompactionSettings
 from models.config import CompactionConfiguration
@@ -20,40 +13,32 @@ from providers.inference.errors import (
     ModelTypeNotSupportedError,
     ProviderNotFoundError,
 )
-from utils.token_estimator import estimate_tokens
 
 
 def _install(
     mocker: MockerFixture,
-    *,
-    summary_prompt: str | None = None,
-    buffer_turns: int = 2,
-    threshold_ratio: float = 0.8,
-) -> MockerFixture:
-    """Patch compaction configuration and model resolution."""
+    compaction: CompactionConfiguration | None = None,
+) -> tuple[MockType, MockType]:
+    """Patch configuration, model resolution, and the tiered compaction builder."""
+    config = compaction or CompactionConfiguration(enabled=True)
     mocker.patch(
         "agent.capabilities.compaction.factory.configuration",
-        SimpleNamespace(
-            compaction=CompactionConfiguration(
-                enabled=True,
-                threshold_ratio=threshold_ratio,
-                buffer_turns=buffer_turns,
-                buffer_max_ratio=0.25,
-                summary_prompt=summary_prompt,
-            )
-        ),
+        SimpleNamespace(compaction=config),
     )
     registry = mocker.Mock()
     mocker.patch(
         "agent.capabilities.compaction.factory.ProviderRegistry",
         return_value=registry,
     )
-    return registry
+    builder = mocker.patch(
+        "agent.capabilities.compaction.factory.build_tiered_compaction",
+    )
+    return registry, builder
 
 
 def test_disabled_compaction_builds_nothing(mocker: MockerFixture) -> None:
-    """Disabled settings do not resolve a summarizer model."""
-    registry = _install(mocker)
+    """Disabled settings do not resolve a summarizer or build a capability."""
+    registry, builder = _install(mocker)
 
     assert (
         CompactionFactory.build_capability(
@@ -63,6 +48,7 @@ def test_disabled_compaction_builds_nothing(mocker: MockerFixture) -> None:
     )
 
     registry.resolve_model_instance.assert_not_called()
+    builder.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -77,7 +63,7 @@ def test_unresolved_summarizer_builds_nothing(
     mocker: MockerFixture, error: Exception
 ) -> None:
     """A summarizer that cannot be resolved produces no capability."""
-    registry = _install(mocker)
+    registry, builder = _install(mocker)
     registry.resolve_model_instance.side_effect = error
 
     assert (
@@ -87,56 +73,32 @@ def test_unresolved_summarizer_builds_nothing(
         is None
     )
 
+    builder.assert_not_called()
 
-def test_builds_tiered_compaction_from_configuration(mocker: MockerFixture) -> None:
-    """Tier thresholds and the summarizer come from compaction configuration."""
+
+def test_resolved_model_is_passed_to_the_tiered_builder(
+    mocker: MockerFixture,
+) -> None:
+    """The loaded compaction config and resolved model are handed to the builder.
+
+    The context window is not yet available from the provider registry, so the
+    factory passes ``None`` and returns whatever the builder produces.
+    """
+    compaction = CompactionConfiguration(
+        enabled=True,
+        threshold_ratio=0.8,
+        buffer_turns=2,
+        summary_prompt="Summarize\n{messages}",
+    )
+    registry, builder = _install(mocker, compaction)
     model = mocker.Mock()
-    registry = _install(mocker, buffer_turns=2, threshold_ratio=0.8)
     registry.resolve_model_instance.return_value = model
+    builder.return_value = mocker.Mock()
 
     capability = CompactionFactory.build_capability(
         CompactionSettings(enabled=True, provider="openai", model="gpt")
     )
 
-    assert isinstance(capability, TieredCompaction)
+    assert capability is builder.return_value
     registry.resolve_model_instance.assert_called_once_with("llm", "openai", "gpt")
-    assert capability.target_fraction == 0.8
-    assert capability.context_window is None
-    assert capability.fallback_context_window == constants.DEFAULT_CONTEXT_WINDOW
-    assert capability.tokenizer is estimate_tokens
-
-    clamp, clear, summarizer = capability.tiers
-    assert isinstance(clamp, ClampOversizedMessages)
-    assert clamp.max_part_tokens == 50000
-    assert clamp.tokenizer is estimate_tokens
-    assert isinstance(clear, ClearToolResults)
-    assert clear.max_tokens == 1
-    assert clear.tokenizer is estimate_tokens
-    assert isinstance(summarizer, SummarizingCompaction)
-    assert summarizer.model is model
-    assert summarizer.max_messages == 1
-    assert summarizer.keep_messages == 2
-    assert summarizer.keep_tokens is None
-    assert summarizer.tokenizer is estimate_tokens
-    assert summarizer.incremental is True
-    assert summarizer.preserve_first_user_message is True
-    assert summarizer.keep_user_messages is True
-    default_prompt = SummarizingCompaction.__dataclass_fields__[
-        "summary_prompt"
-    ].default
-    assert summarizer.summary_prompt == default_prompt
-
-
-def test_custom_summary_prompt_replaces_the_default(mocker: MockerFixture) -> None:
-    """A configured summary prompt is copied onto the summarizer."""
-    registry = _install(mocker, summary_prompt="Summarize\n{messages}")
-    registry.resolve_model_instance.return_value = mocker.Mock()
-
-    capability = CompactionFactory.build_capability(
-        CompactionSettings(enabled=True, provider="openai", model="gpt")
-    )
-
-    assert isinstance(capability, TieredCompaction)
-    summarizer = capability.tiers[2]
-    assert isinstance(summarizer, SummarizingCompaction)
-    assert summarizer.summary_prompt == "Summarize\n{messages}"
+    builder.assert_called_once_with(compaction, model, None)
