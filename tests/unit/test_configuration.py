@@ -704,9 +704,8 @@ customization:
     assert cfg.customization is not None
     assert cfg.customization.custom_profile is not None
     fetched_prompts = cfg.customization.custom_profile.get_prompts()
-    assert fetched_prompts is not None and fetched_prompts.get(
-        "default"
-    ) == expected_prompts.get("default")
+    assert fetched_prompts is not None
+    assert fetched_prompts.get("default") == expected_prompts.get("default")
 
 
 def test_configuration_with_all_customizations(tmpdir: Path) -> None:
@@ -743,13 +742,11 @@ customization:
     cfg = AppConfig()
     cfg.load_configuration(str(cfg_filename))
 
-    assert (
-        cfg.customization is not None and cfg.customization.custom_profile is not None
-    )
+    assert cfg.customization is not None
+    assert cfg.customization.custom_profile is not None
     fetched_prompts = cfg.customization.custom_profile.get_prompts()
-    assert fetched_prompts is not None and fetched_prompts.get(
-        "default"
-    ) == expected_prompts.get("default")
+    assert fetched_prompts is not None
+    assert fetched_prompts.get("default") == expected_prompts.get("default")
 
 
 def test_configuration_with_sqlite_conversation_cache(tmpdir: Path) -> None:

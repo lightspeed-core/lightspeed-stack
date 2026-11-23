@@ -64,8 +64,12 @@ def check_token_metrics_increased(context: Context) -> None:
         final_metrics["token_received"] > initial_metrics["token_received"]
     )
 
-    assert sent_increased and received_increased, (
-        f"Both token metrics should have increased. "
+    assert sent_increased, (
+        f"Sent token metrics should have increased. "
+        f"Initial: {initial_metrics}, Final: {final_metrics}"
+    )
+    assert received_increased, (
+        f"Reveivedd token metrics should have increased. "
         f"Initial: {initial_metrics}, Final: {final_metrics}"
     )
 

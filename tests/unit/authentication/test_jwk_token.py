@@ -563,9 +563,8 @@ async def test_no_user_id(
         await dependency(dummy_request(no_user_id_token))
 
     assert exc_info.value.status_code == 401
-    assert "user_id" in str(exc_info.value.detail) and "missing" in str(
-        exc_info.value.detail
-    )
+    assert "user_id" in str(exc_info.value.detail)
+    assert "missing" in str(exc_info.value.detail)
 
 
 @pytest.fixture
@@ -606,9 +605,8 @@ async def test_no_username(
         await dependency(dummy_request(no_username_token))
 
     assert exc_info.value.status_code == 401
-    assert "username" in str(exc_info.value.detail) and "missing" in str(
-        exc_info.value.detail
-    )
+    assert "username" in str(exc_info.value.detail)
+    assert "missing" in str(exc_info.value.detail)
 
 
 @pytest.fixture

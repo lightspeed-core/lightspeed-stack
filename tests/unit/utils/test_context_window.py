@@ -55,7 +55,8 @@ def _inference(
 
 def _automatic_window(provider: str, model_ref: str) -> Optional[int]:
     """Stand in for the automatic tier; it is never asked without a provider."""
-    assert provider and model_ref
+    assert provider
+    assert model_ref
     return AUTOMATIC_WINDOWS.get((provider, model_ref))
 
 

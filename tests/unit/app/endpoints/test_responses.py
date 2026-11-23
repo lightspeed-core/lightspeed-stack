@@ -145,7 +145,8 @@ def test_responses_api_params_preserves_mcp_authorization() -> None:
         ],
     )
     api = ResponsesApiParams.model_validate(req.model_dump())
-    assert api.tools is not None and api.tools[0].authorization == token
+    assert api.tools is not None
+    assert api.tools[0].authorization == token
 
 
 def _patch_base(mocker: MockerFixture, config: AppConfig) -> None:

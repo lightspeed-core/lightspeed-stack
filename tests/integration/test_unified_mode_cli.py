@@ -65,7 +65,8 @@ def _migrate(lcs_config: Path, run_yaml: Path, output: Path) -> None:
         "--migrate-output",
         str(output),
     )
-    assert result.returncode == 0 and output.is_file(), (
+    assert result.returncode == 0
+    assert output.is_file(), (
         f"--migrate-config failed (rc={result.returncode}).\n"
         f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
