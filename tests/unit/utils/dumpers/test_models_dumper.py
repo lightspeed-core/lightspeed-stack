@@ -3488,6 +3488,13 @@ def test_dump_models(tmpdir: Path) -> None:
                         },
                         {
                             "detail": {
+                                "cause": "Response with ID resp_abc123 does not exist",
+                                "response": "Response not found"
+                            },
+                            "label": "response"
+                        },
+                        {
+                            "detail": {
                                 "cause": "Provider with ID openai does not exist",
                                 "response": "Provider not found"
                             },

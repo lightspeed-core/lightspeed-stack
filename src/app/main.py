@@ -19,6 +19,7 @@ from a2a_storage import A2AStorageFactory
 from app import routers
 from app.database import create_tables, initialize_database
 from app.endpoints.streaming_query import shutdown_background_topic_summary_tasks
+from app.exceptions.handlers import register_application_exception_handlers
 from authorization.azure_token_manager import AzureEntraIDManager
 from client.ogx import AsyncOgxClientHolder
 from configuration import configuration
@@ -306,6 +307,7 @@ class GlobalExceptionMiddleware:  # pylint: disable=too-few-public-methods
 
 logger.info("Including routers")
 routers.include_routers(app)
+register_application_exception_handlers(app)
 
 app_routes_paths = [rc.path for rc in iter_route_contexts(app.routes) if rc.path]
 

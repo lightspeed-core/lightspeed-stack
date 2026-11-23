@@ -541,10 +541,11 @@ class TestNotFoundResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 9
+        assert expected_count == 10
 
         # Verify all labeled examples are present
         assert "conversation" in examples
+        assert "response" in examples
         assert "provider" in examples
         assert "model" in examples
         assert "rag" in examples
@@ -645,6 +646,18 @@ class TestInternalServerErrorResponse:
         assert isinstance(response.detail, DetailModel)
         assert response.detail.response == "Database query failed"
         assert response.detail.cause == "Failed to query the database"
+
+    def test_factory_database_error_for_operation(self) -> None:
+        """Test InternalServerErrorResponse.database_error_for_operation() factory."""
+        operation = "list conversations"
+        response = InternalServerErrorResponse.database_error_for_operation(operation)
+        assert isinstance(response, AbstractErrorResponse)
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert isinstance(response.detail, DetailModel)
+        assert response.detail.response == "Database query failed"
+        assert response.detail.cause == (
+            f"Failed to {operation} due to a database error."
+        )
 
     def test_factory_mcp_server_registration_failed(self) -> None:
         """Test InternalServerErrorResponse.mcp_server_registration_failed() factory."""

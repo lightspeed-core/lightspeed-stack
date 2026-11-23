@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_session
-from conversations.display_history.errors import DisplayHistoryDatabaseError
+from conversations.display_history.errors import ConversationHistoryDatabaseError
 
 
 @contextmanager
@@ -18,11 +18,11 @@ def display_history_session(operation: str) -> Iterator[Session]:
         operation: Short label included in errors when the database fails.
 
     Raises:
-        DisplayHistoryDatabaseError: If the database returns an error.
+        ConversationHistoryDatabaseError: If the database returns an error.
 
     """
     try:
         with get_session() as session:
             yield session
     except SQLAlchemyError as exc:
-        raise DisplayHistoryDatabaseError(operation) from exc
+        raise ConversationHistoryDatabaseError(operation) from exc

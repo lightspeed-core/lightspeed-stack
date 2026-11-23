@@ -53,7 +53,7 @@ def get_user_conversation(
     Raises:
         ConversationAccessDeniedError: User may not read this conversation.
         ConversationNotFoundError: Conversation does not exist.
-        DisplayHistoryDatabaseError: Database operation failed.
+        ConversationHistoryDatabaseError: Database operation failed.
 
     """
     if not check_conversation_access(conversation_id, user_id, others_allowed):
