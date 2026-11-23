@@ -1,7 +1,13 @@
 @startuml classes
 set namespaceSeparator none
+class "AgentRunDeps" as src.models.common.agents.run_deps.AgentRunDeps {
+  context_status : Literal
+  model_config
+  referenced_documents : list[ReferencedDocument]
+}
 class "AgentTurnAccumulator" as src.models.common.agents.turn_accumulator.AgentTurnAccumulator {
   chunk_id : int
+  conversation_id : Optional[str]
   emitted_tool_call_ids : set[str]
   emitted_tool_result_ids : set[str]
   rag_id_mapping : Final[dict[str, str]]
@@ -51,6 +57,15 @@ class "CatalogToolParameter" as src.models.common.tools.CatalogToolParameter {
   name : str
   parameter_type : str
   required : bool
+}
+class "CompactionEventData" as src.models.common.agents.stream_payloads.CompactionEventData {
+  conversation_id : str
+  status : Literal['started']
+}
+class "CompactionStreamPayload" as src.models.common.agents.stream_payloads.CompactionStreamPayload {
+  data
+  event : Literal['compaction']
+  create() -> Self
 }
 class "ConversationData" as src.models.common.conversation.ConversationData {
   conversation_id : str
@@ -338,6 +353,7 @@ class "TurnSummary" as src.models.common.turn_summary.TurnSummary {
   tool_calls : list[ToolCallSummary]
   tool_results : list[ToolResultSummary]
 }
+src.models.common.agents.stream_payloads.CompactionStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.EndStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.ErrorStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.InterruptedStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
@@ -346,6 +362,7 @@ src.models.common.agents.stream_payloads.TokenStreamPayload --|> src.models.comm
 src.models.common.agents.stream_payloads.ToolCallStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.ToolResultStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
 src.models.common.agents.stream_payloads.TurnCompleteStreamPayload --|> src.models.common.agents.stream_payloads.StreamPayloadBase
+src.models.common.agents.stream_payloads.CompactionStreamPayload --> src.models.common.agents.stream_payloads.CompactionEventData : data
 src.models.common.agents.stream_payloads.EndStreamPayload --> src.models.common.agents.stream_payloads.EndEventData : data
 src.models.common.agents.stream_payloads.ErrorStreamPayload --> src.models.common.agents.stream_payloads.ErrorEventData : data
 src.models.common.agents.stream_payloads.InterruptedStreamPayload --> src.models.common.agents.stream_payloads.InterruptedEventData : data

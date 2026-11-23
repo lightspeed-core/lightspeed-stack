@@ -6,7 +6,7 @@ Streaming payload models and event type exports.
 
 ## [run_deps.py](run_deps.py)
 
-Mutable per-run collector for custom capability results (PAI ``deps``).
+Per-run fields collected during an agent run for projection.
 
 ## [stream_payloads.py](stream_payloads.py)
 

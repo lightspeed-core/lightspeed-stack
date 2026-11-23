@@ -12,11 +12,11 @@ Abstract base for pluggable knowledge sources.
 
 Faiss vector store backed by a sqlite-faiss kvstore file.
 
-## [pgvector.py](pgvector.py)
-
-pgvector knowledge source that reads OGX ``remote::pgvector`` tables.
-
 ## [okp.py](okp.py)
 
 OKP knowledge source backed by the OKP MCP server.
+
+## [pgvector.py](pgvector.py)
+
+pgvector knowledge source that reads OGX ``remote::pgvector`` tables.
 

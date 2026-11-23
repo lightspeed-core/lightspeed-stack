@@ -12,6 +12,10 @@ Unit tests for knowledge.capability.
 
 Unit tests for knowledge.sources.faiss.
 
+## [test_okp.py](test_okp.py)
+
+Unit tests for knowledge.sources.okp.
+
 ## [test_pgvector.py](test_pgvector.py)
 
 Unit tests for knowledge.sources.pgvector.
@@ -19,10 +23,6 @@ Unit tests for knowledge.sources.pgvector.
 ## [test_reranker.py](test_reranker.py)
 
 Unit tests for knowledge.reranker.
-
-## [test_okp.py](test_okp.py)
-
-Unit tests for knowledge.sources.okp.
 
 ## [test_search.py](test_search.py)
 

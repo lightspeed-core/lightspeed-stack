@@ -2,12 +2,5 @@
 
 ## [__init__.py](__init__.py)
 
-Agentic display timeline (AgentTurn).
+Agentic display history models and run projection.
 
-## [models](models)
-
-Pydantic models for the agentic display-history API.
-
-## [projection](projection)
-
-Map PAI runs and messages onto agentic display-history contracts.

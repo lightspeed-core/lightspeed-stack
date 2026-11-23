@@ -2,15 +2,19 @@
 
 ## [__init__.py](__init__.py)
 
-Unit tests for conversations.display_history.agentic.models.
+Tests for agentic display history models.
 
 ## [test_agent_turn.py](test_agent_turn.py)
 
 Tests for conversations.display_history.agentic.models.agent_turn.
 
+## [test_agent_turn_summary.py](test_agent_turn_summary.py)
+
+Tests for agent turn summary fields stored on the turn row.
+
 ## [test_content.py](test_content.py)
 
-Tests for conversations.display_history.agentic.models.content.
+Tests for display-history message content parts.
 
 ## [test_conversation.py](test_conversation.py)
 

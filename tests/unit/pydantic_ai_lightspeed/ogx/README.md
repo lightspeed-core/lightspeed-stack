@@ -4,6 +4,10 @@
 
 Unit tests for pydantic_ai_lightspeed.ogx sub-package.
 
+## [test_compacted_input_media.py](test_compacted_input_media.py)
+
+Unit tests for carrying the current prompt's media into the compacted input.
+
 ## [test_model.py](test_model.py)
 
 Unit tests for pydantic_ai_lightspeed.ogx._model module.
