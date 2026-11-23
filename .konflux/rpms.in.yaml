@@ -1,15 +1,15 @@
 packages:
-  [
-    gcc,
-    gcc-c++,
-    jq,
-    patch,
-    cmake,
-    cargo,
-  ]
+  - gcc
+  - gcc-c++
+  - jq
+  - patch
+  - cmake
+  - cargo
 upgradePackages:
-  [
-  ]
+  - python3-libs
+  - python3
+  - tesseract
+  - libXrender
 contentOrigin:
   repofiles: ["./redhat.repo"]
 arches: [x86_64, aarch64]
