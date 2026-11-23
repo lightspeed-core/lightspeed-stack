@@ -686,8 +686,18 @@ class AllowedModel(ConfigurationBase):
     `provider_model_id`; dictionary inputs default `name` to `provider_model_id`.
     """
 
-    name: str = Field(..., min_length=1, title="Local model name")
-    provider_model_id: str = Field(..., min_length=1, title="Backend model id")
+    name: str = Field(
+        ...,
+        min_length=1,
+        title="Local model name",
+        description="Model name exposed by Lightspeed.",
+    )
+    provider_model_id: str = Field(
+        ...,
+        min_length=1,
+        title="Backend model id",
+        description="Model identifier expected by the inference provider.",
+    )
     model_type: Optional[Literal["llm", "embedding", "rerank"]] = Field(
         None,
         title="Model type",
@@ -743,9 +753,21 @@ class AllowedModel(ConfigurationBase):
 class AzureEntraIdConfiguration(ConfigurationBase):
     """Microsoft Entra ID authentication attributes for Azure."""
 
-    tenant_id: SecretStr = Field(..., title="Tenant ID")
-    client_id: SecretStr = Field(..., title="Client ID")
-    client_secret: SecretStr = Field(..., title="Client secret")
+    tenant_id: SecretStr = Field(
+        ...,
+        title="Tenant ID",
+        description="Microsoft Entra tenant ID used to request access tokens.",
+    )
+    client_id: SecretStr = Field(
+        ...,
+        title="Client ID",
+        description="Application client ID used to authenticate with Microsoft Entra ID.",
+    )
+    client_secret: SecretStr = Field(
+        ...,
+        title="Client secret",
+        description="Application client secret used to authenticate with Microsoft Entra ID.",
+    )
     scope: str = Field(
         "https://cognitiveservices.azure.com/.default",
         title="Token scope",
@@ -757,16 +779,34 @@ class AzureEntraIdConfiguration(ConfigurationBase):
 class OpenAIInferenceProviderConfig(ConfigurationBase):
     """Connection settings for an OpenAI inference provider."""
 
-    api_key: Optional[SecretStr] = Field(default=None, title="API key")
-    base_url: Optional[str] = Field(default=None, title="Base URL")
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        title="API key",
+        description="API key used to authenticate requests to OpenAI.",
+    )
+    base_url: Optional[str] = Field(
+        default=None, title="Base URL", description="Base URL for OpenAI API requests."
+    )
 
 
 class AzureInferenceProviderConfig(ConfigurationBase):
     """Connection settings for an Azure OpenAI inference provider."""
 
-    base_url: Optional[str] = Field(default=None, title="Azure OpenAI endpoint")
-    api_key: Optional[SecretStr] = Field(default=None, title="API key")
-    api_version: Optional[str] = Field(default=None, title="API version")
+    base_url: Optional[str] = Field(
+        default=None,
+        title="Azure OpenAI endpoint",
+        description="Azure OpenAI endpoint URL for inference requests.",
+    )
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        title="API key",
+        description="API key used to authenticate requests to Azure OpenAI.",
+    )
+    api_version: Optional[str] = Field(
+        default=None,
+        title="API version",
+        description="Azure OpenAI API version used for requests.",
+    )
     entra_id: Optional[AzureEntraIdConfiguration] = Field(
         default=None,
         title="Entra ID",
@@ -783,15 +823,31 @@ class VertexAIInferenceProviderConfig(ConfigurationBase):
     is required; there is no credentials path field in config.
     """
 
-    project: Optional[str] = Field(default=None, title="GCP project")
-    location: Optional[str] = Field(default=None, title="GCP location")
+    project: Optional[str] = Field(
+        default=None,
+        title="GCP project",
+        description="Google Cloud project ID used for Vertex AI requests.",
+    )
+    location: Optional[str] = Field(
+        default=None,
+        title="GCP location",
+        description="Google Cloud location used for Vertex AI requests.",
+    )
 
 
 class BedrockInferenceProviderConfig(ConfigurationBase):
     """Connection settings for an AWS Bedrock inference provider."""
 
-    region: Optional[str] = Field(default=None, title="AWS region")
-    profile_name: Optional[str] = Field(default=None, title="AWS profile")
+    region: Optional[str] = Field(
+        default=None,
+        title="AWS region",
+        description="AWS region used for Bedrock requests.",
+    )
+    profile_name: Optional[str] = Field(
+        default=None,
+        title="AWS profile",
+        description="AWS credentials profile used to authenticate Bedrock requests.",
+    )
     api_key: Optional[SecretStr] = Field(
         default=None,
         title="Bearer token",
@@ -802,34 +858,72 @@ class BedrockInferenceProviderConfig(ConfigurationBase):
 class VllmInferenceProviderConfig(ConfigurationBase):
     """Connection settings for a vLLM inference provider."""
 
-    base_url: Optional[str] = Field(default=None, title="Base URL")
-    api_key: Optional[SecretStr] = Field(default=None, title="API key")
+    base_url: Optional[str] = Field(
+        default=None, title="Base URL", description="Base URL for the vLLM API."
+    )
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        title="API key",
+        description="API key used to authenticate requests to vLLM.",
+    )
 
 
 class WatsonxInferenceProviderConfig(ConfigurationBase):
     """Connection settings for a WatsonX inference provider."""
 
-    api_key: Optional[SecretStr] = Field(default=None, title="API key")
-    project_id: Optional[str] = Field(default=None, title="Project ID")
-    base_url: Optional[str] = Field(default=None, title="Base URL")
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        title="API key",
+        description="API key used to authenticate requests to watsonx.ai.",
+    )
+    project_id: Optional[str] = Field(
+        default=None,
+        title="Project ID",
+        description="IBM Cloud project ID used for watsonx.ai requests.",
+    )
+    base_url: Optional[str] = Field(
+        default=None, title="Base URL", description="Base URL for the watsonx.ai API."
+    )
 
 
 class SentenceTransformersInferenceProviderConfig(ConfigurationBase):
     """Settings for the local sentence-transformers inference provider."""
 
-    device: Optional[str] = Field(default=None, title="Device")
-    cache_dir: Optional[str] = Field(default=None, title="Hugging Face cache directory")
+    device: Optional[str] = Field(
+        default=None,
+        title="Device",
+        description="Device on which to run sentence-transformers models.",
+    )
+    cache_dir: Optional[str] = Field(
+        default=None,
+        title="Hugging Face cache directory",
+        description="Directory where Hugging Face model files are cached.",
+    )
 
 
 class InferenceProviderEntryBase(ConfigurationBase):
     """Shared fields for inference provider entries."""
 
-    id: str = Field(..., title="Provider ID")
-    skip_model_discovery: bool = Field(False, title="Skip model discovery")
-    allowed_models: list[AllowedModel] = Field(
-        default_factory=list, title="Allowed models"
+    id: str = Field(
+        ...,
+        title="Provider ID",
+        description="Identifier for this inference provider instance.",
     )
-    model_profiles_path: Optional[FilePath] = Field(None, title="Model profiles path")
+    skip_model_discovery: bool = Field(
+        False,
+        title="Skip model discovery",
+        description="Disable automatic model discovery for this provider.",
+    )
+    allowed_models: list[AllowedModel] = Field(
+        default_factory=list,
+        title="Allowed models",
+        description="Models explicitly made available through this provider.",
+    )
+    model_profiles_path: Optional[FilePath] = Field(
+        None,
+        title="Model profiles path",
+        description="Path to the file containing model profiles for this provider.",
+    )
     api_key_env: Optional[str] = Field(
         None,
         title="API key environment variable",
@@ -1682,6 +1776,7 @@ class APIKeyTokenConfiguration(ConfigurationBase):
 
     # Use SecretStr to prevent accidental exposure in logs or error messages.
     api_key: SecretStr = Field(
+        description="API key that clients must present to authenticate.",
         min_length=1,
         title="API key",
         json_schema_extra={
@@ -1729,8 +1824,14 @@ class TrustedProxyConfiguration(ConfigurationBase):
 class AuthenticationConfiguration(ConfigurationBase):
     """Authentication configuration."""
 
-    module: str = constants.DEFAULT_AUTHENTICATION_MODULE
-    skip_tls_verification: bool = False
+    module: str = Field(
+        default=constants.DEFAULT_AUTHENTICATION_MODULE,
+        description="Authentication module used to verify incoming requests.",
+    )
+    skip_tls_verification: bool = Field(
+        default=False,
+        description="Skip TLS certificate verification for Kubernetes authentication requests.",
+    )
 
     # LCORE-694: Config option to skip authorization for readiness and liveness probe
     skip_for_health_probes: bool = Field(
@@ -1743,12 +1844,26 @@ class AuthenticationConfiguration(ConfigurationBase):
         title="Skip authorization for metrics",
         description="Skip authorization for the /metrics endpoint",
     )
-    k8s_cluster_api: Optional[AnyHttpUrl] = None
-    k8s_ca_cert_path: Optional[FilePath] = None
-    jwk_config: Optional[JwkConfiguration] = None
-    api_key_config: Optional[APIKeyTokenConfiguration] = None
-    rh_identity_config: Optional[RHIdentityConfiguration] = None
-    trusted_proxy_config: Optional[TrustedProxyConfiguration] = None
+    k8s_cluster_api: Optional[AnyHttpUrl] = Field(
+        default=None,
+        description="URL of the Kubernetes API server used for authentication.",
+    )
+    k8s_ca_cert_path: Optional[FilePath] = Field(
+        default=None,
+        description="Path to the CA certificate used to verify the Kubernetes API server.",
+    )
+    jwk_config: Optional[JwkConfiguration] = Field(
+        default=None, description="Settings for JWT authentication using JSON Web Keys."
+    )
+    api_key_config: Optional[APIKeyTokenConfiguration] = Field(
+        default=None, description="Settings for API key token authentication."
+    )
+    rh_identity_config: Optional[RHIdentityConfiguration] = Field(
+        default=None, description="Settings for Red Hat Identity header authentication."
+    )
+    trusted_proxy_config: Optional[TrustedProxyConfiguration] = Field(
+        default=None, description="Settings for authentication through a trusted proxy."
+    )
 
     @model_validator(mode="after")
     def check_authentication_model(self) -> Self:
@@ -1924,14 +2039,34 @@ class CustomProfile:
 class Customization(ConfigurationBase):
     """Service customization."""
 
-    profile_path: Optional[str] = None
-    disable_query_system_prompt: bool = False
-    disable_shield_ids_override: bool = False
-    system_prompt_path: Optional[FilePath] = None
-    system_prompt: Optional[str] = None
-    agent_card_path: Optional[FilePath] = None
-    agent_card_config: Optional[dict[str, Any]] = None
-    custom_profile: Optional[CustomProfile] = Field(default=None, init=False)
+    profile_path: Optional[str] = Field(
+        default=None, description="Path to the service customization profile."
+    )
+    disable_query_system_prompt: bool = Field(
+        default=False, description="Reject custom system prompts in query requests."
+    )
+    disable_shield_ids_override: bool = Field(
+        default=False, description="Reject shield ID overrides in query requests."
+    )
+    system_prompt_path: Optional[FilePath] = Field(
+        default=None,
+        description="Path to the file containing the service system prompt.",
+    )
+    system_prompt: Optional[str] = Field(
+        default=None, description="System prompt text configured for the service."
+    )
+    agent_card_path: Optional[FilePath] = Field(
+        default=None, description="Path to the file containing the A2A agent card."
+    )
+    agent_card_config: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="A2A agent card configuration loaded from the agent card file.",
+    )
+    custom_profile: Optional[CustomProfile] = Field(
+        default=None,
+        init=False,
+        description="Service customization profile loaded from the configured path.",
+    )
     responses_request_max_size: int = Field(
         default=constants.RESPONSES_REQUEST_MAX_SIZE,
         title="Maximum character length for the serialized responses request body",
@@ -2307,13 +2442,17 @@ class ConversationHistoryConfiguration(ConfigurationBase):
 class AgentStepPersistenceNoopConfiguration(ConfigurationBase):
     """Agent step persistence disabled (no harness store)."""
 
-    type: Literal["noop"] = "noop"
+    type: Literal["noop"] = Field(
+        default="noop", description="Disable persistence of agent steps."
+    )
 
 
 class AgentStepPersistenceSqliteConfiguration(ConfigurationBase):
     """SQLite-backed harness step store."""
 
-    type: Literal["sqlite"] = "sqlite"
+    type: Literal["sqlite"] = Field(
+        default="sqlite", description="Persist agent steps in a SQLite database."
+    )
 
     sqlite: SQLiteDatabaseConfiguration = Field(
         ...,
@@ -3888,7 +4027,10 @@ class Configuration(ConfigurationBase):
         title="Quota handlers",
         description="Quota handlers configuration",
     )
-    azure_entra_id: Optional[AzureEntraIdConfiguration] = None
+    azure_entra_id: Optional[AzureEntraIdConfiguration] = Field(
+        default=None,
+        description="Legacy Microsoft Entra ID settings for Azure OpenAI authentication.",
+    )
 
     rlsapi_v1: RlsapiV1Configuration = Field(
         default_factory=RlsapiV1Configuration,

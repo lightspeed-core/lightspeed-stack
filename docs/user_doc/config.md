@@ -40,9 +40,9 @@ Attributes:
 API Key Token configuration.
 
 
-| Field   | Type   | Description   |
-|---------|--------|---------------|
-| api_key | string |               |
+| Field   | Type   | Description                                        |
+|---------|--------|--------------                                      |
+| api_key | string | API key that clients must present to authenticate. |
 
 
 ## AccessRule
@@ -73,9 +73,9 @@ Note: this is not a real model, just an enumeration of all action names.
 Agent step persistence disabled (no harness store).
 
 
-| Field   | Type   | Description   |
-|---------|--------|---------------|
-| type    | string |               |
+| Field   | Type   | Description                         |
+|---------|--------|--------------                       |
+| type    | string | Disable persistence of agent steps. |
 
 
 ## AgentStepPersistenceSqliteConfiguration
@@ -86,7 +86,7 @@ SQLite-backed harness step store.
 
 | Field   | Type   | Description                               |
 |---------|--------|--------------                             |
-| type    | string |                                           |
+| type    | string | Persist agent steps in a SQLite database. |
 | sqlite  |        | SQLite file for harness step persistence. |
 
 
@@ -101,8 +101,8 @@ Accepts string IDs or dictionaries. String IDs populate both `name` and
 
 | Field             | Type   | Description                                                                                                       |
 |--------           |--------|--------------                                                                                                     |
-| name              | string |                                                                                                                   |
-| provider_model_id | string |                                                                                                                   |
+| name              | string | Model name exposed by Lightspeed.                                                                                 |
+| provider_model_id | string | Model identifier expected by the inference provider.                                                              |
 | model_type        | string | Optional capability override (llm, embedding, or rerank).                                                         |
 | metadata          | object | Optional catalog metadata. context_window: the model's context window in tokens, used by conversation compaction. |
 
@@ -147,18 +147,18 @@ Attributes:
 Authentication configuration.
 
 
-| Field                  | Type    | Description                                          |
-|--------                |---------|--------------                                        |
-| module                 | string  |                                                      |
-| skip_tls_verification  | boolean |                                                      |
-| skip_for_health_probes | boolean | Skip authorization for readiness and liveness probes |
-| skip_for_metrics       | boolean | Skip authorization for the /metrics endpoint         |
-| k8s_cluster_api        | string  |                                                      |
-| k8s_ca_cert_path       | string  |                                                      |
-| jwk_config             |         |                                                      |
-| api_key_config         |         |                                                      |
-| rh_identity_config     |         |                                                      |
-| trusted_proxy_config   |         |                                                      |
+| Field                  | Type    | Description                                                               |
+|--------                |---------|--------------                                                             |
+| module                 | string  | Authentication module used to verify incoming requests.                   |
+| skip_tls_verification  | boolean | Skip TLS certificate verification for Kubernetes authentication requests. |
+| skip_for_health_probes | boolean | Skip authorization for readiness and liveness probes                      |
+| skip_for_metrics       | boolean | Skip authorization for the /metrics endpoint                              |
+| k8s_cluster_api        | string  | URL of the Kubernetes API server used for authentication.                 |
+| k8s_ca_cert_path       | string  | Path to the CA certificate used to verify the Kubernetes API server.      |
+| jwk_config             |         | Settings for JWT authentication using JSON Web Keys.                      |
+| api_key_config         |         | Settings for API key token authentication.                                |
+| rh_identity_config     |         | Settings for Red Hat Identity header authentication.                      |
+| trusted_proxy_config   |         | Settings for authentication through a trusted proxy.                      |
 
 
 ## AuthorizationConfiguration
@@ -180,9 +180,9 @@ Microsoft Entra ID authentication attributes for Azure.
 
 | Field         | Type   | Description                                                                                          |
 |---------------|--------|--------------                                                                                        |
-| tenant_id     | string |                                                                                                      |
-| client_id     | string |                                                                                                      |
-| client_secret | string |                                                                                                      |
+| tenant_id     | string | Microsoft Entra tenant ID used to request access tokens.                                             |
+| client_id     | string | Application client ID used to authenticate with Microsoft Entra ID.                                  |
+| client_secret | string | Application client secret used to authenticate with Microsoft Entra ID.                              |
 | scope         | string | Azure Cognitive Services scope for token requests. Override only if using a different Azure service. |
 
 
@@ -194,9 +194,9 @@ Connection settings for an Azure OpenAI inference provider.
 
 | Field       | Type   | Description                                                                                                    |
 |--------     |--------|--------------                                                                                                  |
-| base_url    | string |                                                                                                                |
-| api_key     | string |                                                                                                                |
-| api_version | string |                                                                                                                |
+| base_url    | string | Azure OpenAI endpoint URL for inference requests.                                                              |
+| api_key     | string | API key used to authenticate requests to Azure OpenAI.                                                         |
+| api_version | string | Azure OpenAI API version used for requests.                                                                    |
 | entra_id    |        | Preferred Entra ID auth for this provider. Takes precedence over the legacy top-level Azure Entra ID settings. |
 
 
@@ -206,16 +206,16 @@ Connection settings for an Azure OpenAI inference provider.
 Azure OpenAI inference provider.
 
 
-| Field                | Type    | Description                                           |
-|--------              |---------|--------------                                         |
-| id                   | string  |                                                       |
-| skip_model_discovery | boolean |                                                       |
-| allowed_models       | array   |                                                       |
-| model_profiles_path  | string  |                                                       |
-| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
-| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
-| type                 | string  | Azure OpenAI remote inference provider.               |
-| config               |         | Endpoint, API key or Entra ID, and API version.       |
+| Field                | Type    | Description                                                   |
+|--------              |---------|--------------                                                 |
+| id                   | string  | Identifier for this inference provider instance.              |
+| skip_model_discovery | boolean | Disable automatic model discovery for this provider.          |
+| allowed_models       | array   | Models explicitly made available through this provider.       |
+| model_profiles_path  | string  | Path to the file containing model profiles for this provider. |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.            |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.         |
+| type                 | string  | Azure OpenAI remote inference provider.                       |
+| config               |         | Endpoint, API key or Entra ID, and API version.               |
 
 
 ## BedrockInferenceProviderConfig
@@ -224,11 +224,11 @@ Azure OpenAI inference provider.
 Connection settings for an AWS Bedrock inference provider.
 
 
-| Field        | Type   | Description                                           |
-|--------      |--------|--------------                                         |
-| region       | string |                                                       |
-| profile_name | string |                                                       |
-| api_key      | string | Optional Bedrock bearer token (alternative to SigV4). |
+| Field        | Type   | Description                                                    |
+|--------      |--------|--------------                                                  |
+| region       | string | AWS region used for Bedrock requests.                          |
+| profile_name | string | AWS credentials profile used to authenticate Bedrock requests. |
+| api_key      | string | Optional Bedrock bearer token (alternative to SigV4).          |
 
 
 ## BedrockInferenceProviderEntry
@@ -237,16 +237,16 @@ Connection settings for an AWS Bedrock inference provider.
 AWS Bedrock inference provider.
 
 
-| Field                | Type    | Description                                              |
-|--------              |---------|--------------                                            |
-| id                   | string  |                                                          |
-| skip_model_discovery | boolean |                                                          |
-| allowed_models       | array   |                                                          |
-| model_profiles_path  | string  |                                                          |
-| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.       |
-| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.    |
-| type                 | string  | AWS Bedrock remote inference provider.                   |
-| config               |         | AWS region, optional profile, and optional bearer token. |
+| Field                | Type    | Description                                                   |
+|--------              |---------|--------------                                                 |
+| id                   | string  | Identifier for this inference provider instance.              |
+| skip_model_discovery | boolean | Disable automatic model discovery for this provider.          |
+| allowed_models       | array   | Models explicitly made available through this provider.       |
+| model_profiles_path  | string  | Path to the file containing model profiles for this provider. |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.            |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.         |
+| type                 | string  | AWS Bedrock remote inference provider.                        |
+| config               |         | AWS region, optional profile, and optional bearer token.      |
 
 
 ## ByokConfiguration
@@ -399,14 +399,14 @@ Service customization.
 
 | Field                       | Type    | Description                                                                     |
 |--------                     |---------|--------------                                                                   |
-| profile_path                | string  |                                                                                 |
-| disable_query_system_prompt | boolean |                                                                                 |
-| disable_shield_ids_override | boolean |                                                                                 |
-| system_prompt_path          | string  |                                                                                 |
-| system_prompt               | string  |                                                                                 |
-| agent_card_path             | string  |                                                                                 |
-| agent_card_config           | object  |                                                                                 |
-| custom_profile              |         |                                                                                 |
+| profile_path                | string  | Path to the service customization profile.                                      |
+| disable_query_system_prompt | boolean | Reject custom system prompts in query requests.                                 |
+| disable_shield_ids_override | boolean | Reject shield ID overrides in query requests.                                   |
+| system_prompt_path          | string  | Path to the file containing the service system prompt.                          |
+| system_prompt               | string  | System prompt text configured for the service.                                  |
+| agent_card_path             | string  | Path to the file containing the A2A agent card.                                 |
+| agent_card_config           | object  | A2A agent card configuration loaded from the agent card file.                   |
+| custom_profile              |         | Service customization profile loaded from the configured path.                  |
 | responses_request_max_size  | integer | Maximum character length for the serialized /v1/response responses request body |
 
 
@@ -505,46 +505,14 @@ In-memory cache configuration.
 Inference configuration.
 
 
-| Field            | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-|------------------|---------|--------------                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| default_model    | string  | Identification of default model used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                   |
-| default_provider | string  | Identification of default provider used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                |
-| context_windows  | object  | Deprecated: set metadata.context_window on the model's inference.providers[].allowed_models entry instead. Map of fully-qualified model identifier (e.g., "openai/gpt-5.6-luna") to context window size in tokens, used by conversation compaction when the model's catalog metadata has no context_window.                                                                                                                                               |
-| providers        | array   | Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into OGX provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list. |
-| max_infer_iters  | integer | Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                       |
-| max_tool_calls   | integer | Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                        |
-
-
-## GraniteGuardianConfig
-
-
-Configuration for the Granite Guardian moderation guardrail.
-
-
-| Field       | Type    | Description |
-|-------------|---------|-------------|
-| url         | string  | Base URL of the OpenAI-compatible Granite Guardian API. |
-| model_id    | string  | Model name sent to the inference server (default `ibm-granite/granite-guardian-4.1-8b`); override when the server registers the model under a different name. |
-| api_key     | string  | API key for the inference endpoint (optional). |
-| max_retries | integer | Maximum number of retries for transient errors (0–5, default 2). |
-| timeout     | integer | Request timeout in seconds (5–300, default 30). |
-| verify_ssl  | boolean or string | TLS verification: `true`, `false`, or path to a CA bundle (default `true`). |
-| batch_size  | integer | Number of risk checks to run in parallel per batch (1–10, default 3). |
-| risks       | array   | List of [RiskDefinition](#riskdefinition) entries to evaluate. |
-| streaming_output_check_interval_tokens | integer | For risks with `output` in `points`, re-check the response against those risks approximately every N generated output tokens while streaming, plus once more over any remaining text once generation completes (default 50). Ignored when no configured risk targets the `output` point. |
-
-
-## GraniteGuardianShieldConfiguration
-
-
-Configuration for a named Granite Guardian guardrail shield.
-
-
-| Field       | Type   | Description |
-|-------------|--------|-------------|
-| name        | string | Unique, user-facing name identifying this shield instance. |
-| provider_id | string | Must be `granite_guardian`. |
-| config      |        | [GraniteGuardianConfig](#graniteguardianconfig) for this shield. |
+| Field            | Type    | Description                                                                                                                                                                                                                                                                                                 |
+|--------          |---------|--------------                                                                                                                                                                                                                                                                                               |
+| default_model    | string  | Identification of default model used when no other model is specified.                                                                                                                                                                                                                                      |
+| default_provider | string  | Identification of default provider used when no other model is specified.                                                                                                                                                                                                                                   |
+| context_windows  | object  | Deprecated: set metadata.context_window on the model's inference.providers[].allowed_models entry instead. Map of fully-qualified model identifier (e.g., "openai/gpt-5.6-luna") to context window size in tokens, used by conversation compaction when the model's catalog metadata has no context_window. |
+| providers        | array   | Discriminated list of inference providers. Empty by default. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list.                                                                                                                           |
+| max_infer_iters  | integer | Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                          |
+| max_tool_calls   | integer | Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                           |
 
 
 ## JsonPathOperator
@@ -719,10 +687,10 @@ or ``rag.retrieval.tool.sources``.
 Connection settings for an OpenAI inference provider.
 
 
-| Field    | Type   | Description   |
-|----------|--------|---------------|
-| api_key  | string |               |
-| base_url | string |               |
+| Field    | Type   | Description                                      |
+|----------|--------|--------------                                    |
+| api_key  | string | API key used to authenticate requests to OpenAI. |
+| base_url | string | Base URL for OpenAI API requests.                |
 
 
 ## OpenAIInferenceProviderEntry
@@ -731,16 +699,16 @@ Connection settings for an OpenAI inference provider.
 OpenAI inference provider.
 
 
-| Field                | Type    | Description                                           |
-|--------              |---------|--------------                                         |
-| id                   | string  |                                                       |
-| skip_model_discovery | boolean |                                                       |
-| allowed_models       | array   |                                                       |
-| model_profiles_path  | string  |                                                       |
-| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
-| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
-| type                 | string  | OpenAI remote inference provider.                     |
-| config               |         | API key and optional base URL.                        |
+| Field                | Type    | Description                                                   |
+|--------              |---------|--------------                                                 |
+| id                   | string  | Identifier for this inference provider instance.              |
+| skip_model_discovery | boolean | Disable automatic model discovery for this provider.          |
+| allowed_models       | array   | Models explicitly made available through this provider.       |
+| model_profiles_path  | string  | Path to the file containing model profiles for this provider. |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.            |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.         |
+| type                 | string  | OpenAI remote inference provider.                             |
+| config               |         | API key and optional base URL.                                |
 
 
 ## PgvectorVectorStoreProvider
@@ -1141,10 +1109,10 @@ Attributes:
 Settings for the local sentence-transformers inference provider.
 
 
-| Field     | Type   | Description   |
-|--------   |--------|---------------|
-| device    | string |               |
-| cache_dir | string |               |
+| Field     | Type   | Description                                          |
+|--------   |--------|--------------                                        |
+| device    | string | Device on which to run sentence-transformers models. |
+| cache_dir | string | Directory where Hugging Face model files are cached. |
 
 
 ## SentenceTransformersInferenceProviderEntry
@@ -1153,16 +1121,16 @@ Settings for the local sentence-transformers inference provider.
 Local sentence-transformers inference provider.
 
 
-| Field                | Type    | Description                                                |
-|--------              |---------|--------------                                              |
-| id                   | string  |                                                            |
-| skip_model_discovery | boolean |                                                            |
-| allowed_models       | array   |                                                            |
-| model_profiles_path  | string  |                                                            |
-| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.         |
-| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.      |
-| type                 | string  | Local sentence-transformers embedding and rerank provider. |
-| config               |         | Optional device and Hugging Face cache directory.          |
+| Field                | Type    | Description                                                   |
+|--------              |---------|--------------                                                 |
+| id                   | string  | Identifier for this inference provider instance.              |
+| skip_model_discovery | boolean | Disable automatic model discovery for this provider.          |
+| allowed_models       | array   | Models explicitly made available through this provider.       |
+| model_profiles_path  | string  | Path to the file containing model profiles for this provider. |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.            |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.         |
+| type                 | string  | Local sentence-transformers embedding and rerank provider.    |
+| config               |         | Optional device and Hugging Face cache directory.             |
 
 
 ## ServiceConfiguration
@@ -1371,10 +1339,10 @@ GOOGLE_APPLICATION_CREDENTIALS in the environment when a credentials file
 is required; there is no credentials path field in config.
 
 
-| Field    | Type   | Description   |
-|----------|--------|---------------|
-| project  | string |               |
-| location | string |               |
+| Field    | Type   | Description                                          |
+|----------|--------|--------------                                        |
+| project  | string | Google Cloud project ID used for Vertex AI requests. |
+| location | string | Google Cloud location used for Vertex AI requests.   |
 
 
 ## VertexAIInferenceProviderEntry
@@ -1383,16 +1351,16 @@ is required; there is no credentials path field in config.
 Vertex AI inference provider.
 
 
-| Field                | Type    | Description                                           |
-|--------              |---------|--------------                                         |
-| id                   | string  |                                                       |
-| skip_model_discovery | boolean |                                                       |
-| allowed_models       | array   |                                                       |
-| model_profiles_path  | string  |                                                       |
-| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
-| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
-| type                 | string  | Google Vertex AI remote inference provider.           |
-| config               |         | GCP project and location.                             |
+| Field                | Type    | Description                                                   |
+|--------              |---------|--------------                                                 |
+| id                   | string  | Identifier for this inference provider instance.              |
+| skip_model_discovery | boolean | Disable automatic model discovery for this provider.          |
+| allowed_models       | array   | Models explicitly made available through this provider.       |
+| model_profiles_path  | string  | Path to the file containing model profiles for this provider. |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.            |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.         |
+| type                 | string  | Google Vertex AI remote inference provider.                   |
+| config               |         | GCP project and location.                                     |
 
 
 ## VllmInferenceProviderConfig
@@ -1401,10 +1369,10 @@ Vertex AI inference provider.
 Connection settings for a vLLM inference provider.
 
 
-| Field    | Type   | Description   |
-|----------|--------|---------------|
-| base_url | string |               |
-| api_key  | string |               |
+| Field    | Type   | Description                                    |
+|----------|--------|--------------                                  |
+| base_url | string | Base URL for the vLLM API.                     |
+| api_key  | string | API key used to authenticate requests to vLLM. |
 
 
 ## VllmInferenceProviderEntry
@@ -1413,16 +1381,16 @@ Connection settings for a vLLM inference provider.
 vLLM inference provider.
 
 
-| Field                | Type    | Description                                           |
-|--------              |---------|--------------                                         |
-| id                   | string  |                                                       |
-| skip_model_discovery | boolean |                                                       |
-| allowed_models       | array   |                                                       |
-| model_profiles_path  | string  |                                                       |
-| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
-| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
-| type                 | string  | vLLM OpenAI-compatible remote inference provider.     |
-| config               |         | Base URL and optional API key.                        |
+| Field                | Type    | Description                                                   |
+|--------              |---------|--------------                                                 |
+| id                   | string  | Identifier for this inference provider instance.              |
+| skip_model_discovery | boolean | Disable automatic model discovery for this provider.          |
+| allowed_models       | array   | Models explicitly made available through this provider.       |
+| model_profiles_path  | string  | Path to the file containing model profiles for this provider. |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.            |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.         |
+| type                 | string  | vLLM OpenAI-compatible remote inference provider.             |
+| config               |         | Base URL and optional API key.                                |
 
 
 ## WatsonxInferenceProviderConfig
@@ -1431,11 +1399,11 @@ vLLM inference provider.
 Connection settings for a WatsonX inference provider.
 
 
-| Field      | Type   | Description   |
-|--------    |--------|---------------|
-| api_key    | string |               |
-| project_id | string |               |
-| base_url   | string |               |
+| Field      | Type   | Description                                          |
+|--------    |--------|--------------                                        |
+| api_key    | string | API key used to authenticate requests to watsonx.ai. |
+| project_id | string | IBM Cloud project ID used for watsonx.ai requests.   |
+| base_url   | string | Base URL for the watsonx.ai API.                     |
 
 
 ## WatsonxInferenceProviderEntry
@@ -1444,13 +1412,13 @@ Connection settings for a WatsonX inference provider.
 WatsonX inference provider.
 
 
-| Field                | Type    | Description                                           |
-|--------              |---------|--------------                                         |
-| id                   | string  |                                                       |
-| skip_model_discovery | boolean |                                                       |
-| allowed_models       | array   |                                                       |
-| model_profiles_path  | string  |                                                       |
-| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.    |
-| extra                | object  | Deprecated escape hatch for unmodeled provider knobs. |
-| type                 | string  | IBM WatsonX remote inference provider.                |
-| config               |         | API key, project ID, and base URL.                    |
+| Field                | Type    | Description                                                   |
+|--------              |---------|--------------                                                 |
+| id                   | string  | Identifier for this inference provider instance.              |
+| skip_model_discovery | boolean | Disable automatic model discovery for this provider.          |
+| allowed_models       | array   | Models explicitly made available through this provider.       |
+| model_profiles_path  | string  | Path to the file containing model profiles for this provider. |
+| api_key_env          | string  | Deprecated: prefer config.api_key with ${env.VAR}.            |
+| extra                | object  | Deprecated escape hatch for unmodeled provider knobs.         |
+| type                 | string  | IBM WatsonX remote inference provider.                        |
+| config               |         | API key, project ID, and base URL.                            |

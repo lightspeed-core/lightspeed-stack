@@ -216,6 +216,11 @@ storage.</p>
     <h2 id="apikeytokenconfiguration">APIKeyTokenConfiguration</h2>
     <p>API Key Token configuration.</p>
     <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
       <thead>
         <tr>
           <th>Field</th>
@@ -227,7 +232,7 @@ storage.</p>
         <tr>
           <td>api_key</td>
           <td>string</td>
-          <td/>
+          <td>API key that clients must present to authenticate.</td>
         </tr>
       </tbody>
     </table>
@@ -272,7 +277,7 @@ names.</p>
         <tr>
           <td>type</td>
           <td>string</td>
-          <td/>
+          <td>Disable persistence of agent steps.</td>
         </tr>
       </tbody>
     </table>
@@ -290,7 +295,7 @@ names.</p>
         <tr>
           <td>type</td>
           <td>string</td>
-          <td/>
+          <td>Persist agent steps in a SQLite database.</td>
         </tr>
         <tr>
           <td>sqlite</td>
@@ -321,12 +326,12 @@ default <code>name</code> to <code>provider_model_id</code>.</p>
         <tr>
           <td>name</td>
           <td>string</td>
-          <td/>
+          <td>Model name exposed by Lightspeed.</td>
         </tr>
         <tr>
           <td>provider_model_id</td>
           <td>string</td>
-          <td/>
+          <td>Model identifier expected by the inference provider.</td>
         </tr>
         <tr>
           <td>model_type</td>
@@ -422,12 +427,13 @@ retain decided approvals for audit purposes before cleanup.</p>
         <tr>
           <td>module</td>
           <td>string</td>
-          <td/>
+          <td>Authentication module used to verify incoming requests.</td>
         </tr>
         <tr>
           <td>skip_tls_verification</td>
           <td>boolean</td>
-          <td/>
+          <td>Skip TLS certificate verification for Kubernetes authentication
+requests.</td>
         </tr>
         <tr>
           <td>skip_for_health_probes</td>
@@ -442,32 +448,33 @@ retain decided approvals for audit purposes before cleanup.</p>
         <tr>
           <td>k8s_cluster_api</td>
           <td>string</td>
-          <td/>
+          <td>URL of the Kubernetes API server used for authentication.</td>
         </tr>
         <tr>
           <td>k8s_ca_cert_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the CA certificate used to verify the Kubernetes API
+server.</td>
         </tr>
         <tr>
           <td>jwk_config</td>
           <td/>
-          <td/>
+          <td>Settings for JWT authentication using JSON Web Keys.</td>
         </tr>
         <tr>
           <td>api_key_config</td>
           <td/>
-          <td/>
+          <td>Settings for API key token authentication.</td>
         </tr>
         <tr>
           <td>rh_identity_config</td>
           <td/>
-          <td/>
+          <td>Settings for Red Hat Identity header authentication.</td>
         </tr>
         <tr>
           <td>trusted_proxy_config</td>
           <td/>
-          <td/>
+          <td>Settings for authentication through a trusted proxy.</td>
         </tr>
       </tbody>
     </table>
@@ -508,17 +515,19 @@ retain decided approvals for audit purposes before cleanup.</p>
         <tr>
           <td>tenant_id</td>
           <td>string</td>
-          <td/>
+          <td>Microsoft Entra tenant ID used to request access tokens.</td>
         </tr>
         <tr>
           <td>client_id</td>
           <td>string</td>
-          <td/>
+          <td>Application client ID used to authenticate with Microsoft Entra
+ID.</td>
         </tr>
         <tr>
           <td>client_secret</td>
           <td>string</td>
-          <td/>
+          <td>Application client secret used to authenticate with Microsoft Entra
+ID.</td>
         </tr>
         <tr>
           <td>scope</td>
@@ -547,17 +556,17 @@ using a different Azure service.</td>
         <tr>
           <td>base_url</td>
           <td>string</td>
-          <td/>
+          <td>Azure OpenAI endpoint URL for inference requests.</td>
         </tr>
         <tr>
           <td>api_key</td>
           <td>string</td>
-          <td/>
+          <td>API key used to authenticate requests to Azure OpenAI.</td>
         </tr>
         <tr>
           <td>api_version</td>
           <td>string</td>
-          <td/>
+          <td>Azure OpenAI API version used for requests.</td>
         </tr>
         <tr>
           <td>entra_id</td>
@@ -586,22 +595,22 @@ legacy top-level Azure Entra ID settings.</td>
         <tr>
           <td>id</td>
           <td>string</td>
-          <td/>
+          <td>Identifier for this inference provider instance.</td>
         </tr>
         <tr>
           <td>skip_model_discovery</td>
           <td>boolean</td>
-          <td/>
+          <td>Disable automatic model discovery for this provider.</td>
         </tr>
         <tr>
           <td>allowed_models</td>
           <td>array</td>
-          <td/>
+          <td>Models explicitly made available through this provider.</td>
         </tr>
         <tr>
           <td>model_profiles_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the file containing model profiles for this provider.</td>
         </tr>
         <tr>
           <td>api_key_env</td>
@@ -644,12 +653,12 @@ legacy top-level Azure Entra ID settings.</td>
         <tr>
           <td>region</td>
           <td>string</td>
-          <td/>
+          <td>AWS region used for Bedrock requests.</td>
         </tr>
         <tr>
           <td>profile_name</td>
           <td>string</td>
-          <td/>
+          <td>AWS credentials profile used to authenticate Bedrock requests.</td>
         </tr>
         <tr>
           <td>api_key</td>
@@ -677,22 +686,22 @@ legacy top-level Azure Entra ID settings.</td>
         <tr>
           <td>id</td>
           <td>string</td>
-          <td/>
+          <td>Identifier for this inference provider instance.</td>
         </tr>
         <tr>
           <td>skip_model_discovery</td>
           <td>boolean</td>
-          <td/>
+          <td>Disable automatic model discovery for this provider.</td>
         </tr>
         <tr>
           <td>allowed_models</td>
           <td>array</td>
-          <td/>
+          <td>Models explicitly made available through this provider.</td>
         </tr>
         <tr>
           <td>model_profiles_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the file containing model profiles for this provider.</td>
         </tr>
         <tr>
           <td>api_key_env</td>
@@ -1023,7 +1032,8 @@ synthesis only.</td>
         <tr>
           <td>azure_entra_id</td>
           <td/>
-          <td/>
+          <td>Legacy Microsoft Entra ID settings for Azure OpenAI
+authentication.</td>
         </tr>
         <tr>
           <td>rlsapi_v1</td>
@@ -1157,42 +1167,42 @@ stored.</td>
         <tr>
           <td>profile_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the service customization profile.</td>
         </tr>
         <tr>
           <td>disable_query_system_prompt</td>
           <td>boolean</td>
-          <td/>
+          <td>Reject custom system prompts in query requests.</td>
         </tr>
         <tr>
           <td>disable_shield_ids_override</td>
           <td>boolean</td>
-          <td/>
+          <td>Reject shield ID overrides in query requests.</td>
         </tr>
         <tr>
           <td>system_prompt_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the file containing the service system prompt.</td>
         </tr>
         <tr>
           <td>system_prompt</td>
           <td>string</td>
-          <td/>
+          <td>System prompt text configured for the service.</td>
         </tr>
         <tr>
           <td>agent_card_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the file containing the A2A agent card.</td>
         </tr>
         <tr>
           <td>agent_card_config</td>
           <td>object</td>
-          <td/>
+          <td>A2A agent card configuration loaded from the agent card file.</td>
         </tr>
         <tr>
           <td>custom_profile</td>
           <td/>
-          <td/>
+          <td>Service customization profile loaded from the configured path.</td>
         </tr>
         <tr>
           <td>responses_request_max_size</td>
@@ -1815,12 +1825,6 @@ fixed delay to handle the case where OGX is still starting up (e.g.,
 when running as a sidecar in the same pod).</td>
         </tr>
         <tr>
-          <td>allow_degraded_mode</td>
-          <td>boolean</td>
-          <td>If enabled, Lightspeed Core can be started even when OGX is not
-accessible (valid for server mode only)</td>
-        </tr>
-        <tr>
           <td>config</td>
           <td/>
           <td>Backend-specific knobs for unified mode, where LCORE synthesizes the
@@ -1903,12 +1907,12 @@ the global default (&#x2018;hybrid&#x2019;).</td>
         <tr>
           <td>api_key</td>
           <td>string</td>
-          <td/>
+          <td>API key used to authenticate requests to OpenAI.</td>
         </tr>
         <tr>
           <td>base_url</td>
           <td>string</td>
-          <td/>
+          <td>Base URL for OpenAI API requests.</td>
         </tr>
       </tbody>
     </table>
@@ -1931,22 +1935,22 @@ the global default (&#x2018;hybrid&#x2019;).</td>
         <tr>
           <td>id</td>
           <td>string</td>
-          <td/>
+          <td>Identifier for this inference provider instance.</td>
         </tr>
         <tr>
           <td>skip_model_discovery</td>
           <td>boolean</td>
-          <td/>
+          <td>Disable automatic model discovery for this provider.</td>
         </tr>
         <tr>
           <td>allowed_models</td>
           <td>array</td>
-          <td/>
+          <td>Models explicitly made available through this provider.</td>
         </tr>
         <tr>
           <td>model_profiles_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the file containing model profiles for this provider.</td>
         </tr>
         <tr>
           <td>api_key_env</td>
@@ -2903,6 +2907,11 @@ to 255. Cannot exceed 255.</td>
     <h2 id="sentencetransformersinferenceproviderconfig">SentenceTransformersInferenceProviderConfig</h2>
     <p>Settings for the local sentence-transformers inference provider.</p>
     <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
       <thead>
         <tr>
           <th>Field</th>
@@ -2914,12 +2923,12 @@ to 255. Cannot exceed 255.</td>
         <tr>
           <td>device</td>
           <td>string</td>
-          <td/>
+          <td>Device on which to run sentence-transformers models.</td>
         </tr>
         <tr>
           <td>cache_dir</td>
           <td>string</td>
-          <td/>
+          <td>Directory where Hugging Face model files are cached.</td>
         </tr>
       </tbody>
     </table>
@@ -2942,22 +2951,22 @@ to 255. Cannot exceed 255.</td>
         <tr>
           <td>id</td>
           <td>string</td>
-          <td/>
+          <td>Identifier for this inference provider instance.</td>
         </tr>
         <tr>
           <td>skip_model_discovery</td>
           <td>boolean</td>
-          <td/>
+          <td>Disable automatic model discovery for this provider.</td>
         </tr>
         <tr>
           <td>allowed_models</td>
           <td>array</td>
-          <td/>
+          <td>Models explicitly made available through this provider.</td>
         </tr>
         <tr>
           <td>model_profiles_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the file containing model profiles for this provider.</td>
         </tr>
         <tr>
           <td>api_key_env</td>
@@ -3440,6 +3449,11 @@ registered corpora).</td>
 GOOGLE_APPLICATION_CREDENTIALS in the environment when a credentials
 file is required; there is no credentials path field in config.</p>
     <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
       <thead>
         <tr>
           <th>Field</th>
@@ -3451,12 +3465,12 @@ file is required; there is no credentials path field in config.</p>
         <tr>
           <td>project</td>
           <td>string</td>
-          <td/>
+          <td>Google Cloud project ID used for Vertex AI requests.</td>
         </tr>
         <tr>
           <td>location</td>
           <td>string</td>
-          <td/>
+          <td>Google Cloud location used for Vertex AI requests.</td>
         </tr>
       </tbody>
     </table>
@@ -3479,22 +3493,22 @@ file is required; there is no credentials path field in config.</p>
         <tr>
           <td>id</td>
           <td>string</td>
-          <td/>
+          <td>Identifier for this inference provider instance.</td>
         </tr>
         <tr>
           <td>skip_model_discovery</td>
           <td>boolean</td>
-          <td/>
+          <td>Disable automatic model discovery for this provider.</td>
         </tr>
         <tr>
           <td>allowed_models</td>
           <td>array</td>
-          <td/>
+          <td>Models explicitly made available through this provider.</td>
         </tr>
         <tr>
           <td>model_profiles_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the file containing model profiles for this provider.</td>
         </tr>
         <tr>
           <td>api_key_env</td>
@@ -3532,12 +3546,12 @@ file is required; there is no credentials path field in config.</p>
         <tr>
           <td>base_url</td>
           <td>string</td>
-          <td/>
+          <td>Base URL for the vLLM API.</td>
         </tr>
         <tr>
           <td>api_key</td>
           <td>string</td>
-          <td/>
+          <td>API key used to authenticate requests to vLLM.</td>
         </tr>
       </tbody>
     </table>
@@ -3560,22 +3574,22 @@ file is required; there is no credentials path field in config.</p>
         <tr>
           <td>id</td>
           <td>string</td>
-          <td/>
+          <td>Identifier for this inference provider instance.</td>
         </tr>
         <tr>
           <td>skip_model_discovery</td>
           <td>boolean</td>
-          <td/>
+          <td>Disable automatic model discovery for this provider.</td>
         </tr>
         <tr>
           <td>allowed_models</td>
           <td>array</td>
-          <td/>
+          <td>Models explicitly made available through this provider.</td>
         </tr>
         <tr>
           <td>model_profiles_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the file containing model profiles for this provider.</td>
         </tr>
         <tr>
           <td>api_key_env</td>
@@ -3602,6 +3616,11 @@ file is required; there is no credentials path field in config.</p>
     <h2 id="watsonxinferenceproviderconfig">WatsonxInferenceProviderConfig</h2>
     <p>Connection settings for a WatsonX inference provider.</p>
     <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
       <thead>
         <tr>
           <th>Field</th>
@@ -3613,17 +3632,17 @@ file is required; there is no credentials path field in config.</p>
         <tr>
           <td>api_key</td>
           <td>string</td>
-          <td/>
+          <td>API key used to authenticate requests to watsonx.ai.</td>
         </tr>
         <tr>
           <td>project_id</td>
           <td>string</td>
-          <td/>
+          <td>IBM Cloud project ID used for watsonx.ai requests.</td>
         </tr>
         <tr>
           <td>base_url</td>
           <td>string</td>
-          <td/>
+          <td>Base URL for the watsonx.ai API.</td>
         </tr>
       </tbody>
     </table>
@@ -3646,22 +3665,22 @@ file is required; there is no credentials path field in config.</p>
         <tr>
           <td>id</td>
           <td>string</td>
-          <td/>
+          <td>Identifier for this inference provider instance.</td>
         </tr>
         <tr>
           <td>skip_model_discovery</td>
           <td>boolean</td>
-          <td/>
+          <td>Disable automatic model discovery for this provider.</td>
         </tr>
         <tr>
           <td>allowed_models</td>
           <td>array</td>
-          <td/>
+          <td>Models explicitly made available through this provider.</td>
         </tr>
         <tr>
           <td>model_profiles_path</td>
           <td>string</td>
-          <td/>
+          <td>Path to the file containing model profiles for this provider.</td>
         </tr>
         <tr>
           <td>api_key_env</td>
