@@ -11,6 +11,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
 from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from models.common.turn_summary import (
@@ -147,29 +148,65 @@ class TestAnonymizeValue:
         assert match is not None
         assert len(match.group(1)) == 16  # 16 hex chars = 64 bits
 
-    def test_missing_secret_raises_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Test that missing OTEL_ANONYMIZATION_SECRET raises a clear error."""
+    def test_missing_secret_raises_when_span_recording(
+        self, monkeypatch: pytest.MonkeyPatch, otel: OtelFixture
+    ) -> None:
+        """Missing secret raises while the current span is being recorded."""
+        tracer, _ = otel
         # Remove the secret that was set by the autouse fixture
         monkeypatch.delenv("OTEL_ANONYMIZATION_SECRET", raising=False)
-        # Explicitly enable tracing
-        monkeypatch.setenv("OTEL_SDK_DISABLED", "false")
-        with pytest.raises(
-            ValueError,
-            match=r"OTEL anonymization secret not configured.*OTEL_ANONYMIZATION_SECRET",
-        ):
-            anonymize_value("test-value")
+        with tracer.start_as_current_span("request"):
+            with pytest.raises(
+                ValueError,
+                match=r"OTEL anonymization secret not configured.*"
+                r"OTEL_ANONYMIZATION_SECRET",
+            ):
+                anonymize_value("test-value")
 
-    @pytest.mark.parametrize("otel_sdk_disabled", [None, "true", "1", "FALSE", ""])
-    def test_missing_secret_with_tracing_disabled_returns_placeholder(
-        self, monkeypatch: pytest.MonkeyPatch, otel_sdk_disabled: str | None
+    def test_missing_secret_without_active_span_returns_placeholder(
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Test missing secret returns a placeholder unless tracing is enabled."""
+        """With no active (recording) span, a missing secret yields a placeholder."""
         monkeypatch.delenv("OTEL_ANONYMIZATION_SECRET", raising=False)
-        if otel_sdk_disabled is None:
-            monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
-        else:
-            monkeypatch.setenv("OTEL_SDK_DISABLED", otel_sdk_disabled)
         result = anonymize_value("test-value")
+        assert result == "[otel-disabled:len=10]"
+        assert "test-value" not in result
+
+    def test_missing_secret_with_disabled_sdk_returns_placeholder(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A disabled SDK yields a non-recording span, so no secret is required."""
+        monkeypatch.delenv("OTEL_ANONYMIZATION_SECRET", raising=False)
+        # TracerProvider reads OTEL_SDK_DISABLED at construction; a disabled SDK
+        # produces non-recording spans.
+        monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
+        provider = TracerProvider()
+        try:
+            tracer = provider.get_tracer("disabled-tracer")
+            with tracer.start_as_current_span("request"):
+                result = anonymize_value("test-value")
+        finally:
+            provider.shutdown()
+        assert result == "[otel-disabled:len=10]"
+        assert "test-value" not in result
+
+    def test_missing_secret_with_sampled_out_span_returns_placeholder(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An enabled SDK that samples the span out is still non-recording.
+
+        This is the distinct case where tracing is on but this trace is dropped by
+        the sampler, so the span is never exported and no secret is required.
+        """
+        monkeypatch.delenv("OTEL_ANONYMIZATION_SECRET", raising=False)
+        monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
+        provider = TracerProvider(sampler=TraceIdRatioBased(0.0))
+        try:
+            tracer = provider.get_tracer("sampled-out-tracer")
+            with tracer.start_as_current_span("request"):
+                result = anonymize_value("test-value")
+        finally:
+            provider.shutdown()
         assert result == "[otel-disabled:len=10]"
         assert "test-value" not in result
 
