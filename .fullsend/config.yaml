@@ -5,6 +5,8 @@
 # See https://fullsend.sh/docs/guides/infrastructure/layered-config-reference
 version: "1"
 runtime: pi
+authorization:
+    - provider: owners_file
 roles:
     - triage
     - coder
