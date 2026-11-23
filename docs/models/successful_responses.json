@@ -191,6 +191,351 @@
                 "title": "AgentStepPersistenceSqliteConfiguration",
                 "type": "object"
             },
+            "AgentTurn": {
+                "description": "One agent run in the public conversation timeline.\n\nA turn is one PAI Agent.run (same identity as Responses response.id when\nthat path created the run). The timeline order within a turn is input\nfollowed by output.",
+                "properties": {
+                    "id": {
+                        "description": "Run identity (run_id / response id)",
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "status": {
+                        "description": "Run lifecycle status",
+                        "enum": [
+                            "completed",
+                            "interrupted",
+                            "failed",
+                            "awaiting_input"
+                        ],
+                        "title": "Status",
+                        "type": "string"
+                    },
+                    "agent": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Optional agent identifier; reserved for future use",
+                        "title": "Agent"
+                    },
+                    "provider": {
+                        "description": "Inference provider used for the run",
+                        "title": "Provider",
+                        "type": "string"
+                    },
+                    "model": {
+                        "description": "Inference model used for the run",
+                        "title": "Model",
+                        "type": "string"
+                    },
+                    "started_at": {
+                        "description": "UTC timestamp when the run started",
+                        "examples": [
+                            "2024-01-01T00:01:00Z"
+                        ],
+                        "format": "date-time",
+                        "title": "Started At",
+                        "type": "string"
+                    },
+                    "completed_at": {
+                        "description": "UTC timestamp when the run completed or paused",
+                        "examples": [
+                            "2024-01-01T00:01:05Z"
+                        ],
+                        "format": "date-time",
+                        "title": "Completed At",
+                        "type": "string"
+                    },
+                    "context_status": {
+                        "description": "Whether agent history for this run was full or compacted",
+                        "enum": [
+                            "full",
+                            "compacted"
+                        ],
+                        "title": "Context Status",
+                        "type": "string"
+                    },
+                    "usage": {
+                        "$ref": "`#/components/schemas/`TurnUsage",
+                        "description": "Aggregated token usage for the run"
+                    },
+                    "referenced_documents": {
+                        "description": "Deduplicated citations for the turn",
+                        "items": {
+                            "$ref": "`#/components/schemas/`ReferencedDocument"
+                        },
+                        "title": "Referenced Documents",
+                        "type": "array"
+                    },
+                    "input": {
+                        "description": "Ordered items that started the run",
+                        "items": {
+                            "discriminator": {
+                                "mapping": {
+                                    "approval_request": "`#/components/schemas/`ApprovalRequestTurnItem",
+                                    "approval_result": "`#/components/schemas/`ApprovalResultTurnItem",
+                                    "message": "`#/components/schemas/`MessageTurnItem",
+                                    "reasoning": "`#/components/schemas/`ReasoningTurnItem",
+                                    "sources": "`#/components/schemas/`SourcesTurnItem",
+                                    "tool_call": "`#/components/schemas/`ToolCallTurnItem",
+                                    "tool_result": "`#/components/schemas/`ToolResultTurnItem"
+                                },
+                                "propertyName": "kind"
+                            },
+                            "oneOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`MessageTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ToolCallTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ToolResultTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`SourcesTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ReasoningTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ApprovalRequestTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ApprovalResultTurnItem"
+                                }
+                            ]
+                        },
+                        "title": "Input",
+                        "type": "array"
+                    },
+                    "output": {
+                        "description": "Ordered items the run produced",
+                        "items": {
+                            "discriminator": {
+                                "mapping": {
+                                    "approval_request": "`#/components/schemas/`ApprovalRequestTurnItem",
+                                    "approval_result": "`#/components/schemas/`ApprovalResultTurnItem",
+                                    "message": "`#/components/schemas/`MessageTurnItem",
+                                    "reasoning": "`#/components/schemas/`ReasoningTurnItem",
+                                    "sources": "`#/components/schemas/`SourcesTurnItem",
+                                    "tool_call": "`#/components/schemas/`ToolCallTurnItem",
+                                    "tool_result": "`#/components/schemas/`ToolResultTurnItem"
+                                },
+                                "propertyName": "kind"
+                            },
+                            "oneOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`MessageTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ToolCallTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ToolResultTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`SourcesTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ReasoningTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ApprovalRequestTurnItem"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`ApprovalResultTurnItem"
+                                }
+                            ]
+                        },
+                        "title": "Output",
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "id",
+                    "status",
+                    "provider",
+                    "model",
+                    "started_at",
+                    "completed_at",
+                    "context_status"
+                ],
+                "title": "AgentTurn",
+                "type": "object"
+            },
+            "AgenticConversationGetResponse": {
+                "description": "Response for one agentic conversation.\n\nAttributes:\n    conversation_id: Conversation identifier.\n    created_at: When the conversation was created.\n    last_turn_at: When the most recent agent run completed or paused.\n    turn_count: Number of agent runs in the conversation.\n    last_used_model: Model used on the last agent run.\n    last_used_provider: Provider used on the last agent run.\n    topic_summary: Topic summary when available.\n    chat_history: Ordered agent turns shown to the client.",
+                "examples": [
+                    {
+                        "chat_history": [
+                            {
+                                "agent": null,
+                                "completed_at": "2024-01-01T00:01:05Z",
+                                "context_status": "full",
+                                "id": "resp_1",
+                                "input": [
+                                    {
+                                        "content": [
+                                            {
+                                                "text": "Hello",
+                                                "type": "text"
+                                            }
+                                        ],
+                                        "id": "msg_user_1",
+                                        "kind": "message",
+                                        "role": "user"
+                                    }
+                                ],
+                                "model": "gpt-5.6-luna",
+                                "output": [
+                                    {
+                                        "content": [
+                                            {
+                                                "text": "Hi there!",
+                                                "type": "text"
+                                            }
+                                        ],
+                                        "id": "msg_assistant_1",
+                                        "kind": "message",
+                                        "role": "assistant"
+                                    }
+                                ],
+                                "provider": "openai",
+                                "referenced_documents": [],
+                                "started_at": "2024-01-01T00:01:00Z",
+                                "status": "completed",
+                                "usage": {
+                                    "input_tokens": 4,
+                                    "output_tokens": 6
+                                }
+                            }
+                        ],
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "last_turn_at": "2024-01-01T00:01:05Z",
+                        "last_used_model": "gpt-5.6-luna",
+                        "last_used_provider": "openai",
+                        "topic_summary": "OpenShift deployment strategies",
+                        "turn_count": 1
+                    }
+                ],
+                "properties": {
+                    "conversation_id": {
+                        "description": "Conversation ID (UUID)",
+                        "examples": [
+                            "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                        ],
+                        "title": "Conversation Id",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "description": "When the conversation was created (UTC)",
+                        "examples": [
+                            "2024-01-01T01:00:00Z"
+                        ],
+                        "format": "date-time",
+                        "title": "Created At",
+                        "type": "string"
+                    },
+                    "last_turn_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "default": null,
+                        "description": "When the most recent agent run completed or paused (UTC)",
+                        "examples": [
+                            "2024-01-01T01:05:00Z"
+                        ],
+                        "title": "Last Turn At"
+                    },
+                    "turn_count": {
+                        "default": 0,
+                        "description": "Number of agent runs in the conversation",
+                        "examples": [
+                            3
+                        ],
+                        "minimum": 0,
+                        "title": "Turn Count",
+                        "type": "integer"
+                    },
+                    "last_used_model": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Identification of the last model used",
+                        "examples": [
+                            "gpt-5.6-luna"
+                        ],
+                        "title": "Last Used Model"
+                    },
+                    "last_used_provider": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Identification of the last provider used",
+                        "examples": [
+                            "openai"
+                        ],
+                        "title": "Last Used Provider"
+                    },
+                    "topic_summary": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Topic summary for the conversation",
+                        "examples": [
+                            "OpenShift deployment strategies"
+                        ],
+                        "title": "Topic Summary"
+                    },
+                    "chat_history": {
+                        "description": "Ordered agent runs for the conversation",
+                        "items": {
+                            "$ref": "`#/components/schemas/`AgentTurn"
+                        },
+                        "title": "Chat History",
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "conversation_id",
+                    "created_at"
+                ],
+                "title": "AgenticConversationGetResponse",
+                "type": "object"
+            },
+            "AgenticConversationListResponse": {
+                "description": "Response listing agentic conversations for the user.\n\nAttributes:\n    conversations: Conversation metadata only; turn history is omitted.",
+                "examples": [
+                    {
+                        "conversations": [
+                            {
+                                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "created_at": "2024-01-01T00:00:00Z",
+                                "last_turn_at": "2024-01-01T00:01:05Z",
+                                "last_used_model": "gpt-5.6-luna",
+                                "last_used_provider": "openai",
+                                "topic_summary": "OpenShift deployment strategies",
+                                "turn_count": 1
+                            }
+                        ]
+                    }
+                ],
+                "properties": {
+                    "conversations": {
+                        "items": {
+                            "$ref": "`#/components/schemas/`ConversationMetadata"
+                        },
+                        "title": "Conversations",
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "conversations"
+                ],
+                "title": "AgenticConversationListResponse",
+                "type": "object"
+            },
             "AllowedModel": {
                 "additionalProperties": false,
                 "description": "Configuration for an allowed inference model.\n\nAccepts string IDs or dictionaries. String IDs populate both `name` and\n`provider_model_id`; dictionary inputs default `name` to `provider_model_id`.",
@@ -269,6 +614,92 @@
                     }
                 },
                 "title": "ApprovalFilter",
+                "type": "object"
+            },
+            "ApprovalRequestTurnItem": {
+                "description": "Human-in-the-loop approval request (typically in output).",
+                "properties": {
+                    "id": {
+                        "description": "Stable identifier for this turn item",
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "kind": {
+                        "const": "approval_request",
+                        "default": "approval_request",
+                        "title": "Kind",
+                        "type": "string"
+                    },
+                    "call_id": {
+                        "description": "Related tool call identifier",
+                        "title": "Call Id",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Tool name for the invocation pending approval",
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "arguments": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "nullable": true,
+                        "default": null,
+                        "description": "Arguments for the invocation pending approval",
+                        "title": "Arguments"
+                    },
+                    "toolset": {
+                        "$ref": "`#/components/schemas/`ToolsetInfo",
+                        "description": "Tool family classification for the pending invocation"
+                    }
+                },
+                "required": [
+                    "id",
+                    "call_id",
+                    "name",
+                    "toolset"
+                ],
+                "title": "ApprovalRequestTurnItem",
+                "type": "object"
+            },
+            "ApprovalResultTurnItem": {
+                "description": "Approval decision when resuming a deferred run (typically in input).",
+                "properties": {
+                    "id": {
+                        "description": "Stable identifier for this turn item",
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "kind": {
+                        "const": "approval_result",
+                        "default": "approval_result",
+                        "title": "Kind",
+                        "type": "string"
+                    },
+                    "call_id": {
+                        "description": "Related tool call identifier",
+                        "title": "Call Id",
+                        "type": "string"
+                    },
+                    "approved": {
+                        "description": "Whether the action was approved",
+                        "title": "Approved",
+                        "type": "boolean"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Optional explanation for the decision",
+                        "title": "Reason"
+                    }
+                },
+                "required": [
+                    "id",
+                    "call_id",
+                    "approved"
+                ],
+                "title": "ApprovalResultTurnItem",
                 "type": "object"
             },
             "ApprovalsConfiguration": {
@@ -1552,6 +1983,85 @@
                 "title": "ConversationHistoryConfiguration",
                 "type": "object"
             },
+            "ConversationMetadata": {
+                "description": "Shared metadata for get and list conversation responses.",
+                "properties": {
+                    "conversation_id": {
+                        "description": "Conversation ID (UUID)",
+                        "examples": [
+                            "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                        ],
+                        "title": "Conversation Id",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "description": "When the conversation was created (UTC)",
+                        "examples": [
+                            "2024-01-01T01:00:00Z"
+                        ],
+                        "format": "date-time",
+                        "title": "Created At",
+                        "type": "string"
+                    },
+                    "last_turn_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "default": null,
+                        "description": "When the most recent agent run completed or paused (UTC)",
+                        "examples": [
+                            "2024-01-01T01:05:00Z"
+                        ],
+                        "title": "Last Turn At"
+                    },
+                    "turn_count": {
+                        "default": 0,
+                        "description": "Number of agent runs in the conversation",
+                        "examples": [
+                            3
+                        ],
+                        "minimum": 0,
+                        "title": "Turn Count",
+                        "type": "integer"
+                    },
+                    "last_used_model": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Identification of the last model used",
+                        "examples": [
+                            "gpt-5.6-luna"
+                        ],
+                        "title": "Last Used Model"
+                    },
+                    "last_used_provider": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Identification of the last provider used",
+                        "examples": [
+                            "openai"
+                        ],
+                        "title": "Last Used Provider"
+                    },
+                    "topic_summary": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Topic summary for the conversation",
+                        "examples": [
+                            "OpenShift deployment strategies"
+                        ],
+                        "title": "Topic Summary"
+                    }
+                },
+                "required": [
+                    "conversation_id",
+                    "created_at"
+                ],
+                "title": "ConversationMetadata",
+                "type": "object"
+            },
             "ConversationResponse": {
                 "description": "Model representing a response for retrieving a conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    chat_history: The chat history as a list of conversation turns.",
                 "examples": [
@@ -2040,6 +2550,33 @@
                 "title": "FeedbackStatusUpdateResponse",
                 "type": "object"
             },
+            "FileContentPart": {
+                "description": "File reference within a multimodal message.",
+                "properties": {
+                    "type": {
+                        "const": "file",
+                        "default": "file",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "file_id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Uploaded file identifier",
+                        "title": "File Id"
+                    },
+                    "filename": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Original filename when available",
+                        "title": "Filename"
+                    }
+                },
+                "title": "FileContentPart",
+                "type": "object"
+            },
             "FileResponse": {
                 "additionalProperties": false,
                 "description": "Response model containing a file object.\n\nAttributes:\n    id: File ID.\n    filename: File name.\n    bytes: File size in bytes.\n    created_at: Unix timestamp when created.\n    purpose: File purpose.\n    object: Object type (always \"file\").",
@@ -2231,6 +2768,42 @@
                 ],
                 "title": "HealthStatus",
                 "type": "string"
+            },
+            "ImageContentPart": {
+                "description": "Image reference for display (not raw bytes).\n\nClients render a URL (http or data URI) and/or an uploaded file id.\nInference-only fields such as vision detail are not stored in display history.",
+                "properties": {
+                    "type": {
+                        "const": "image",
+                        "default": "image",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "image_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "minLength": 1,
+                        "nullable": true,
+                        "default": null,
+                        "description": "URL of the image, including data URIs for inline bytes",
+                        "title": "Image Url"
+                    },
+                    "file_id": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Uploaded file identifier when the image is stored by LCORE",
+                        "title": "File Id"
+                    },
+                    "media_type": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "MIME type of the image when known, for example image/png",
+                        "title": "Media Type"
+                    }
+                },
+                "title": "ImageContentPart",
+                "type": "object"
             },
             "InMemoryCacheConfig": {
                 "additionalProperties": false,
@@ -2790,6 +3363,66 @@
                     "type"
                 ],
                 "title": "Message",
+                "type": "object"
+            },
+            "MessageContent": {
+                "items": {
+                    "discriminator": {
+                        "mapping": {
+                            "file": "`#/components/schemas/`FileContentPart",
+                            "image": "`#/components/schemas/`ImageContentPart",
+                            "text": "`#/components/schemas/`TextContentPart"
+                        },
+                        "propertyName": "type"
+                    },
+                    "oneOf": [
+                        {
+                            "$ref": "`#/components/schemas/`TextContentPart"
+                        },
+                        {
+                            "$ref": "`#/components/schemas/`ImageContentPart"
+                        },
+                        {
+                            "$ref": "`#/components/schemas/`FileContentPart"
+                        }
+                    ]
+                },
+                "type": "array"
+            },
+            "MessageTurnItem": {
+                "description": "User or assistant multimodal message.",
+                "properties": {
+                    "id": {
+                        "description": "Stable identifier for this turn item",
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "kind": {
+                        "const": "message",
+                        "default": "message",
+                        "title": "Kind",
+                        "type": "string"
+                    },
+                    "role": {
+                        "description": "Message author",
+                        "enum": [
+                            "user",
+                            "assistant"
+                        ],
+                        "title": "Role",
+                        "type": "string"
+                    },
+                    "content": {
+                        "$ref": "`#/components/schemas/`MessageContent",
+                        "description": "Ordered multimodal message parts"
+                    }
+                },
+                "required": [
+                    "id",
+                    "role",
+                    "content"
+                ],
+                "title": "MessageTurnItem",
                 "type": "object"
             },
             "ModelContextProtocolServer": {
@@ -5668,6 +6301,33 @@
                 "title": "ReadinessResponse",
                 "type": "object"
             },
+            "ReasoningTurnItem": {
+                "description": "Optional reasoning content exposed for the run.",
+                "properties": {
+                    "id": {
+                        "description": "Stable identifier for this turn item",
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "kind": {
+                        "const": "reasoning",
+                        "default": "reasoning",
+                        "title": "Kind",
+                        "type": "string"
+                    },
+                    "content": {
+                        "description": "Reasoning text",
+                        "title": "Content",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "content"
+                ],
+                "title": "ReasoningTurnItem",
+                "type": "object"
+            },
             "RedactionConfig": {
                 "additionalProperties": false,
                 "description": "Configuration for PII redaction with regex-based rules.\n\nRules are validated and compiled at construction time. Invalid\nregex patterns raise a ``ValueError`` immediately.\n\nAttributes:\n    rules: Ordered list of redaction rules applied sequentially.\n    case_sensitive: When False, patterns are compiled with\n        ``re.IGNORECASE``. Defaults to False.",
@@ -7016,6 +7676,82 @@
                 "title": "SkillsResponse",
                 "type": "object"
             },
+            "SourceChunk": {
+                "description": "Retrieval chunk attached to a sources turn item.",
+                "properties": {
+                    "content": {
+                        "description": "Chunk text",
+                        "title": "Content",
+                        "type": "string"
+                    },
+                    "source": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Knowledge source or index name",
+                        "title": "Source"
+                    },
+                    "score": {
+                        "type": "number",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Relevance score",
+                        "title": "Score"
+                    },
+                    "attributes": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "nullable": true,
+                        "default": null,
+                        "description": "Document metadata from the provider",
+                        "title": "Attributes"
+                    }
+                },
+                "required": [
+                    "content"
+                ],
+                "title": "SourceChunk",
+                "type": "object"
+            },
+            "SourcesTurnItem": {
+                "description": "Retrieval evidence for the turn (automatic RAG or tool-backed).",
+                "properties": {
+                    "id": {
+                        "description": "Stable identifier for this turn item",
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "kind": {
+                        "const": "sources",
+                        "default": "sources",
+                        "title": "Kind",
+                        "type": "string"
+                    },
+                    "origin": {
+                        "description": "Whether evidence came from automatic RAG or a tool",
+                        "enum": [
+                            "auto",
+                            "tool"
+                        ],
+                        "title": "Origin",
+                        "type": "string"
+                    },
+                    "chunks": {
+                        "description": "Retrieved chunks for this item",
+                        "items": {
+                            "$ref": "`#/components/schemas/`SourceChunk"
+                        },
+                        "title": "Chunks",
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "id",
+                    "origin"
+                ],
+                "title": "SourcesTurnItem",
+                "type": "object"
+            },
             "SplunkConfiguration": {
                 "additionalProperties": false,
                 "description": "Splunk HEC (HTTP Event Collector) configuration.\n\nSplunk HEC allows sending events directly to Splunk over HTTP/HTTPS.\nThis configuration is used to send telemetry events for inference\nrequests to the corporate Splunk deployment.\n\nUseful resources:\n\n  - [Splunk HEC Docs](https://docs.splunk.com/Documentation/SplunkCloud)\n  - [About HEC](https://docs.splunk.com/Documentation/Splunk/latest/Data)",
@@ -7194,6 +7930,27 @@
                 "title": "TLSConfiguration",
                 "type": "object"
             },
+            "TextContentPart": {
+                "description": "Text segment within a multimodal message.",
+                "properties": {
+                    "type": {
+                        "const": "text",
+                        "default": "text",
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "text": {
+                        "description": "Message text",
+                        "title": "Text",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "text"
+                ],
+                "title": "TextContentPart",
+                "type": "object"
+            },
             "ToolCallSummary": {
                 "description": "Model representing a tool call made during response generation (for tool_calls list).",
                 "properties": {
@@ -7226,6 +7983,65 @@
                 ],
                 "title": "ToolCallSummary",
                 "type": "object"
+            },
+            "ToolCallTurnItem": {
+                "description": "Tool invocation produced during a run.",
+                "properties": {
+                    "id": {
+                        "description": "Stable identifier for this turn item",
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "kind": {
+                        "const": "tool_call",
+                        "default": "tool_call",
+                        "title": "Kind",
+                        "type": "string"
+                    },
+                    "call_id": {
+                        "description": "Tool call identifier",
+                        "title": "Call Id",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Tool name",
+                        "title": "Name",
+                        "type": "string"
+                    },
+                    "arguments": {
+                        "additionalProperties": true,
+                        "description": "Arguments passed to the tool",
+                        "title": "Arguments",
+                        "type": "object"
+                    },
+                    "toolset": {
+                        "$ref": "`#/components/schemas/`ToolsetInfo",
+                        "description": "Tool family classification for this call"
+                    }
+                },
+                "required": [
+                    "id",
+                    "call_id",
+                    "name",
+                    "toolset"
+                ],
+                "title": "ToolCallTurnItem",
+                "type": "object"
+            },
+            "ToolResultBody": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "additionalProperties": true,
+                        "type": "object"
+                    },
+                    {
+                        "items": {},
+                        "type": "array"
+                    }
+                ]
             },
             "ToolResultSummary": {
                 "description": "Model representing a result from a tool call (for tool_results list).",
@@ -7264,6 +8080,62 @@
                     "round"
                 ],
                 "title": "ToolResultSummary",
+                "type": "object"
+            },
+            "ToolResultTurnItem": {
+                "description": "Outcome of a tool call.",
+                "properties": {
+                    "id": {
+                        "description": "Stable identifier for this turn item",
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "kind": {
+                        "const": "tool_result",
+                        "default": "tool_result",
+                        "title": "Kind",
+                        "type": "string"
+                    },
+                    "call_id": {
+                        "description": "Matches the corresponding tool_call call_id",
+                        "title": "Call Id",
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Tool name when useful without the paired tool_call item",
+                        "title": "Name"
+                    },
+                    "status": {
+                        "description": "success: normal completion; failed: execution error; denied: blocked or not recorded (guardrail, etc.); interrupted: run stopped before tool finished",
+                        "enum": [
+                            "success",
+                            "failed",
+                            "denied",
+                            "interrupted"
+                        ],
+                        "title": "Status",
+                        "type": "string"
+                    },
+                    "content": {
+                        "$ref": "`#/components/schemas/`ToolResultBody",
+                        "description": "Tool outcome: UTF-8 text or structured JSON (object or array)"
+                    },
+                    "toolset": {
+                        "$ref": "`#/components/schemas/`ToolsetInfo",
+                        "description": "Tool family classification for this result"
+                    }
+                },
+                "required": [
+                    "id",
+                    "call_id",
+                    "status",
+                    "content",
+                    "toolset"
+                ],
+                "title": "ToolResultTurnItem",
                 "type": "object"
             },
             "ToolsResponse": {
@@ -7305,6 +8177,37 @@
                     "tools"
                 ],
                 "title": "ToolsResponse",
+                "type": "object"
+            },
+            "ToolsetInfo": {
+                "description": "Classifies which tool family a call or result belongs to for display.",
+                "properties": {
+                    "type": {
+                        "description": "Tool family: function, mcp, file_search, or skills",
+                        "enum": [
+                            "function",
+                            "mcp",
+                            "file_search",
+                            "skills"
+                        ],
+                        "title": "Type",
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string",
+                        "nullable": true,
+                        "default": null,
+                        "description": "Human-readable toolset label when applicable",
+                        "examples": [
+                            "filesystem"
+                        ],
+                        "title": "Label"
+                    }
+                },
+                "required": [
+                    "type"
+                ],
+                "title": "ToolsetInfo",
                 "type": "object"
             },
             "TrustedProxyConfiguration": {
@@ -7351,6 +8254,27 @@
                     "name"
                 ],
                 "title": "TrustedProxyServiceAccount",
+                "type": "object"
+            },
+            "TurnUsage": {
+                "description": "Aggregated token usage for one agent run.",
+                "properties": {
+                    "input_tokens": {
+                        "default": 0,
+                        "description": "Tokens sent to the model during the run",
+                        "minimum": 0,
+                        "title": "Input Tokens",
+                        "type": "integer"
+                    },
+                    "output_tokens": {
+                        "default": 0,
+                        "description": "Tokens received from the model during the run",
+                        "minimum": 0,
+                        "title": "Output Tokens",
+                        "type": "integer"
+                    }
+                },
+                "title": "TurnUsage",
                 "type": "object"
             },
             "UnifiedOgxConfig": {

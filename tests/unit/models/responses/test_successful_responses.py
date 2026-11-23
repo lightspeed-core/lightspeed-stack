@@ -2,11 +2,18 @@
 
 """Unit tests for all successful response models."""
 
+from datetime import UTC, datetime
+
 import pytest
 from pydantic import AnyHttpUrl, AnyUrl, ConfigDict, ValidationError
 from pydantic_core import SchemaError
 
+from conversations.display_history.agentic.models.conversation import (
+    ConversationMetadata,
+)
 from models.api.responses.successful import (
+    AgenticConversationGetResponse,
+    AgenticConversationListResponse,
     AuthorizedResponse,
     ConfigurationResponse,
     ConversationDeleteResponse,
@@ -905,6 +912,67 @@ class TestConversationsListResponseV2:
 
         # Verify example count matches schema examples count (should be 1)
         assert expected_count == 1
+
+
+class TestAgenticConversationGetResponse:
+    """Test cases for AgenticConversationGetResponse."""
+
+    def test_constructor(self) -> None:
+        """Test AgenticConversationGetResponse stores envelope fields including chat_history."""
+        response = AgenticConversationGetResponse(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
+            chat_history=[],
+        )
+        assert isinstance(response, AbstractSuccessfulResponse)
+        assert response.turn_count == 0
+        assert response.chat_history == []
+
+    def test_openapi_response(self) -> None:
+        """Test AgenticConversationGetResponse.openapi_response() method."""
+        schema = AgenticConversationGetResponse.model_json_schema()
+        model_examples = schema.get("examples", [])
+        result = AgenticConversationGetResponse.openapi_response()
+        assert result["description"] == "Successful response"
+        assert result["model"] == AgenticConversationGetResponse
+        assert "example" in result["content"]["application/json"]
+        assert len(model_examples) == 1
+
+
+class TestAgenticConversationListResponse:
+    """Test cases for AgenticConversationListResponse."""
+
+    def test_constructor(self) -> None:
+        """Test AgenticConversationListResponse stores conversation metadata."""
+        conversations = [
+            ConversationMetadata(
+                conversation_id="123e4567-e89b-12d3-a456-426614174000",
+                created_at=datetime(2024, 1, 1, tzinfo=UTC),
+                topic_summary="Test topic",
+            )
+        ]
+        response = AgenticConversationListResponse(conversations=conversations)
+        assert isinstance(response, AbstractSuccessfulResponse)
+        assert len(response.conversations) == 1
+        assert (
+            response.conversations[0].conversation_id
+            == "123e4567-e89b-12d3-a456-426614174000"
+        )
+
+    def test_missing_required_parameter(self) -> None:
+        """Test AgenticConversationListResponse raises when conversations is missing."""
+        with pytest.raises(ValidationError):
+            AgenticConversationListResponse()  # pyright: ignore[reportCallIssue]
+
+    def test_openapi_response(self) -> None:
+        """Test AgenticConversationListResponse.openapi_response() method."""
+        schema = AgenticConversationListResponse.model_json_schema()
+        model_examples = schema.get("examples", [])
+        result = AgenticConversationListResponse.openapi_response()
+        assert result["description"] == "Successful response"
+        assert result["model"] == AgenticConversationListResponse
+        assert "example" in result["content"]["application/json"]
+        assert len(model_examples) == 1
 
 
 class TestFeedbackStatusUpdateResponse:

@@ -14,6 +14,8 @@ from models.api.responses.successful.catalog import (
 )
 from models.api.responses.successful.configuration import ConfigurationResponse
 from models.api.responses.successful.conversations import (
+    AgenticConversationGetResponse,
+    AgenticConversationListResponse,
     ConversationDeleteResponse,
     ConversationResponse,
     ConversationsListResponse,
@@ -71,6 +73,8 @@ from models.api.responses.successful.vector_stores import (
 __all__ = [
     "AbstractDeleteResponse",
     "AbstractSuccessfulResponse",
+    "AgenticConversationGetResponse",
+    "AgenticConversationListResponse",
     "AuthorizedResponse",
     "ConfigurationResponse",
     "ConversationDeleteResponse",
