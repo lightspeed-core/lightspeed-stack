@@ -985,7 +985,7 @@ class TestUpdateConversationEndpoint:
         assert isinstance(response, ConversationUpdateResponse)
         assert response.conversation_id == VALID_CONVERSATION_ID
         assert response.success is True
-        assert response.message == "Topic summary updated successfully"
+        assert response.model_dump()["message"] == "Topic summary updated successfully"
 
         # Verify that set_topic_summary was called
         mock_configuration.conversation_cache.set_topic_summary.assert_called_once_with(

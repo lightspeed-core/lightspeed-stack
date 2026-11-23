@@ -268,7 +268,6 @@ async def update_conversation_endpoint_handler(
         return ConversationUpdateResponse(
             conversation_id=conversation_id,
             success=True,
-            message="Topic summary updated successfully",
         )
 
 

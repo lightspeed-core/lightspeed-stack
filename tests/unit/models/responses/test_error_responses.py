@@ -684,7 +684,7 @@ class TestInternalServerErrorResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 10
+        assert expected_count == 11
 
         # Verify all labeled examples are present
         assert "internal" in examples
@@ -694,6 +694,7 @@ class TestInternalServerErrorResponse:
         assert "query" in examples
         assert "conversation cache" in examples
         assert "database" in examples
+        assert "database operation" in examples
         assert "cluster version not found" in examples
         assert "cluster version permission denied" in examples
         assert "invalid cluster version" in examples

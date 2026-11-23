@@ -293,7 +293,7 @@ class ConversationUpdateResponse(AbstractSuccessfulResponse):
     Attributes:
         conversation_id: The conversation ID (UUID) that was updated.
         success: Whether the update was successful.
-        message: A message about the update result.
+        message: Human-readable outcome derived from ``success``.
 
     """
 
@@ -307,11 +307,15 @@ class ConversationUpdateResponse(AbstractSuccessfulResponse):
         description="Whether the update was successful",
         examples=[True],
     )
-    message: str = Field(
-        ...,
-        description="A message about the update result",
-        examples=["Topic summary updated successfully"],
-    )
+
+    @computed_field
+    def message(self) -> str:
+        """Outcome message for the topic summary update."""
+        return (
+            "Topic summary updated successfully"
+            if self.success
+            else "Topic summary was not updated"
+        )
 
     model_config = {
         "json_schema_extra": {
