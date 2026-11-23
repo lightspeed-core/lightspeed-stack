@@ -2,7 +2,7 @@
 
 ## [test_agentic_turn.py](test_agentic_turn.py)
 
-Agentic turn repository tests.
+Tests for agentic turn display history in the database.
 
 ## [test_conversation.py](test_conversation.py)
 

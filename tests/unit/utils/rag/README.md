@@ -1,3 +1,10 @@
-# RAG Utility Tests
+# List of source files stored in `tests/unit/utils/rag` directory
 
-Unit tests for RAG retrieval and reranking utilities.
+## [__init__.py](__init__.py)
+
+Unit tests for RAG utilities.
+
+## [test_vector_search.py](test_vector_search.py)
+
+Unit tests for vector search utilities.
+

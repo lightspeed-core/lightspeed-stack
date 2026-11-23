@@ -2,8 +2,9 @@
 
 ## [__init__.py](__init__.py)
 
-Per-mode display-history persistence entry points.
+Display-history persistence entry points.
 
 ## [agentic_turn.py](agentic_turn.py)
 
-Project a PAI run and persist agentic display history for a turn envelope.
+Store an agentic display turn next to the conversation/turn envelope.
+

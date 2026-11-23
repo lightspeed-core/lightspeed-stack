@@ -8,6 +8,10 @@ Init of tests/unit/utils.
 
 Helper functions for mocking authorization in tests.
 
+## [test_blocked_turns.py](test_blocked_turns.py)
+
+Unit tests for the mark of a turn a shield blocked (LCORE-3788).
+
 ## [test_builtin_tools.py](test_builtin_tools.py)
 
 Unit tests for builtin file-search tool discovery.
@@ -35,6 +39,10 @@ Unit tests for utils/context_window.
 ## [test_conversation_compaction.py](test_conversation_compaction.py)
 
 Unit tests for runtime conversation compaction (LCORE-1572).
+
+## [test_conversation_compaction_redaction.py](test_conversation_compaction_redaction.py)
+
+Unit tests for redaction in compacted mode (LCORE-4593).
 
 ## [test_conversations.py](test_conversations.py)
 

@@ -36,6 +36,10 @@ Integration tests for compaction markers and the conversations API (LCORE-3909).
 
 Integration tests for conversation compaction in the query endpoint.
 
+## [test_compaction_redaction.py](test_compaction_redaction.py)
+
+Integration tests for PII redaction on compacted conversations (LCORE-4593).
+
 ## [test_compaction_responses.py](test_compaction_responses.py)
 
 Integration tests for conversation compaction in the responses endpoint.

@@ -2,15 +2,15 @@
 
 ## [__init__.py](__init__.py)
 
-Pydantic models for the agentic display-history API.
+Display-history models for agentic conversations.
 
 ## [agent_turn.py](agent_turn.py)
 
-Public agent-run contract assembled from envelopes and persisted summary.
+Single agent run projected into display history.
 
 ## [agent_turn_summary.py](agent_turn_summary.py)
 
-PAI-to-database translation of one agent run.
+Agent run fields persisted on the agentic turn row.
 
 ## [content.py](content.py)
 

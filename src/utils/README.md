@@ -4,6 +4,10 @@
 
 Utility classes and functions for the Lightspeed Stack core service.
 
+## [blocked_turns.py](blocked_turns.py)
+
+The mark of a turn a shield blocked (LCORE-3788).
+
 ## [builtin_tools.py](builtin_tools.py)
 
 Discover builtin file-search tools when that provider is configured.

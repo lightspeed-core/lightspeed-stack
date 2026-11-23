@@ -2,12 +2,13 @@
 
 ## [__init__.py](__init__.py)
 
-Map PAI runs and messages onto agentic display-history contracts.
+Project agent runs and messages onto display-history contracts.
 
 ## [agent_turn.py](agent_turn.py)
 
-Project a PAI run into an ``AgentTurnSummary`` for persistence.
+Project an agent run into a display-history turn summary.
 
 ## [items.py](items.py)
 
-Convert PAI messages into display-history turn items.
+Project agent run messages into display-history turn items.
+

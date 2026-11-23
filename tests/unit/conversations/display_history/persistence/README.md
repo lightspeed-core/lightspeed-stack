@@ -1,9 +1,5 @@
 # List of source files stored in `tests/unit/conversations/display_history/persistence` directory
 
-## [conftest.py](conftest.py)
-
-Fixtures for display-history persistence tests.
-
 ## [sample_rows.py](sample_rows.py)
 
 Fixed conversation and turn records for persistence tests.
