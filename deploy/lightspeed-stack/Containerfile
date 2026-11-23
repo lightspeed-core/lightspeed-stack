@@ -96,10 +96,14 @@ COPY --from=builder /app-root/LICENSE /licenses/
 
 USER root
 
-# Additional tools for derived images
-# Note: --allowerasing is only supported by dnf, not microdnf (used by the
-# *-minimal base images), so it is only appended when RUNTIME_DNF_COMMAND=dnf.
+# Additional tools for derived images.
+# thrift-0.15.0 provides libthrift-0.15.0.so and is installed only with dnf.
+# The default UBI image uses microdnf and does not have that package.
+# --allowerasing is only supported by dnf, not microdnf.
 RUN ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch && \
+    if [ "${RUNTIME_DNF_COMMAND}" != "microdnf" ]; then \
+        ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs thrift-0.15.0; \
+    fi && \
     ${RUNTIME_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs
 
 # Create OGX directories for library mode

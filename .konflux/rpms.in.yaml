@@ -6,6 +6,7 @@ packages:
     patch,
     cmake,
     cargo,
+    thrift-0.15.0
   ]
 upgradePackages:
   [
