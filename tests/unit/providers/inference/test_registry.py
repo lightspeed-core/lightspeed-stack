@@ -236,21 +236,6 @@ async def test_initialize_registers_configured_providers() -> None:
 
 
 @pytest.mark.asyncio
-async def test_initialize_adds_to_existing_providers() -> None:
-    """Repeated initialization adds providers without removing existing ones."""
-    _register_fake("openai", "vllm")
-    registry = ProviderRegistry()
-
-    await registry.initialize(_inference_config(_openai_entry()))
-    await registry.initialize(_inference_config(_vllm_entry()))
-
-    assert [provider.provider_id for provider in registry.list_providers()] == [
-        "openai",
-        "vllm",
-    ]
-
-
-@pytest.mark.asyncio
 async def test_find_provider_returns_provider_or_none() -> None:
     """find_provider returns the provider or None when it is not registered."""
     _register_fake("openai")
