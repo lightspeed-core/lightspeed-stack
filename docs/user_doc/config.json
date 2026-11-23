@@ -45,6 +45,7 @@
         "description": "API Key Token configuration.",
         "properties": {
           "api_key": {
+            "description": "API key that clients must present to authenticate.",
             "examples": [
               "some-api-key"
             ],
@@ -137,6 +138,7 @@
           "type": {
             "const": "noop",
             "default": "noop",
+            "description": "Disable persistence of agent steps.",
             "title": "Type",
             "type": "string"
           }
@@ -151,6 +153,7 @@
           "type": {
             "const": "sqlite",
             "default": "sqlite",
+            "description": "Persist agent steps in a SQLite database.",
             "title": "Type",
             "type": "string"
           },
@@ -171,11 +174,13 @@
         "description": "Configuration for an allowed inference model.\n\nAccepts string IDs or dictionaries. String IDs populate both `name` and\n`provider_model_id`; dictionary inputs default `name` to `provider_model_id`.",
         "properties": {
           "name": {
+            "description": "Model name exposed by Lightspeed.",
             "minLength": 1,
             "title": "Local model name",
             "type": "string"
           },
           "provider_model_id": {
+            "description": "Model identifier expected by the inference provider.",
             "minLength": 1,
             "title": "Backend model id",
             "type": "string"
@@ -260,11 +265,13 @@
         "properties": {
           "module": {
             "default": "noop",
+            "description": "Authentication module used to verify incoming requests.",
             "title": "Module",
             "type": "string"
           },
           "skip_tls_verification": {
             "default": false,
+            "description": "Skip TLS certificate verification for Kubernetes authentication requests.",
             "title": "Skip Tls Verification",
             "type": "boolean"
           },
@@ -286,6 +293,7 @@
             "minLength": 1,
             "nullable": true,
             "default": null,
+            "description": "URL of the Kubernetes API server used for authentication.",
             "title": "K8S Cluster Api"
           },
           "k8s_ca_cert_path": {
@@ -293,6 +301,7 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the CA certificate used to verify the Kubernetes API server.",
             "title": "K8S Ca Cert Path"
           },
           "jwk_config": {
@@ -304,7 +313,8 @@
                 "type": "null"
               }
             ],
-            "default": null
+            "default": null,
+            "description": "Settings for JWT authentication using JSON Web Keys."
           },
           "api_key_config": {
             "anyOf": [
@@ -315,7 +325,8 @@
                 "type": "null"
               }
             ],
-            "default": null
+            "default": null,
+            "description": "Settings for API key token authentication."
           },
           "rh_identity_config": {
             "anyOf": [
@@ -326,7 +337,8 @@
                 "type": "null"
               }
             ],
-            "default": null
+            "default": null,
+            "description": "Settings for Red Hat Identity header authentication."
           },
           "trusted_proxy_config": {
             "anyOf": [
@@ -337,7 +349,8 @@
                 "type": "null"
               }
             ],
-            "default": null
+            "default": null,
+            "description": "Settings for authentication through a trusted proxy."
           }
         },
         "title": "AuthenticationConfiguration",
@@ -364,18 +377,21 @@
         "description": "Microsoft Entra ID authentication attributes for Azure.",
         "properties": {
           "tenant_id": {
+            "description": "Microsoft Entra tenant ID used to request access tokens.",
             "format": "password",
             "title": "Tenant ID",
             "type": "string",
             "writeOnly": true
           },
           "client_id": {
+            "description": "Application client ID used to authenticate with Microsoft Entra ID.",
             "format": "password",
             "title": "Client ID",
             "type": "string",
             "writeOnly": true
           },
           "client_secret": {
+            "description": "Application client secret used to authenticate with Microsoft Entra ID.",
             "format": "password",
             "title": "Client secret",
             "type": "string",
@@ -404,6 +420,7 @@
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Azure OpenAI endpoint URL for inference requests.",
             "title": "Azure OpenAI endpoint"
           },
           "api_key": {
@@ -412,12 +429,14 @@
             "writeOnly": true,
             "nullable": true,
             "default": null,
+            "description": "API key used to authenticate requests to Azure OpenAI.",
             "title": "API key"
           },
           "api_version": {
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Azure OpenAI API version used for requests.",
             "title": "API version"
           },
           "entra_id": {
@@ -442,15 +461,18 @@
         "description": "Azure OpenAI inference provider.",
         "properties": {
           "id": {
+            "description": "Identifier for this inference provider instance.",
             "title": "Provider ID",
             "type": "string"
           },
           "skip_model_discovery": {
             "default": false,
+            "description": "Disable automatic model discovery for this provider.",
             "title": "Skip model discovery",
             "type": "boolean"
           },
           "allowed_models": {
+            "description": "Models explicitly made available through this provider.",
             "items": {
               "$ref": "`#/components/schemas/`AllowedModel"
             },
@@ -462,6 +484,7 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the file containing model profiles for this provider.",
             "title": "Model profiles path"
           },
           "api_key_env": {
@@ -506,12 +529,14 @@
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "AWS region used for Bedrock requests.",
             "title": "AWS region"
           },
           "profile_name": {
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "AWS credentials profile used to authenticate Bedrock requests.",
             "title": "AWS profile"
           },
           "api_key": {
@@ -532,15 +557,18 @@
         "description": "AWS Bedrock inference provider.",
         "properties": {
           "id": {
+            "description": "Identifier for this inference provider instance.",
             "title": "Provider ID",
             "type": "string"
           },
           "skip_model_discovery": {
             "default": false,
+            "description": "Disable automatic model discovery for this provider.",
             "title": "Skip model discovery",
             "type": "boolean"
           },
           "allowed_models": {
+            "description": "Models explicitly made available through this provider.",
             "items": {
               "$ref": "`#/components/schemas/`AllowedModel"
             },
@@ -552,6 +580,7 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the file containing model profiles for this provider.",
             "title": "Model profiles path"
           },
           "api_key_env": {
@@ -847,7 +876,8 @@
                 "type": "null"
               }
             ],
-            "default": null
+            "default": null,
+            "description": "Legacy Microsoft Entra ID settings for Azure OpenAI authentication."
           },
           "rlsapi_v1": {
             "$ref": "`#/components/schemas/`RlsapiV1Configuration",
@@ -1029,15 +1059,18 @@
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Path to the service customization profile.",
             "title": "Profile Path"
           },
           "disable_query_system_prompt": {
             "default": false,
+            "description": "Reject custom system prompts in query requests.",
             "title": "Disable Query System Prompt",
             "type": "boolean"
           },
           "disable_shield_ids_override": {
             "default": false,
+            "description": "Reject shield ID overrides in query requests.",
             "title": "Disable Shield Ids Override",
             "type": "boolean"
           },
@@ -1046,12 +1079,14 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the file containing the service system prompt.",
             "title": "System Prompt Path"
           },
           "system_prompt": {
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "System prompt text configured for the service.",
             "title": "System Prompt"
           },
           "agent_card_path": {
@@ -1059,6 +1094,7 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the file containing the A2A agent card.",
             "title": "Agent Card Path"
           },
           "agent_card_config": {
@@ -1066,6 +1102,7 @@
             "additionalProperties": true,
             "nullable": true,
             "default": null,
+            "description": "A2A agent card configuration loaded from the agent card file.",
             "title": "Agent Card Config"
           },
           "custom_profile": {
@@ -1077,7 +1114,8 @@
                 "type": "null"
               }
             ],
-            "default": null
+            "default": null,
+            "description": "Service customization profile loaded from the configured path."
           },
           "responses_request_max_size": {
             "default": 1048576,
@@ -1745,12 +1783,14 @@
             "writeOnly": true,
             "nullable": true,
             "default": null,
+            "description": "API key used to authenticate requests to OpenAI.",
             "title": "API key"
           },
           "base_url": {
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Base URL for OpenAI API requests.",
             "title": "Base URL"
           }
         },
@@ -1762,15 +1802,18 @@
         "description": "OpenAI inference provider.",
         "properties": {
           "id": {
+            "description": "Identifier for this inference provider instance.",
             "title": "Provider ID",
             "type": "string"
           },
           "skip_model_discovery": {
             "default": false,
+            "description": "Disable automatic model discovery for this provider.",
             "title": "Skip model discovery",
             "type": "boolean"
           },
           "allowed_models": {
+            "description": "Models explicitly made available through this provider.",
             "items": {
               "$ref": "`#/components/schemas/`AllowedModel"
             },
@@ -1782,6 +1825,7 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the file containing model profiles for this provider.",
             "title": "Model profiles path"
           },
           "api_key_env": {
@@ -2663,12 +2707,14 @@
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Device on which to run sentence-transformers models.",
             "title": "Device"
           },
           "cache_dir": {
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Directory where Hugging Face model files are cached.",
             "title": "Hugging Face cache directory"
           }
         },
@@ -2680,15 +2726,18 @@
         "description": "Local sentence-transformers inference provider.",
         "properties": {
           "id": {
+            "description": "Identifier for this inference provider instance.",
             "title": "Provider ID",
             "type": "string"
           },
           "skip_model_discovery": {
             "default": false,
+            "description": "Disable automatic model discovery for this provider.",
             "title": "Skip model discovery",
             "type": "boolean"
           },
           "allowed_models": {
+            "description": "Models explicitly made available through this provider.",
             "items": {
               "$ref": "`#/components/schemas/`AllowedModel"
             },
@@ -2700,6 +2749,7 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the file containing model profiles for this provider.",
             "title": "Model profiles path"
           },
           "api_key_env": {
@@ -3091,12 +3141,14 @@
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Google Cloud project ID used for Vertex AI requests.",
             "title": "GCP project"
           },
           "location": {
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Google Cloud location used for Vertex AI requests.",
             "title": "GCP location"
           }
         },
@@ -3108,15 +3160,18 @@
         "description": "Vertex AI inference provider.",
         "properties": {
           "id": {
+            "description": "Identifier for this inference provider instance.",
             "title": "Provider ID",
             "type": "string"
           },
           "skip_model_discovery": {
             "default": false,
+            "description": "Disable automatic model discovery for this provider.",
             "title": "Skip model discovery",
             "type": "boolean"
           },
           "allowed_models": {
+            "description": "Models explicitly made available through this provider.",
             "items": {
               "$ref": "`#/components/schemas/`AllowedModel"
             },
@@ -3128,6 +3183,7 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the file containing model profiles for this provider.",
             "title": "Model profiles path"
           },
           "api_key_env": {
@@ -3172,6 +3228,7 @@
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Base URL for the vLLM API.",
             "title": "Base URL"
           },
           "api_key": {
@@ -3180,6 +3237,7 @@
             "writeOnly": true,
             "nullable": true,
             "default": null,
+            "description": "API key used to authenticate requests to vLLM.",
             "title": "API key"
           }
         },
@@ -3191,15 +3249,18 @@
         "description": "vLLM inference provider.",
         "properties": {
           "id": {
+            "description": "Identifier for this inference provider instance.",
             "title": "Provider ID",
             "type": "string"
           },
           "skip_model_discovery": {
             "default": false,
+            "description": "Disable automatic model discovery for this provider.",
             "title": "Skip model discovery",
             "type": "boolean"
           },
           "allowed_models": {
+            "description": "Models explicitly made available through this provider.",
             "items": {
               "$ref": "`#/components/schemas/`AllowedModel"
             },
@@ -3211,6 +3272,7 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the file containing model profiles for this provider.",
             "title": "Model profiles path"
           },
           "api_key_env": {
@@ -3257,18 +3319,21 @@
             "writeOnly": true,
             "nullable": true,
             "default": null,
+            "description": "API key used to authenticate requests to watsonx.ai.",
             "title": "API key"
           },
           "project_id": {
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "IBM Cloud project ID used for watsonx.ai requests.",
             "title": "Project ID"
           },
           "base_url": {
             "type": "string",
             "nullable": true,
             "default": null,
+            "description": "Base URL for the watsonx.ai API.",
             "title": "Base URL"
           }
         },
@@ -3280,15 +3345,18 @@
         "description": "WatsonX inference provider.",
         "properties": {
           "id": {
+            "description": "Identifier for this inference provider instance.",
             "title": "Provider ID",
             "type": "string"
           },
           "skip_model_discovery": {
             "default": false,
+            "description": "Disable automatic model discovery for this provider.",
             "title": "Skip model discovery",
             "type": "boolean"
           },
           "allowed_models": {
+            "description": "Models explicitly made available through this provider.",
             "items": {
               "$ref": "`#/components/schemas/`AllowedModel"
             },
@@ -3300,6 +3368,7 @@
             "format": "file-path",
             "nullable": true,
             "default": null,
+            "description": "Path to the file containing model profiles for this provider.",
             "title": "Model profiles path"
           },
           "api_key_env": {
