@@ -133,8 +133,8 @@ uv run behave tests/e2e/features/query.feature --tags=-skip
 # Scenarios with a given tag (e.g. Authorized)
 uv run behave tests/e2e/features/query.feature --tags=Authorized
 
-# Exclude a tag
-uv run behave tests/e2e/features/health.feature --tags=-skip-in-library-mode
+# Exclude skipped scenarios
+uv run behave tests/e2e/features/health.feature --tags=-skip
 ```
 
 ---
@@ -287,7 +287,7 @@ For another YAML (`lightspeed-stack-okp-online.yaml`, tool RAG, and so on), repe
 
 | Variable                        | Default     | Description                                                                                                                               |
 |---------------------------------|-------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| `E2E_DEPLOYMENT_MODE`           | `server`    | `server` or `library`. Drives config paths and which scenarios run (e.g. `@skip-in-library-mode`).                                        |
+| `E2E_DEPLOYMENT_MODE`           | `server`    | `server` or `library`. Drives config paths under `configuration/server-mode/` vs `configuration/library-mode/`.                             |
 | `E2E_LSC_HOSTNAME`              | `localhost` | Host of the Lightspeed Core Stack API.                                                                                                    |
 | `E2E_LSC_PORT`                  | `8080`      | Port of the Lightspeed Core Stack API.                                                                                                    |
 | `E2E_OGX_HOSTNAME`            | `localhost` | Host of the OGX service (server mode). GitHub Actions repo variable: `E2E_LLAMA_HOSTNAME` (compose maps it here). |
@@ -310,8 +310,8 @@ For local Docker runs, defaults are usually enough. Override when the stack is o
 
 ## Deployment Modes: Server vs Library
 
-- **Server mode** (`E2E_DEPLOYMENT_MODE=server`): Lightspeed Core Stack talks to a **separate** OGX service (e.g. `OGX` container). Configs under `configuration/server-mode/` are used. Scenarios that need a dedicated OGX container (e.g. "OGX unreachable") run; those tagged `@skip-in-library-mode` run as well.
-- **Library mode** (`E2E_DEPLOYMENT_MODE=library`): OGX runs **in-process** with the app. Configs under `configuration/library-mode/` are used. Scenarios tagged `@skip-in-library-mode` are skipped (no separate OGX to disrupt or query for shields).
+- **Server mode** (`E2E_DEPLOYMENT_MODE=server`): Lightspeed Core Stack talks to a **separate** OGX service (e.g. `OGX` container). Configs under `configuration/server-mode/` are used.
+- **Library mode** (`E2E_DEPLOYMENT_MODE=library`): OGX runs **in-process** with the app. Configs under `configuration/library-mode/` are used.
 
 Mode is set in `before_all` from `E2E_DEPLOYMENT_MODE` and stored as `context.is_library_mode`.
 
@@ -328,7 +328,6 @@ All tag behaviour is implemented in **`features/environment.py`**: the hooks (`b
 | `@skip`                         | Scenario is skipped (reason: "Marked with @skip"). Use for broken or WIP scenarios.                                                                     |
 | `@konflux-only`                 | Skipped unless `E2E_KONFLUX_E2E=1`. Used by `okp_rag.feature`.                                                                           |
 | `@cfg_okp`                      | OKP Solr RAG. Konflux deploys OKP in `before_feature`. Local: [Running OKP RAG tests locally](#running-okp-rag-tests-locally).            |
-| `@skip-in-library-mode`         | Scenario is skipped when `E2E_DEPLOYMENT_MODE=library`. Used for tests that require a separate OGX (e.g. connection disruption).                |
 | `@local`                        | Skipped unless running in "local" mode (context flag).                                                                                                  |
 | `@InvalidFeedbackStorageConfig` | Before scenario: switch to invalid-feedback-storage config and restart container. After: restore feature config and restart.                            |
 | `@NoCacheConfig`                | Before scenario: switch to no-cache config and restart. After: restore and restart.                                                                     |
@@ -349,8 +348,7 @@ All tag behaviour is implemented in **`features/environment.py`**: the hooks (`b
 You can put several tags on one scenario. To document why a scenario is skipped, add a Gherkin comment above the tags:
 
 ```gherkin
-  # Only in server mode; OGX is in-process in library mode
-  @skip-in-library-mode
+  # WIP — needs a separate OGX container
   @skip
   Scenario: Check if service report proper readiness when OGX is not available
 ```
@@ -359,7 +357,7 @@ You can put several tags on one scenario. To document why a scenario is skipped,
 
 - **before_all**: Sets `deployment_mode`, `is_library_mode`, detects or overrides `default_model` / `default_provider`, sets `faiss_vector_store_id`.
 - **before_feature**: Applies feature-level config and restarts container for `Authorized`, `RBAC`, `RHIdentity`, `Feedback`, `MCP`.
-- **before_scenario**: Skips scenarios for `@skip`, `@local`, `@skip-in-library-mode`; applies scenario config for `InvalidFeedbackStorageConfig` / `NoCacheConfig`.
+- **before_scenario**: Skips scenarios for `@skip`, `@local`, `@konflux-only`, `@skip-in-prow`, and provider-matrix tags; applies scenario config for `InvalidFeedbackStorageConfig` / `NoCacheConfig`.
 - **after_scenario**: Restores OGX if it was disrupted; restores config and restarts for scenario config tags.
 - **after_feature**: Restores config and restarts for `Authorized`, `RBAC`, `RHIdentity`, `MCP`; deletes feedback conversations for `Feedback`.
 
@@ -476,7 +474,7 @@ Here, **Given** sets state, **When** performs the HTTP call, **Then** and **And*
 
 | Syntax        | Meaning                                                                                                      | Example                                         |
 |---------------|--------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
-| **@tag**      | Tag for filtering or hooks. Above Feature (applies to all scenarios) or above Scenario (that scenario only). | `@Authorized`, `@skip`, `@skip-in-library-mode` |
+| **@tag**      | Tag for filtering or hooks. Above Feature (applies to all scenarios) or above Scenario (that scenario only). | `@Authorized`, `@skip`, `@skip-in-prow`         |
 | **# comment** | Gherkin comment. Ignored by Behave. Use to explain why a scenario is skipped or to document a scenario.      | `# Only in server mode` above a scenario        |
 
 
@@ -536,7 +534,7 @@ The integration side of this boundary is described in
 ## Writing New Scenarios
 
 1. **Confirm the scenario is e2e at all** — see [Choosing the Test Layer](#choosing-the-test-layer-e2e-or-integration). Then **choose or add a feature file** under `tests/e2e/features/` and use existing steps where possible. If you add a new file, **add it to `tests/e2e/test_list.txt`** so the suite runs it. 
-2. **Use tags** for mode-dependent or config-dependent behavior (`@skip-in-library-mode`, `@Authorized`, etc.). **Adding a tag that switches configuration** (e.g. a new feature-level or scenario-level config) usually means you must also add or change a **Lightspeed Stack config** file under `configuration/server-mode/` or `library-mode/` and wire the tag in `environment.py` (e.g. in `before_feature` / `after_feature` or `before_scenario` / `after_scenario`) so the config is applied and the container restarted when the tag is active.
+2. **Use tags** for config-dependent behavior (`@Authorized`, `@cfg_*`, etc.). **Adding a tag that switches configuration** (e.g. a new feature-level or scenario-level config) usually means you must also add or change a **Lightspeed Stack config** file under `configuration/server-mode/` or `library-mode/` and wire the tag in `environment.py` (e.g. in `before_feature` / `after_feature` or `before_scenario` / `after_scenario`) so the config is applied and the container restarted when the tag is active.
 3. **Use placeholders** `{MODEL}` and `{PROVIDER}` in request bodies so the same scenario works with different backends.
 4. **Add step definitions** in the appropriate `features/steps/*.py` if you need new steps; reuse `context` for host, port, auth, and responses.
 5. **Optional**: If the scenario needs a dedicated config, add a new YAML under `configuration/server-mode/` (and optionally `library-mode/`), add an entry to `_CONFIG_PATHS` in `environment.py`, and handle the tag in the before/after hooks so the config is switched and the lightspeed-stack container is restarted.
@@ -551,7 +549,7 @@ The integration side of this boundary is described in
 - **Readonly database (SQLite) in OGX**: If the RAG KV DB is on a bind-mounted path that becomes read-only (e.g. after restart), move it to a named volume (e.g. via `KV_RAG_PATH` in docker-compose) so writes succeed.
 - **ChunkedEncodingError on streaming_query**: The step for streaming_query uses `stream=True` and consumes the stream; if you add new streaming steps, avoid reading the full response with `response.content` and use the same stream-reading pattern so a server close after an error event does not raise.
 - **Event loop is closed (httpx/AsyncClient)**: In E2E, any code that creates an `AsyncOgxClient` (e.g. for shields) must close it (e.g. `await client.close()`) in a `finally` block before the event loop is torn down (e.g. before `asyncio.run()` returns).
-- **Scenarios skipped**: Check tags (`@skip`, `@skip-in-library-mode`, `@local`, `@konflux-only`) and `E2E_DEPLOYMENT_MODE`; ensure the scenario is not excluded by `--tags=-skip` (or the opposite if you intend to run only skipped scenarios for debugging).
+- **Scenarios skipped**: Check tags (`@skip`, `@local`, `@konflux-only`, `@skip-in-prow`) and `E2E_DEPLOYMENT_MODE`; ensure the scenario is not excluded by `--tags=-skip` (or the opposite if you intend to run only skipped scenarios for debugging).
 - **Granite Guardian 403 / "Authentication failed"**: CI uses `mock-guardian` and needs no key. For a local real-model run, generate a key from [Models.corp Sandbox API Access](https://redhathub.service-now.com/hub?id=sc_cat_item&sys_id=882ad1b71bebd610b6ccea45624bcb3d&table=sc_cat_item&searchTerm=Models.corp%20Sandbox%20API%20Access) and put it in the shield YAML `api_key` (do not commit it). See [Granite Guardian: mock vs real](#granite-guardian-mock-ci-vs-real-model-local).
 
 For more on test structure and commands, see the main project guide (`CLAUDE.md`) and `tests/e2e/features/steps/README.md`.
