@@ -102,8 +102,11 @@ def anonymize_value(value: str, max_length: int = 50) -> str:
 
     Uses HMAC-SHA-256 with a secret key to prevent rainbow table attacks.
     The secret MUST be configured via the OTEL_ANONYMIZATION_SECRET environment
-    variable. This function will raise an error if the secret is not set and
-    OTEL SDK is enabled.
+    variable whenever the current span is being recorded. If the secret is
+    missing, the decision is driven by the span's recording state rather than by
+    parsing OTEL_SDK_DISABLED: a non-recording span (SDK disabled, sampled out, or
+    no active span) returns a length-only placeholder, while a recording span
+    raises — so an enabled exporter never receives unhashed, collidable values.
 
     Parameters:
         value: The string value to anonymize.
@@ -113,18 +116,21 @@ def anonymize_value(value: str, max_length: int = 50) -> str:
         Anonymized string containing only HMAC digest and length metadata.
         Format: [hash:<16-hex-digits>:short|long:len=<length>]
         The digest is the first 16 hex chars (64 bits) of HMAC-SHA-256.
-        If OTEL SDK is disabled, returns a placeholder.
+        If the current span is not being recorded, returns a placeholder.
 
     Raises:
-        ValueError: If OTEL_ANONYMIZATION_SECRET environment variable is not set
-            and OTEL SDK is enabled.
+        ValueError: If OTEL_ANONYMIZATION_SECRET is not set while the current
+            span is being recorded.
 
     """
     # Get HMAC secret from environment - fail clearly if not configured
     secret = os.environ.get(OTEL_ANONYMIZATION_SECRET_ENV_VAR)
     if not secret:
-        # If OTEL SDK is disabled, anonymization is not needed - return placeholder
-        if os.environ.get("OTEL_SDK_DISABLED") != "false":
+        # A non-recording span is never exported, so a placeholder is harmless and
+        # no secret is required. This mirrors the SDK's own state (OTEL_SDK_DISABLED,
+        # sampling) instead of re-parsing env vars, which keeps the contract correct
+        # under any launcher.
+        if not trace.get_current_span().is_recording():
             return f"[otel-disabled:len={len(value)}]"
 
         raise ValueError(
