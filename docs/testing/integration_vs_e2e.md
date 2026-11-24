@@ -47,7 +47,6 @@ These fail only when the running stack is wrong, and they look at surfaces a cal
 | `tests/e2e/features/health.feature`, `smoketests.feature` | The local service is up. Status, schema, and — for health — an exact JSON body the service produces, not a model. |
 | `tests/e2e/features/unified-mode-boot.feature` | A unified-mode YAML, a container restart, then `readiness` and `query` return 200. It does not inspect the synthesized file. |
 | `tests/e2e/features/unified-mode-synthesis.feature` | After restart, container logs contain the synthesized path (`docker inspect` / `docker logs` in `tests/e2e/features/steps/unified_mode.py`). Synthesis rules stay in `test_unified_synthesis.py`. |
-| `tests/e2e/features/ogx_disrupted.feature` | OGX is actually stopped. HTTP then shows 503, readiness `unhealthy`. Mocking `ApiException` in `test_info_integration.py` covers the handler branch; it does not cover restart order. |
 | `tests/e2e/features/unified-mode-migration.feature` | The stack boots from the committed `lightspeed-stack-unified-migrated.yaml`. The scenario does not run `--migrate-config`. `test_unified_mode_cli.py` guards that fixture against drift. |
 
 ## Poor fits
@@ -59,7 +58,6 @@ These tests check something true. They sit in the wrong layer, or they assert so
 | `tests/integration/endpoints/test_authorized_endpoint.py` | Loads `test_config`, discards it, calls one handler, compares the result to noop-auth constants. No second component. That is a unit test. |
 | `test_health_liveness` in `tests/integration/endpoints/test_health_integration.py` | Same shape: unused config fixture, assertion is `response.alive is True`. Liveness does not consult OGX. The other tests in that file, which map stubbed provider health into the readiness payload, are real integration tests. |
 | `tests/integration/test_version.py` | Compares `version.__version__` with `pdm show --version`. No config, database, or handler. The repo runs tests with `uv`, not `pdm`. |
-| `tests/integration/container_lifecycle/test_container_lifecycle.py` | Builds an image, polls `http://localhost:8321/v1/health`, and `exec`s into the container. That is a deployed stack, collected by `make test-integration`, and one function does build, start, probe, mounts, and cleanup. The behave suite never runs it. |
 | `tests/unit/app/endpoints/test_info.py` and `tests/integration/endpoints/test_info_integration.py` | Both call `info_endpoint_handler` and check it works without OGX. The integration test earns its place: it reads `name` (`"foo bar baz"`) from `tests/configuration/lightspeed-stack.yaml` and uses the real noop auth fixture. The unit happy path asserts the exact response body. |
 | `@flaky` scenarios in `tests/e2e/features/query.feature` (also `streaming_query.feature`, `mcp.feature`, parts of `responses.feature`) | The reply must contain `"ask"`, `"checkout"`, or `"image"`. The contract is status 200 and token counters. The extra word depends on the model. |
 
