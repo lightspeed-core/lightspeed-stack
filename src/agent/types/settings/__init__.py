@@ -6,6 +6,7 @@ from agent.types.settings.knowledge import KnowledgeSourceSettings
 from agent.types.settings.mcp import MCPSettings
 from agent.types.settings.shield import ShieldSettings
 from agent.types.settings.skill import SkillSettings
+from agent.types.settings.step_persistence import StepPersistenceSettings
 
 __all__ = [
     "AgentSettings",
@@ -14,4 +15,5 @@ __all__ = [
     "MCPSettings",
     "ShieldSettings",
     "SkillSettings",
+    "StepPersistenceSettings",
 ]
