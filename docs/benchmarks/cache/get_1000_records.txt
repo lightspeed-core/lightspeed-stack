@@ -1,10 +1,10 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.14.7, pytest-9.2.0, pluggy-1.7.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-3/.venv/bin/python3
+platform linux -- Python 3.14.7, pytest-9.2.0, pluggy-1.7.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-1/.venv/bin/python3
 cachedir: .pytest_cache
 benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
-rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-3
+rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-1
 configfile: pyproject.toml
-plugins: logfire-sdk-5.6.0, platformdirs-4.14.7, anyio-4.16.0, order-1.5.0, mock-3.17.0, cov-7.1.0, benchmark-5.3.1, asyncio-1.5.0
+plugins: logfire-sdk-6.0.0, platformdirs-4.14.8, anyio-4.16.0, mock-3.17.0, order-1.5.0, asyncio-1.5.0, cov-7.1.0, benchmark-5.3.1
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
 collecting ... collected 78 items / 54 deselected / 24 selected
 
@@ -31,166 +31,39 @@ tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_extra_long_con
 tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_short_conversations_key_at_beginning PASSED [ 87%]
 tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_medium_conversations_key_at_beginning PASSED [ 91%]
 tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_long_conversations_key_at_beginning PASSED [ 95%]
-tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_extra_long_conversations_key_at_beginning FAILED [100%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_extra_long_conversations_key_at_beginning PASSED [100%]
 
-=================================== FAILURES ===================================
-_______ test_sqlite_cache_1000_extra_long_conversations_key_at_beginning _______
 
-sqlite_cache_fixture = <cache.sqlite_cache.SQLiteCache object at 0x7ff085c18380>
-benchmark = <pytest_benchmark.fixture.BenchmarkFixture object at 0x7ff085bd2c10>
-
-    def test_sqlite_cache_1000_extra_long_conversations_key_at_beginning(
-        sqlite_cache_fixture: SQLiteCache, benchmark: BenchmarkFixture
-    ) -> None:
-        """Benchmark for deleting an existing conversation."""
-        sqlite_cache_fixture.insert_or_append(USER_ID, CONVERSATION_ID_1, cache_entry_1)
->       fill_in_conversations(sqlite_cache_fixture, 1000, EXTRA_LONG_CONVERSATION_ENTRIES)
-
-tests/benchmarks/test_sqlite_cache_get.py:359: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-tests/benchmarks/cache_utils.py:34: in fill_in_conversations
-    cache.insert_or_append(user_id, conversation_id, cache_entry, False)
-src/utils/connection_decorator.py:77: in wrapper
-    return f(self, *args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-self = <cache.sqlite_cache.SQLiteCache object at 0x7ff085c18380>
-user_id = 'f0c54943-4635-4452-b44d-8e52585ebd58'
-conversation_id = '60164ff3-b88f-408e-85d3-f5b6edb848df'
-cache_entry = CacheEntry(query='user message9338', response='AI message9338', provider='foo', model='bar', started_at='2026-11-23 22:31:44', completed_at='2026-11-23 22:36:44', referenced_documents=None, tool_calls=None, tool_results=None)
-skip_user_id_check = False
-
-    @connection
-    def insert_or_append(
-        self,
-        user_id: str,
-        conversation_id: str,
-        cache_entry: CacheEntry,
-        skip_user_id_check: bool = False,
-    ) -> None:
-        """Set the value associated with the given key.
-    
-        Parameters:
-        ----------
-            user_id: User identification.
-            conversation_id: Conversation ID unique for given user.
-            cache_entry: The `CacheEntry` object to store.
-            skip_user_id_check: Skip user_id suid check.
-    
-        Raises:
-        ------
-            CacheError: If the cache connection is not available.
-    
-        """
-        if self.connection is None:
-            logger.error("Cache is disconnected")
-            raise CacheError("insert_or_append: cache is disconnected")
-    
-        cursor = self.connection.cursor()
-        current_time = time()
-    
-        referenced_documents_json = None
-        if cache_entry.referenced_documents:
-            try:
-                docs_as_dicts = [
-                    doc.model_dump(mode="json")
-                    for doc in cache_entry.referenced_documents
-                ]
-                referenced_documents_json = json.dumps(docs_as_dicts)
-            except (TypeError, ValueError) as e:
-                logger.warning(
-                    "Failed to serialize referenced_documents for conversation %s: %s",
-                    conversation_id,
-                    e,
-                )
-    
-        tool_calls_json = None
-        if cache_entry.tool_calls:
-            try:
-                tool_calls_as_dicts = [
-                    tc.model_dump(mode="json") for tc in cache_entry.tool_calls
-                ]
-                tool_calls_json = json.dumps(tool_calls_as_dicts)
-            except (TypeError, ValueError) as e:
-                logger.warning(
-                    "Failed to serialize tool_calls for conversation %s: %s",
-                    conversation_id,
-                    e,
-                )
-    
-        tool_results_json = None
-        if cache_entry.tool_results:
-            try:
-                tool_results_as_dicts = [
-                    tr.model_dump(mode="json") for tr in cache_entry.tool_results
-                ]
-                tool_results_json = json.dumps(tool_results_as_dicts)
-            except (TypeError, ValueError) as e:
-                logger.warning(
-                    "Failed to serialize tool_results for conversation %s: %s",
-                    conversation_id,
-                    e,
-                )
-    
->       cursor.execute(
-            self.INSERT_CONVERSATION_HISTORY_STATEMENT,
-            (
-                user_id,
-                conversation_id,
-                current_time,
-                cache_entry.started_at,
-                cache_entry.completed_at,
-                cache_entry.query,
-                cache_entry.response,
-                cache_entry.provider,
-                cache_entry.model,
-                referenced_documents_json,
-                tool_calls_json,
-                tool_results_json,
-            ),
-        )
-E       sqlite3.OperationalError: database or disk is full
-
-src/cache/sqlite_cache.py:455: OperationalError
-=============================== warnings summary ===============================
-tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_extra_long_conversations_key_at_beginning
-  tests/benchmarks/test_sqlite_cache_get.py:354: PytestBenchmarkWarning: Benchmark fixture was not used at all in this test!
-    def test_sqlite_cache_1000_extra_long_conversations_key_at_beginning(
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-
------------------------------------------------------------------------------------------------------------ benchmark: 23 tests -----------------------------------------------------------------------------------------------------------
-Name (time in us)                                                        Min                 Max               Mean             StdDev             Median               IQR            Outliers  OPS (Kops/s)            Rounds  Iterations
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-test_noop_cache_1000_long_conversations_key_at_end                    4.4300 (1.0)       67.9240 (3.84)      4.7252 (1.00)      0.5996 (1.27)      4.6470 (1.0)      0.1090 (1.07)    1531;6057      211.6301 (1.00)     105108           1
-test_memory_cache_1000_medium_conversations_key_at_beginning          4.4390 (1.00)      63.1160 (3.57)      5.7212 (1.21)      1.4793 (3.14)      5.2130 (1.12)     1.5140 (14.85)  11932;4390      174.7882 (0.82)      83438           1
-test_memory_cache_1000_short_conversations_key_at_beginning           4.4410 (1.00)     581.2380 (32.90)     5.4668 (1.16)      2.2172 (4.70)      4.9260 (1.06)     1.1530 (11.31)   6021;6824      182.9237 (0.86)      99960           1
-test_memory_cache_1000_long_conversations_key_at_beginning            4.4420 (1.00)     107.1360 (6.06)      5.7911 (1.23)      1.5697 (3.33)      5.2800 (1.14)     1.5560 (15.26)  12961;5251      172.6795 (0.81)      89374           1
-test_noop_cache_1000_extra_long_conversations_key_at_end              4.4440 (1.00)      38.0440 (2.15)      6.4266 (1.36)      1.9064 (4.04)      5.7410 (1.24)     1.4101 (13.83)   6519;5723      155.6032 (0.73)      46916           1
-test_noop_cache_1000_short_conversations_key_at_end                   4.4550 (1.01)     183.5860 (10.39)     4.7090 (1.0)       0.7510 (1.59)      4.6650 (1.00)     0.1020 (1.0)      410;3975      212.3605 (1.0)       83914           1
-test_noop_cache_1000_medium_conversations_key_at_end                  4.4550 (1.01)      87.8480 (4.97)      4.7167 (1.00)      0.4716 (1.0)       4.6710 (1.01)     0.1100 (1.08)     930;4845      212.0123 (1.00)      98367           1
-test_memory_cache_1000_extra_long_conversations_key_at_beginning      4.4560 (1.01)      17.6670 (1.0)       5.6012 (1.19)      0.6217 (1.32)      5.6530 (1.22)     0.4430 (4.34)    9270;3947      178.5320 (0.84)      80724           1
-test_memory_cache_1000_medium_conversations_key_at_end                4.4570 (1.01)      42.4990 (2.41)      5.5818 (1.19)      1.3842 (2.94)      4.9870 (1.07)     1.3449 (13.19)  14535;9059      179.1528 (0.84)     109650           1
-test_memory_cache_1000_long_conversations_key_at_end                  4.4660 (1.01)      36.5120 (2.07)      5.1501 (1.09)      0.6382 (1.35)      4.9970 (1.08)     0.6970 (6.84)    11973;973      194.1724 (0.91)     106056           1
-test_noop_cache_1000_long_conversations_key_at_beginning              4.4670 (1.01)      36.0270 (2.04)      6.0013 (1.27)      1.6374 (3.47)      5.4170 (1.17)     1.5320 (15.02)   9023;4938      166.6305 (0.78)      63244           1
-test_memory_cache_1000_short_conversations_key_at_end                 4.4680 (1.01)      58.8160 (3.33)      5.4778 (1.16)      1.3314 (2.82)      4.8960 (1.05)     1.0889 (10.68)  13280;10152      182.5547 (0.86)      96638           1
-test_noop_cache_1000_extra_long_conversations_key_at_beginning        4.4800 (1.01)      59.2260 (3.35)      5.6759 (1.21)      1.4175 (3.01)      5.0740 (1.09)     1.3140 (12.89)  14489;9797      176.1847 (0.83)     104254           1
-test_memory_cache_1000_extra_long_conversations_key_at_end            4.4820 (1.01)      93.1060 (5.27)      5.4956 (1.17)      1.4112 (2.99)      4.9170 (1.06)     1.1060 (10.85)   6371;5035      181.9626 (0.86)      51870           1
-test_noop_cache_1000_short_conversations_key_at_beginning             4.5290 (1.02)      86.3950 (4.89)      7.0332 (1.49)      1.9297 (4.09)      6.2630 (1.35)     1.6700 (16.38)  12807;6883      142.1838 (0.67)      75598           1
-test_noop_cache_1000_medium_conversations_key_at_beginning            4.5390 (1.02)      51.4850 (2.91)      6.0496 (1.28)      1.5442 (3.27)      5.5070 (1.19)     1.2600 (12.36)  10424;8229      165.3014 (0.78)      72042           1
-test_sqlite_cache_1000_short_conversations_key_at_beginning          22.0030 (4.97)     224.9720 (12.73)    23.6761 (5.03)      5.2907 (11.22)    22.9540 (4.94)     0.5000 (4.90)       91;677       42.2367 (0.20)       5638           1
-test_sqlite_cache_1000_medium_conversations_key_at_beginning         22.2280 (5.02)     251.4970 (14.24)    23.9278 (5.08)      6.2005 (13.15)    23.1970 (4.99)     0.5610 (5.50)      114;801       41.7924 (0.20)       7357           1
-test_sqlite_cache_1000_long_conversations_key_at_beginning           22.3820 (5.05)     343.4950 (19.44)    30.0450 (6.38)     13.2359 (28.07)    26.1410 (5.63)     8.4027 (82.40)     338;316       33.2834 (0.16)       5969           1
-test_sqlite_cache_1000_medium_conversations_key_at_end               22.5870 (5.10)     208.9980 (11.83)    24.0974 (5.12)      4.9947 (10.59)    23.5710 (5.07)     0.4567 (4.48)      132;521       41.4982 (0.20)       7259           1
-test_sqlite_cache_1000_extra_long_conversations_key_at_end           22.7870 (5.14)     115.7170 (6.55)     24.3444 (5.17)      3.8985 (8.27)     23.8110 (5.12)     0.4480 (4.39)      262;497       41.0772 (0.19)       7306           1
-test_sqlite_cache_1000_long_conversations_key_at_end                 22.9250 (5.17)     269.4690 (15.25)    24.9269 (5.29)      6.0475 (12.82)    23.8970 (5.14)     0.8755 (8.58)      131;955       40.1174 (0.19)       6705           1
-test_sqlite_cache_1000_short_conversations_key_at_end                24.1480 (5.45)     367.2790 (20.79)    34.3974 (7.30)     15.4578 (32.78)    29.1920 (6.28)     3.0190 (29.60)     739;979       29.0720 (0.14)       5933           1
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------ benchmark: 24 tests ------------------------------------------------------------------------------------------------------------
+Name (time in us)                                                        Min                   Max               Mean             StdDev             Median               IQR            Outliers  OPS (Kops/s)            Rounds  Iterations
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_noop_cache_1000_medium_conversations_key_at_beginning            4.4980 (1.0)         67.8540 (2.46)      4.7399 (1.0)       0.4423 (1.30)      4.7020 (1.0)      0.1010 (1.04)     876;4010      210.9762 (1.0)      104167           1
+test_memory_cache_1000_short_conversations_key_at_beginning           4.4990 (1.00)        67.1400 (2.43)      4.7788 (1.01)      0.4496 (1.32)      4.7070 (1.00)     0.1250 (1.29)   4228;11088      209.2555 (0.99)     110351           1
+test_noop_cache_1000_medium_conversations_key_at_end                  4.5020 (1.00)       153.2230 (5.55)      4.7498 (1.00)      0.6187 (1.82)      4.7070 (1.00)     0.1020 (1.05)     600;4437      210.5332 (1.00)      97886           1
+test_noop_cache_1000_short_conversations_key_at_beginning             4.5070 (1.00)        81.4010 (2.95)      4.7521 (1.00)      0.4947 (1.46)      4.7110 (1.00)     0.1060 (1.09)     867;4794      210.4349 (1.00)     108649           1
+test_noop_cache_1000_extra_long_conversations_key_at_end              4.5100 (1.00)        56.4270 (2.04)      4.7721 (1.01)      0.4488 (1.32)      4.7040 (1.00)     0.1070 (1.10)    3779;6672      209.5532 (0.99)      99632           1
+test_noop_cache_1000_long_conversations_key_at_end                    4.5130 (1.00)       574.7220 (20.81)     4.7714 (1.01)      1.7399 (5.12)      4.7200 (1.00)     0.1100 (1.13)     673;5974      209.5804 (0.99)     113948           1
+test_noop_cache_1000_short_conversations_key_at_end                   4.5140 (1.00)        61.8400 (2.24)      4.7452 (1.00)      0.4105 (1.21)      4.7050 (1.00)     0.1040 (1.07)     795;3238      210.7382 (1.00)      78531           1
+test_memory_cache_1000_short_conversations_key_at_end                 4.5170 (1.00)       141.5800 (5.13)      4.9514 (1.04)      1.0618 (3.13)      4.7330 (1.01)     0.2380 (2.45)   1579;10158      201.9630 (0.96)      82543           1
+test_noop_cache_1000_extra_long_conversations_key_at_beginning        4.5190 (1.00)        31.9400 (1.16)      4.7655 (1.01)      0.3499 (1.03)      4.7270 (1.01)     0.1100 (1.13)    1356;3684      209.8436 (0.99)      92107           1
+test_memory_cache_1000_extra_long_conversations_key_at_beginning      4.5260 (1.01)        27.6240 (1.0)       4.7705 (1.01)      0.3438 (1.01)      4.7350 (1.01)     0.0970 (1.0)     1053;3175      209.6230 (0.99)      84162           1
+test_memory_cache_1000_long_conversations_key_at_beginning            4.5330 (1.01)        28.0620 (1.02)      4.7971 (1.01)      0.3396 (1.0)       4.7620 (1.01)     0.1050 (1.08)    1220;3286      208.4578 (0.99)      87905           1
+test_memory_cache_1000_medium_conversations_key_at_beginning          4.5340 (1.01)        28.5320 (1.03)      4.8429 (1.02)      0.3970 (1.17)      4.7680 (1.01)     0.1220 (1.26)    6238;9063      206.4899 (0.98)     107090           1
+test_memory_cache_1000_extra_long_conversations_key_at_end            4.5370 (1.01)        39.5130 (1.43)      4.8581 (1.02)      0.4516 (1.33)      4.7570 (1.01)     0.1410 (1.45)   7912;12950      205.8420 (0.98)     102145           1
+test_noop_cache_1000_long_conversations_key_at_beginning              4.5550 (1.01)       578.6460 (20.95)     4.8051 (1.01)      1.9433 (5.72)      4.7630 (1.01)     0.1010 (1.04)     458;3390      208.1106 (0.99)      91059           1
+test_memory_cache_1000_long_conversations_key_at_end                  4.5580 (1.01)        43.5230 (1.58)      4.8269 (1.02)      0.3654 (1.08)      4.7900 (1.02)     0.1060 (1.09)    1384;3943      207.1707 (0.98)     105955           1
+test_memory_cache_1000_medium_conversations_key_at_end                4.5750 (1.02)        67.2460 (2.43)      4.8393 (1.02)      0.5114 (1.51)      4.7860 (1.02)     0.1120 (1.16)    1038;4411      206.6428 (0.98)      94030           1
+test_sqlite_cache_1000_short_conversations_key_at_beginning          22.2490 (4.95)       611.7340 (22.15)    23.6948 (5.00)      7.8005 (22.97)    23.1760 (4.93)     0.4120 (4.25)       49;424       42.2034 (0.20)       7353           1
+test_sqlite_cache_1000_medium_conversations_key_at_end               22.3410 (4.97)       121.1400 (4.39)     23.7609 (5.01)      3.5419 (10.43)    23.2880 (4.95)     0.4109 (4.24)      275;447       42.0860 (0.20)       7472           1
+test_sqlite_cache_1000_short_conversations_key_at_end                22.3610 (4.97)       245.4570 (8.89)     23.8248 (5.03)      5.3515 (15.76)    23.3020 (4.96)     0.4380 (4.52)       95;401       41.9731 (0.20)       6862           1
+test_sqlite_cache_1000_long_conversations_key_at_end                 22.7190 (5.05)       143.5510 (5.20)     24.1361 (5.09)      3.9690 (11.69)    23.6580 (5.03)     0.4550 (4.69)      246;488       41.4317 (0.20)       7996           1
+test_sqlite_cache_1000_long_conversations_key_at_beginning           22.7680 (5.06)       177.0270 (6.41)     24.1887 (5.10)      4.3850 (12.91)    23.7030 (5.04)     0.4219 (4.35)      153;391       41.3417 (0.20)       6523           1
+test_sqlite_cache_1000_medium_conversations_key_at_beginning         22.8250 (5.07)       616.1261 (22.30)    24.4242 (5.15)      8.4960 (25.02)    23.8230 (5.07)     0.4620 (4.76)       46;487       40.9430 (0.19)       7441           1
+test_sqlite_cache_1000_extra_long_conversations_key_at_beginning     22.8830 (5.09)       116.2560 (4.21)     24.2506 (5.12)      3.9357 (11.59)    23.7430 (5.05)     0.4448 (4.59)      164;344       41.2361 (0.20)       5651           1
+test_sqlite_cache_1000_extra_long_conversations_key_at_end           23.3970 (5.20)     2,922.3140 (105.79)   25.4549 (5.37)     33.8709 (99.74)    24.3770 (5.18)     0.4915 (5.07)       31;962       39.2852 (0.19)       7421           1
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Legend:
   Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
   OPS: Operations Per Second, computed as 1 / Mean
-=========================== short test summary info ============================
-FAILED tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_extra_long_conversations_key_at_beginning - sqlite3.OperationalError: database or disk is full
-===== 1 failed, 23 passed, 54 deselected, 1 warning in 3869.55s (1:04:29) ======
+================ 24 passed, 54 deselected in 4215.50s (1:10:15) ================
