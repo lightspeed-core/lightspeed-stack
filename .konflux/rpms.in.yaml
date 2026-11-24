@@ -9,8 +9,10 @@ packages:
   ]
 upgradePackages:
   [
-    curl-minimal,
-    libcurl-minimal,
+    libXrender,
+    python3,
+    python3-libs,
+    tesseract,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
