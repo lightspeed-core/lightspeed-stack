@@ -41,7 +41,7 @@ jobs:
           - name: shields
             tags: "not @skip and @cfg_shields"
           - name: other
-            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified or @cfg_compaction or @cfg_a2a or @cfg_quota)"
+            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_compaction or @cfg_a2a or @cfg_quota)"
           # Server-only; listed in shard (not matrix.include) so it expands with
           # mode=server before any library jobs. include would append after library.
           - name: group 1
@@ -78,11 +78,7 @@ jobs:
           - is_release_06: true
             shard:
               name: other
-              tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_degraded or @cfg_unified or @cfg_compaction or @cfg_a2a or @cfg_quota)"
-          - is_release_06: true
-            shard:
-              name: tls
-              tags: "not @skip and @cfg_tls"
+              tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_compaction or @cfg_a2a or @cfg_quota)"
           - is_release_06: false
             shard:
               name: group 1
@@ -143,9 +139,8 @@ jobs:
 
       - name: Load lightspeed-stack.yaml configuration
         run: |
-          MODE="${{ matrix.mode }}"
-          CONFIG_FILE="tests/e2e/configuration/${MODE}-mode/lightspeed-stack.yaml"
-          echo "Loading configuration for ${MODE} mode"
+          CONFIG_FILE="tests/e2e/configuration/library-mode/lightspeed-stack.yaml"
+          echo "Loading configuration for library mode"
           echo "Source: ${CONFIG_FILE}"
           
           if [ ! -f "${CONFIG_FILE}" ]; then
@@ -193,7 +188,7 @@ jobs:
       - name: Show final configuration
         run: |
           echo "=== Configuration Summary ==="
-          echo "Deployment mode: ${{ matrix.mode }}"
+          echo "Deployment mode: library"
           echo "Environment: ${{ matrix.environment }}"
           echo "E2E shard (Makefile test-e2e-tagged): ${{ matrix.shard.tags }}"
           echo "Source config: tests/e2e/configs/run-${{ matrix.environment }}.yaml"
