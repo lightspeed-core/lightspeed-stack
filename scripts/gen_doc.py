@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Generate documentation for all modules from Lightspeed Core Stack service."""
+"""Generate README indexes from Python module docstrings in source and test directories."""
 
 import ast
 import os
@@ -64,20 +64,14 @@ def generate_docfile(directory: Path) -> None:
 
 
 def generate_documentation_on_path(path: Path) -> None:
-    """Generate documentation for all the sources found in path.
+    """Generate a README index for an included directory.
 
-    This function generate README.md for Python sources in the given directory.
-
-    Directory can be skipped if it's part of DIRS_TO_SKIP global list.
-
-    Skip paths whose POSIX representation is in DIRS_TO_SKIP. Otherwise,
-    temporarily change the working directory to path and attempt to restore it
-    after generation, including when generation fails. File access and UTF-8
+    Skip paths listed in DIRS_TO_SKIP. Temporarily change the working directory
+    to the selected path and restore it after generation. File access and UTF-8
     decoding errors propagate.
 
-    Parameters:
-    ----------
-        path (str or os.PathLike): Directory in which to generate the README.md file.
+    Args:
+        path: Directory in which to generate README.md.
 
     """
     # directory can be skipped if it's part of DIRS_TO_SKIP global list.
