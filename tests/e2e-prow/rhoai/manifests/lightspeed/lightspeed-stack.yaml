@@ -54,6 +54,15 @@ spec:
               name: faiss-vector-store-secret
               key: id
               optional: true
+        # LCS inference.providers (openai): pydantic-ai reads OPENAI_API_KEY at startup.
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openai-api-key-secret
+              key: key
+              optional: true
+        - name: E2E_OPENAI_MODEL
+          value: "gpt-5.6-luna"
         # Unused for server-mode FAISS (llama pod owns the fixture); keep out of ~/.llama.
         - name: KV_RAG_PATH
           value: "/app-root/.e2e-rag-work/kv_store.db"
