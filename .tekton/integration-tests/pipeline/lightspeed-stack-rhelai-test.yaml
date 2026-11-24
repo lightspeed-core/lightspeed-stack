@@ -87,6 +87,7 @@ spec:
                     path: token
         steps:
           - name: create-instance
+            onError: continue
             image: quay.io/redhat-developer/mapt:v0.14.7
             imagePullPolicy: Always
             env:
@@ -123,6 +124,8 @@ spec:
               RUN_ID="$(context.pipelineRun.name)"
               HF_TOKEN=$(cat /opt/aws-credentials/HUGGING_FACE_HUB_TOKEN)
               VLLM_API_KEY=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+              echo -n "${VLLM_API_KEY}" > /opt/host-info/vllm-api-key
+              chmod 600 /opt/host-info/vllm-api-key
 
               echo "[mapt] ========== Version Info =========="
               echo "[mapt] RHEL AI AMI version: $(params.rhelai-version)"
@@ -229,12 +232,15 @@ spec:
               echo "[mapt] Provisioning OK (host=${VLLM_HOST}); waiting up to ${VLLM_READINESS_TIMEOUT_SECONDS}s for vLLM to list $(params.model)..."
               VLLM_READINESS_DEADLINE=$((SECONDS + VLLM_READINESS_TIMEOUT_SECONDS))
               n=0
+              last_vllm_models_body=""
               while true; do
                 vllm_ready=0
+                vllm_models_body=""
                 if { exec 3<>"/dev/tcp/${VLLM_HOST}/8000"; } 2>/dev/null; then
                   if printf 'GET /v1/models HTTP/1.1\r\nHost: %s\r\nAuthorization: Bearer %s\r\nConnection: close\r\n\r\n' \
                       "${VLLM_HOST}" "${VLLM_API_KEY}" >&3 \
                     && vllm_models_body="$(timeout 15 cat <&3)"; then
+                    last_vllm_models_body="${vllm_models_body}"
                     case "${vllm_models_body}" in
                       *"$(params.model)"*) vllm_ready=1 ;;
                     esac
@@ -244,10 +250,15 @@ spec:
                 fi
                 if [ "${vllm_ready}" -eq 1 ]; then
                   echo "[mapt] vLLM models API ready (poll ${n})"
+                  echo ready > /opt/host-info/provision-status
                   break
                 fi
                 if [ "${SECONDS}" -ge "${VLLM_READINESS_DEADLINE}" ]; then
                   echo "[mapt] ERROR: vLLM did not list model after ${VLLM_READINESS_TIMEOUT_SECONDS}s (check instance logs / OOM / HF token)"
+                  echo timeout > /opt/host-info/provision-status
+                  printf '%s\n' "${last_vllm_models_body}" > /opt/host-info/vllm-models-body
+                  echo "[mapt] Last GET /v1/models body:"
+                  echo "${last_vllm_models_body:-<empty or TCP not open>}"
                   exit 1
                 fi
                 n=$((n + 1))
@@ -258,6 +269,77 @@ spec:
               echo -n "$(cat /opt/host-info/username)" > $(results.username.path)
               echo "[mapt] Host: $(cat /opt/host-info/host)"
               echo "[mapt] User: $(cat /opt/host-info/username)"
+          # MAPT image has no ssh client. This step SSHs with the key in
+          # host-info and prints rhaii journals into the TaskRun log before
+          # destroy-rhelai runs. onError:continue on create-instance is
+          # required so this still runs after a vLLM readiness timeout.
+          - name: dump-rhaii-logs
+            image: registry.access.redhat.com/ubi9/ubi-minimal
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - name: host-info
+                mountPath: /opt/host-info
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "256Mi"
+              limits:
+                cpu: "300m"
+                memory: "512Mi"
+            script: |
+              #!/usr/bin/env bash
+              set -uo pipefail
+
+              STATUS="$(cat /opt/host-info/provision-status 2>/dev/null || echo missing)"
+              echo "[mapt] provision-status=${STATUS}"
+              if [ "${STATUS}" = "ready" ]; then
+                echo "[mapt] vLLM ready; skipping instance diagnostics"
+                exit 0
+              fi
+
+              echo "[mapt] Provision did not become ready; collecting instance diagnostics"
+              if [ -s /opt/host-info/vllm-models-body ]; then
+                echo "[mapt] Saved GET /v1/models body:"
+                cat /opt/host-info/vllm-models-body
+              fi
+              if ! [ -s /opt/host-info/id_rsa ] || ! [ -s /opt/host-info/host ] || ! [ -s /opt/host-info/username ]; then
+                echo "[mapt] No SSH conn details under /opt/host-info; cannot journalctl on the instance"
+                exit 1
+              fi
+
+              HOST="$(cat /opt/host-info/host)"
+              USER="$(cat /opt/host-info/username)"
+              echo "[mapt] Host: ${HOST}"
+              echo "[mapt] User: ${USER}"
+
+              microdnf -y install openssh-clients >/tmp/microdnf-ssh.log 2>&1 || {
+                echo "[mapt] Failed to install openssh-clients (journal dump skipped)"
+                cat /tmp/microdnf-ssh.log || true
+                exit 1
+              }
+              chmod 600 /opt/host-info/id_rsa
+              ssh_cmd() {
+                ssh -i /opt/host-info/id_rsa -o BatchMode=yes \
+                  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                  -o ConnectTimeout=15 "${USER}@${HOST}" "$@"
+              }
+
+              # systemctl status prints ExecStart and cgroup argv. Allowlisted
+              # show properties only, for both unit names.
+              echo "[mapt] ===== remote: systemctl show rhaii/rhaiis ====="
+              ssh_cmd 'props=Id,Description,LoadState,ActiveState,SubState,UnitFileState,Result,MainPID,NRestarts,ExecMainCode,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp,ActiveEnterTimestamp,InactiveEnterTimestamp,FragmentPath; for unit in rhaii rhaiis; do echo "----- ${unit} -----"; sudo systemctl show "$unit" --no-pager --property="$props" || true; done'
+              echo "[mapt] ===== remote: nvidia-smi ====="
+              ssh_cmd 'nvidia-smi || true'
+              echo "[mapt] ===== remote: install.conf (secrets redacted) ====="
+              ssh_cmd 'sudo sed -E "s/(HUGGING_FACE_HUB_TOKEN|VLLM_API_KEY)=.*/\1=[redacted]/" /etc/containers/systemd/rhaii.container.d/install.conf 2>/dev/null || true'
+              echo "[mapt] ===== remote: journalctl -u rhaii (secrets redacted) ====="
+              ssh_cmd 'sudo journalctl -u rhaii -n 500 --no-pager 2>/dev/null | sed -E "s/hf_[A-Za-z0-9]+/[HF_TOKEN]/g; s/(HUGGING_FACE_HUB_TOKEN|VLLM_API_KEY)=[^ ]*/\1=[redacted]/g" || true'
+              if [ -s /opt/host-info/vllm-api-key ]; then
+                KEY="$(cat /opt/host-info/vllm-api-key)"
+                echo "[mapt] ===== remote: GET http://127.0.0.1:8000/v1/models ====="
+                ssh_cmd "curl -sS -m 15 -H \"Authorization: Bearer ${KEY}\" http://127.0.0.1:8000/v1/models || true"
+              fi
+              exit 1
       params:
         - name: rhelai-version
           value: "$(params.rhelai-version)"
