@@ -31,6 +31,7 @@ Feature: Role-Based Access Control (RBAC)
 
   Scenario: Admin can list conversations
       And I authenticate as "admin" user
+      And REST API service prefix is /v2
      When I access REST API endpoint "conversations" using HTTP GET method
      Then The status code of the response is 200
 
@@ -48,6 +49,7 @@ Feature: Role-Based Access Control (RBAC)
 
   Scenario: User can list conversations
       And I authenticate as "user" user
+      And REST API service prefix is /v2
      When I access REST API endpoint "conversations" using HTTP GET method
      Then The status code of the response is 200
 
@@ -57,6 +59,7 @@ Feature: Role-Based Access Control (RBAC)
 
   Scenario: Viewer can list conversations
       And I authenticate as "viewer" user
+      And REST API service prefix is /v2
      When I access REST API endpoint "conversations" using HTTP GET method
      Then The status code of the response is 200
 
@@ -97,6 +100,7 @@ Feature: Role-Based Access Control (RBAC)
 
   Scenario: Query-only user cannot list conversations - returns 403
       And I authenticate as "query_only" user
+      And REST API service prefix is /v2
      When I access REST API endpoint "conversations" using HTTP GET method
      Then The status code of the response is 403
       And The body of the response contains does not have permission
@@ -127,6 +131,7 @@ Feature: Role-Based Access Control (RBAC)
 
   Scenario: No-role user cannot list conversations - returns 403
       And I authenticate as "no_role" user
+      And REST API service prefix is /v2
      When I access REST API endpoint "conversations" using HTTP GET method
      Then The status code of the response is 403
       And The body of the response contains does not have permission

@@ -68,9 +68,10 @@ Feature: Conversation compaction
       And The response context_status is "summarized"
       And The response contains following fragments
           | Fragments in LLM response |
-          | north-quarry              |
-          | lantern-ops               |
-          | green-harbor              |
+      | north-quarry              |
+      | lantern-ops               |
+      | green-harbor              |
+     And REST API service prefix is /v2
      When I use REST API conversation endpoint with conversation_id from above using HTTP GET method
      Then The status code of the response is 200
       And The conversation history holds 5 turns and no compaction summary marker

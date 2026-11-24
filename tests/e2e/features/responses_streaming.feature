@@ -427,6 +427,7 @@ Feature: Responses endpoint streaming API tests
       And The body of the response contains middle
       And The responses conversation id is different from the multi-turn baseline
       And I store the forked responses conversation id from the last response
+    And REST API service prefix is /v2
     When I use REST API conversation endpoint with the forked responses conversation id using HTTP GET method
     Then The status code of the response is 200
       And The GET conversation response id matches the forked responses conversation id

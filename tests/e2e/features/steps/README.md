@@ -32,10 +32,6 @@ Step definitions for the conversation-compaction e2e feature (LCORE-2230).
 
 Implementation of common test steps for the feedback API.
 
-## [health.py](health.py)
-
-Implementation of common test steps.
-
 ## [info.py](info.py)
 
 Implementation of common test steps.
@@ -64,10 +60,6 @@ Implementation of placeholder test steps.
 
 Behave steps for /v1/prompts endpoint end-to-end tests.
 
-## [proxy.py](proxy.py)
-
-Step definitions for proxy and TLS networking e2e tests.
-
 ## [rbac.py](rbac.py)
 
 Step definitions for RBAC E2E tests.
@@ -79,10 +71,6 @@ Behave steps for POST /v1/responses (LCORE Responses API) multi-turn tests.
 ## [rlsapi_v1.py](rlsapi_v1.py)
 
 rlsapi v1 endpoint test steps.
-
-## [tls.py](tls.py)
-
-Step definitions for TLS configuration e2e tests.
 
 ## [token_counters.py](token_counters.py)
 

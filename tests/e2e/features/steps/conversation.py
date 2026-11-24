@@ -1,7 +1,5 @@
 """Implementation of common test steps."""
 
-import json
-
 import requests
 from behave import (
     step,
@@ -282,25 +280,6 @@ def check_conversation_topic_summary(context: Context, expected_summary: str) ->
     ), f"Expected topic_summary '{expected_summary}', but got '{actual_summary}'"
 
 
-@then("The conversation details are following")
-def check_returned_conversation_content(context: Context) -> None:
-    """Check the conversation content in response."""
-    json_str = replace_placeholders(context, context.text or "{}")
-
-    expected_data = json.loads(json_str)
-    found_conversation = context.found_conversation
-
-    assert (
-        found_conversation["last_used_model"] == expected_data["last_used_model"]
-    ), f"last_used_model mismatch, was {found_conversation["last_used_model"]}"
-    assert (
-        found_conversation["last_used_provider"] == expected_data["last_used_provider"]
-    ), f"last_used_provider mismatch, was {found_conversation["last_used_provider"]}"
-    assert (
-        found_conversation["message_count"] == expected_data["message_count"]
-    ), f"message count mismatch, was {found_conversation["message_count"]}"
-
-
 @then("The returned conversation details have expected conversation_id")
 def check_found_conversation_id(context: Context) -> None:
     """Check whether the conversation details have expected conversation_id."""
@@ -309,22 +288,6 @@ def check_found_conversation_id(context: Context) -> None:
     assert (
         response_json["conversation_id"] == context.response_data["conversation_id"]
     ), "found wrong conversation"
-
-
-@then("The body of the response has following messages")
-def check_found_conversation_content(context: Context) -> None:
-    """Check whether the conversation details have expected data."""
-    assert context.text is not None
-    expected_data = json.loads(context.text)
-    response_json = context.response.json()
-    chat_messages = response_json["chat_history"][0]["messages"]
-
-    assert chat_messages[0]["content"] == expected_data["content"]
-    assert chat_messages[0]["type"] == expected_data["type"]
-    assert (
-        expected_data["content_response"] in chat_messages[1]["content"]
-    ), f"expected substring not in response, has {chat_messages[1]["content"]}"
-    assert chat_messages[1]["type"] == expected_data["type_response"]
 
 
 @then("The conversation with details and conversation_id from above is not found")

@@ -10,7 +10,6 @@ Currently four events have been registered:
 import os
 import subprocess
 import time
-from typing import Optional
 
 import requests
 from behave.contrib.scenario_autoretry import patch_scenario_with_autoretry
@@ -18,24 +17,10 @@ from behave.model import Feature, Scenario
 from behave.runner import Context
 
 from tests.e2e.features.steps.common import (
-    get_ogx_hostname,
-    get_ogx_port,
     reset_active_lightspeed_stack_config_basename,
-)
-from tests.e2e.features.steps.health import (
-    get_ogx_was_running,
-    reset_ogx_disrupt_once_tracking,
-    reset_ogx_was_running,
-)
-from tests.e2e.features.steps.tls import (
-    is_tls_feature_file,
-    prepare_tls_feature_entry_on_prow,
-    reset_tls_prow_state,
 )
 from tests.e2e.utils.prow_utils import (
     ensure_okp_solr_ready,
-    restart_pod,
-    restore_ogx_pod,
     run_e2e_ops,
 )
 from tests.e2e.utils.utils import (
@@ -116,11 +101,6 @@ def before_all(context: Context) -> None:
     context.deployment_mode = os.getenv("E2E_DEPLOYMENT_MODE", "server").lower()
     context.is_library_mode = context.deployment_mode == "library"
 
-    # Detect Docker mode once for proxy tests
-    from tests.e2e.features.steps.proxy import _is_docker_mode
-
-    context.is_docker_mode = _is_docker_mode()
-
     # Get first LLM model from running service
     print(f"Running tests in {context.deployment_mode} mode")
 
@@ -161,11 +141,8 @@ def _ensure_prow_port_forward(context: Context) -> None:
     Probes localhost:{E2E_LSC_PORT}/readiness — if it fails, calls e2e-ops
     restart-port-forward to re-establish the tunnel before the scenario runs.
 
-    Treat HTTP 503 like 200/401 here: it means the tunnel reached Lightspeed and the
-    app responded. ``ogx_disrupted`` leaves OGX stopped on purpose; readiness
-    then returns 503. Previously we treated 503 as a dead tunnel and ran
-    ``restart-lightspeed``, which restores OGX via e2e-ops and breaks later scenarios
-    that skip disruption (once-per-feature) while expecting OGX to stay down.
+    Treat HTTP 503 like 200/401 here: the tunnel reached Lightspeed and the app
+    responded (readiness may be 503 when the backend is unavailable).
     """
     host = os.getenv("E2E_LSC_HOSTNAME", "localhost")
     port = os.getenv("E2E_LSC_PORT", "8080")
@@ -297,10 +274,7 @@ def _dump_pod_logs_on_failure(
     # Pod names match tests/e2e-prow manifests (legacy llama-stack-service id).
     pods: tuple[str, ...] = ("llama-stack-service", "lightspeed-stack-service")
     feature = getattr(context, "feature", None)
-    feat_file = getattr(feature, "filename", "") or "" if feature else ""
     feat_tags = getattr(feature, "tags", []) if feature else []
-    if is_tls_feature_file(feat_file):
-        pods = (*pods, "e2e-mock-tls-inference")
     if "cfg_okp" in feat_tags:
         pods = (*pods, "okp-solr-service")
     print(f"--- scenario failed: {scenario.name!r} — pod logs ---", flush=True)
@@ -354,122 +328,6 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
         restore_okp_solr_pod()
 
 
-def _print_ogx_diagnostics() -> None:
-    """Print container state, health, and recent logs to diagnose why OGX did not recover."""
-    print("--- ogx diagnostics ---")
-    for label, cmd in [
-        ("State", ["docker", "inspect", "--format={{.State}}", "ogx"]),
-        ("Health", ["docker", "inspect", "--format={{.State.Health}}", "ogx"]),
-    ]:
-        try:
-            r = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=5, check=False
-            )
-            print(f"  {label}: {r.stdout.strip() if r.stdout else r.stderr or 'N/A'}")
-        except subprocess.TimeoutExpired:
-            print(f"  {label}: (inspect timed out)")
-    try:
-        r = subprocess.run(
-            ["docker", "logs", "--tail", "40", "ogx"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-        out = (r.stdout or "") + (r.stderr or "")
-        print("  Logs (last 40 lines):")
-        for line in out.strip().splitlines():
-            print(f"    {line}")
-    except subprocess.TimeoutExpired:
-        print("  Logs: (timed out)")
-    print("--- end diagnostics ---")
-
-
-def _restore_ogx_service() -> None:
-    """Restore OGX connection after disruption."""
-    if is_prow_environment():
-        # Recreate OGX pod, then restart LCS so in-process clients reconnect (OGX IP/pod changed).
-        try:
-            restore_ogx_pod()
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-            print(f"Warning: Could not restore OGX pod on Prow: {e}")
-            return
-        last_lcs_err: Optional[
-            subprocess.CalledProcessError | subprocess.TimeoutExpired
-        ] = None
-        for attempt in range(1, 4):
-            try:
-                restart_pod("lightspeed-stack")
-                print(
-                    "✓ Prow: OGX restored and lightspeed-stack restarted "
-                    "for clean reconnect"
-                )
-                reset_ogx_disrupt_once_tracking()
-                return
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-                last_lcs_err = e
-                print(
-                    f"Warning: lightspeed-stack restart after OGX restore "
-                    f"attempt {attempt}/3 failed: {e}"
-                )
-                if attempt < 3:
-                    time.sleep(5)
-        print(
-            "Warning: Could not restart lightspeed-stack after OGX restore "
-            f"after 3 attempts: {last_lcs_err}"
-        )
-        return
-
-    try:
-        # Start the OGX container again
-        subprocess.run(["docker", "start", "ogx"], check=True, capture_output=True)
-
-        # Wait for the service to be healthy
-        print("Restoring OGX connection...")
-        max_attempts = 60
-        for attempt in range(max_attempts):
-            try:
-                result = subprocess.run(
-                    [
-                        "docker",
-                        "exec",
-                        "ogx",
-                        "curl",
-                        "-sf",
-                        f"http://{get_ogx_hostname()}:{get_ogx_port()}/v1/health",
-                    ],
-                    capture_output=True,
-                    timeout=5,
-                    check=False,
-                )
-                if result.returncode == 0:
-                    print("✓ OGX connection restored successfully")
-                    reset_ogx_disrupt_once_tracking()
-                    break
-            except subprocess.TimeoutExpired:
-                print(
-                    f"⏱ Health check timed out on attempt {attempt + 1}/{max_attempts}"
-                )
-
-            if attempt < max_attempts - 1:
-                print(
-                    f"Waiting for OGX to be healthy... "
-                    f"(attempt {attempt + 1}/{max_attempts})"
-                )
-                time.sleep(2)
-            else:
-                print("Warning: OGX may not be fully healthy after restoration")
-                _print_ogx_diagnostics()
-
-    except subprocess.CalledProcessError as e:
-        print(f"Warning: Could not restore OGX connection: {e}")
-        if e.stderr:
-            print(f"  docker start stderr: {e.stderr}")
-        if e.stdout:
-            print(f"  docker start stdout: {e.stdout}")
-        _print_ogx_diagnostics()
-
-
 def _ensure_okp_solr_for_feature() -> None:
     """Deploy OKP Solr for ``@cfg_okp`` features on Konflux only.
 
@@ -509,11 +367,6 @@ def before_feature(context: Context, feature: Feature) -> None:
     context.feature_config = None
     context.scenario_lightspeed_override_active = False
     context.active_lightspeed_stack_config_basename = None
-    # One real OGX disruption per feature (module-level flag; survives context resets)
-    reset_ogx_disrupt_once_tracking()
-    if feature.filename and is_tls_feature_file(feature.filename):
-        reset_tls_prow_state()
-        prepare_tls_feature_entry_on_prow(feature.filename)
     if "cfg_okp" in feature.tags:
         _ensure_okp_solr_for_feature()
 
@@ -549,13 +402,6 @@ def after_feature(context: Context, feature: Feature) -> None:
     when ``context.feedback_e2e_conversation_cleanup`` is set by feedback steps,
     delete tracked feedback test conversations.
     """
-    # Restore OGX FIRST (before any lightspeed-stack restart).
-    # Read from module-level state — Behave clears custom context attributes
-    # between scenarios, so context.ogx_was_running is unreliable here.
-    if get_ogx_was_running():
-        _restore_ogx_service()
-        reset_ogx_was_running()
-
     if getattr(context, "feedback_e2e_conversation_cleanup", False):
         token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva"
         for conversation_id in getattr(context, "feedback_conversations", []):
@@ -587,13 +433,6 @@ def after_feature(context: Context, feature: Feature) -> None:
             reset_active_lightspeed_stack_config_basename()
         else:
             remove_config_backup(backup_path)
-
-    # Clean up any proxy servers left from the last scenario
-    if hasattr(context, "tunnel_proxy") or hasattr(context, "interception_proxy"):
-        from tests.e2e.features.steps.proxy import _stop_proxy
-
-        _stop_proxy(context, "tunnel_proxy", "proxy_loop")
-        _stop_proxy(context, "interception_proxy", "interception_proxy_loop")
 
     start = getattr(feature, _E2E_FEATURE_PERF_START_ATTR, None)
     if start is not None:
