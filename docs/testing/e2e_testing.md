@@ -356,7 +356,7 @@ You can put several tags on one scenario. To document why a scenario is skipped,
 
 - **before_all**: Sets `deployment_mode`, `is_library_mode`, detects or overrides `default_model` / `default_provider`, sets `faiss_vector_store_id`.
 - **before_feature**: Applies feature-level config and restarts container for `Authorized`, `RBAC`, `RHIdentity`, `Feedback`, `MCP`.
-- **before_scenario**: Skips scenarios for `@skip`, `@local`, `@konflux-only`, `@skip-in-prow`, and provider-matrix tags; applies scenario config for `InvalidFeedbackStorageConfig` / `NoCacheConfig`.
+- **before_scenario**: Skips scenarios for `@skip`, `@local`, `@konflux-only`, and `@skip-in-prow`; applies scenario config for `InvalidFeedbackStorageConfig` / `NoCacheConfig`.
 - **after_scenario**: Restores OGX if it was disrupted; restores config and restarts for scenario config tags.
 - **after_feature**: Restores config and restarts for `Authorized`, `RBAC`, `RHIdentity`, `MCP`; deletes feedback conversations for `Feedback`.
 
