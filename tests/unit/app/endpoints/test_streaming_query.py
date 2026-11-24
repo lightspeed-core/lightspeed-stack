@@ -26,6 +26,7 @@ from constants import (
     MEDIA_TYPE_TEXT,
 )
 from models.api.requests import QueryRequest
+from models.common.agents import AgentTurnArtifacts
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import (
@@ -171,7 +172,9 @@ class TestStreamingQueryEndpointHandler:
         mock_turn_summary = TurnSummary()
         mocker.patch(
             "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
+            new=mocker.AsyncMock(
+                return_value=(mock_generator(), mock_turn_summary, AgentTurnArtifacts())
+            ),
         )
 
         async def mock_generate_agent_response(
@@ -254,7 +257,9 @@ class TestStreamingQueryEndpointHandler:
         mock_turn_summary = TurnSummary()
         mocker.patch(
             "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
+            new=mocker.AsyncMock(
+                return_value=(mock_generator(), mock_turn_summary, AgentTurnArtifacts())
+            ),
         )
 
         async def mock_generate_agent_response(
@@ -348,7 +353,9 @@ class TestStreamingQueryEndpointHandler:
         mock_turn_summary = TurnSummary()
         mocker.patch(
             "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
+            new=mocker.AsyncMock(
+                return_value=(mock_generator(), mock_turn_summary, AgentTurnArtifacts())
+            ),
         )
 
         async def mock_generate_agent_response(
@@ -440,7 +447,9 @@ class TestStreamingQueryEndpointHandler:
         mock_turn_summary = TurnSummary()
         mocker.patch(
             "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
+            new=mocker.AsyncMock(
+                return_value=(mock_generator(), mock_turn_summary, AgentTurnArtifacts())
+            ),
         )
 
         async def mock_generate_agent_response(
@@ -534,7 +543,9 @@ class TestStreamingQueryEndpointHandler:
         mock_turn_summary = TurnSummary()
         mocker.patch(
             "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
+            new=mocker.AsyncMock(
+                return_value=(mock_generator(), mock_turn_summary, AgentTurnArtifacts())
+            ),
         )
 
         async def mock_generate_agent_response(
@@ -625,7 +636,9 @@ class TestStreamingQueryOtelInstrumentation:
         mock_turn_summary = TurnSummary()
         mocker.patch(
             "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(mock_generator(), mock_turn_summary)),
+            new=mocker.AsyncMock(
+                return_value=(mock_generator(), mock_turn_summary, AgentTurnArtifacts())
+            ),
         )
 
         async def mock_generate_agent_response(
@@ -958,7 +971,9 @@ class TestGenerateResponseWithCompaction:  # pylint: disable=too-few-public-meth
 
         mocker.patch(
             "app.endpoints.streaming_query.retrieve_agent_response_generator",
-            new=mocker.AsyncMock(return_value=(inner_generator(), TurnSummary())),
+            new=mocker.AsyncMock(
+                return_value=(inner_generator(), TurnSummary(), AgentTurnArtifacts())
+            ),
         )
 
         captured_kwargs: dict[str, Any] = {}

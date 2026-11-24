@@ -58,11 +58,8 @@ from utils.query import (
 )
 from utils.quota_utils import check_tokens_available, get_available_quotas
 from utils.rag.vector_search import build_rag_context
-from utils.responses import (
-    deduplicate_referenced_documents,
-    maybe_get_topic_summary,
-    prepare_responses_params,
-)
+from utils.referenced_documents import deduplicate_referenced_documents
+from utils.responses import maybe_get_topic_summary, prepare_responses_params
 from utils.shields import request_redactor, validate_shield_ids_override
 from utils.suid import normalize_conversation_id
 from utils.types import Responses
@@ -271,7 +268,7 @@ async def _handle_query_with_tracing(
     async with pending_turn(
         client, responses_params, compaction.original_input
     ) as turn:
-        turn_summary = await retrieve_agent_response(
+        turn_summary, agent_artifacts = await retrieve_agent_response(
             client,
             responses_params,
             endpoint_path,
@@ -335,6 +332,7 @@ async def _handle_query_with_tracing(
         attachments=query_request.attachments,
         skip_userid_check=_skip_userid_check,
         topic_summary=topic_summary,
+        artifacts=agent_artifacts,
     )
     # Emit turn persisted event immediately after storing
     add_span_event(root_span, SpanEvents.TURN_PERSISTED)

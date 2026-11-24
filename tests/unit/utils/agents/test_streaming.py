@@ -47,7 +47,9 @@ from constants import (
 from models.api.requests import QueryRequest
 from models.api.responses.error import PromptTooLongResponse
 from models.common.agents import (
+    AgentRunDeps,
     AgentTurnAccumulator,
+    AgentTurnArtifacts,
     CompactionStreamPayload,
     TokenStreamPayload,
     ToolCallStreamPayload,
@@ -546,7 +548,7 @@ class TestRetrieveAgentResponseGenerator:
             return_value=_async_iter(["agent-event"]),
         )
 
-        generator, turn_summary = await retrieve_agent_response_generator(
+        generator, turn_summary, _artifacts = await retrieve_agent_response_generator(
             responses_params,
             context,
             ENDPOINT_PATH_STREAMING_QUERY,
@@ -557,10 +559,12 @@ class TestRetrieveAgentResponseGenerator:
         assert isinstance(turn_summary, TurnSummary)
         mock_agent_gen.assert_called_once_with(
             mock_agent,
+            mocker.ANY,
             responses_params,
             context,
             turn_summary,
             ENDPOINT_PATH_STREAMING_QUERY,
+            mocker.ANY,
             image_attachments=None,
         )
 
@@ -640,6 +644,7 @@ class TestGenerateAgentResponse:
                 context,
                 responses_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 background_tasks,
                 root_span=_dummy_root_span(),
             )
@@ -713,6 +718,7 @@ class TestGenerateAgentResponse:
                 context,
                 responses_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 background_tasks,
                 **generate_kwargs,
                 root_span=_dummy_root_span(),
@@ -772,6 +778,7 @@ class TestGenerateAgentResponse:
                 context,
                 responses_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 background_tasks,
                 root_span=_dummy_root_span(),
             )
@@ -820,6 +827,7 @@ class TestGenerateAgentResponse:
                 context,
                 responses_params,
                 TurnSummary(),
+                AgentTurnArtifacts(),
                 [],
                 emit_start=False,
                 root_span=_dummy_root_span(),
@@ -863,6 +871,7 @@ class TestGenerateAgentResponse:
                 context,
                 responses_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 [],
                 root_span=_dummy_root_span(),
             )
@@ -924,6 +933,7 @@ class TestGenerateAgentResponseOtel:
                 context,
                 responses_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 background_tasks,
                 root_span=root_span,
             )
@@ -1005,10 +1015,12 @@ class TestGenerateAgentResponseOtel:
             event
             async for event in agent_response_generator(
                 mock_agent,
+                AgentRunDeps(),
                 responses_params,
                 context,
                 turn_summary,
                 ENDPOINT_PATH_STREAMING_QUERY,
+                AgentTurnArtifacts(),
             )
         ]
 
@@ -1070,6 +1082,7 @@ class TestGenerateAgentResponseOtel:
                 context,
                 responses_params,
                 TurnSummary(),
+                AgentTurnArtifacts(),
                 [],
                 root_span=root_span,
             )
@@ -1124,6 +1137,7 @@ class TestGenerateAgentResponseOtel:
                 context,
                 responses_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 [],
                 root_span=root_span,
             )
@@ -1168,6 +1182,7 @@ class TestGenerateAgentResponseOtel:
                 context,
                 responses_params,
                 TurnSummary(),
+                AgentTurnArtifacts(),
                 [],
                 root_span=root_span,
             )
@@ -1234,10 +1249,12 @@ class TestAgentResponseGenerator:
             event
             async for event in agent_response_generator(
                 mock_agent,
+                AgentRunDeps(),
                 responses_params,
                 context,
                 turn_summary,
                 ENDPOINT_PATH_STREAMING_QUERY,
+                AgentTurnArtifacts(),
             )
         ]
 
@@ -1285,10 +1302,12 @@ class TestAgentResponseGenerator:
             event
             async for event in agent_response_generator(
                 mock_agent,
+                AgentRunDeps(),
                 responses_params,
                 context,
                 turn_summary,
                 ENDPOINT_PATH_STREAMING_QUERY,
+                AgentTurnArtifacts(),
             )
         ]
 
@@ -1337,10 +1356,12 @@ class TestAgentResponseGenerator:
             event
             async for event in agent_response_generator(
                 mock_agent,
+                AgentRunDeps(),
                 params,
                 context,
                 turn_summary,
                 ENDPOINT_PATH_STREAMING_QUERY,
+                AgentTurnArtifacts(),
             )
         ]
 
@@ -1410,10 +1431,12 @@ class TestAgentResponseGenerator:
             event
             async for event in agent_response_generator(
                 mock_agent,
+                AgentRunDeps(),
                 params,
                 context,
                 turn_summary,
                 ENDPOINT_PATH_STREAMING_QUERY,
+                AgentTurnArtifacts(),
                 image_attachments=[image_attachment],
             )
         ]
@@ -1459,10 +1482,12 @@ class TestAgentResponseGenerator:
             event
             async for event in agent_response_generator(
                 mock_agent,
+                AgentRunDeps(),
                 responses_params,
                 context,
                 turn_summary,
                 ENDPOINT_PATH_STREAMING_QUERY,
+                AgentTurnArtifacts(),
             )
         ]
 
@@ -1487,10 +1512,12 @@ class TestAgentResponseGenerator:
             event
             async for event in agent_response_generator(
                 mock_agent,
+                AgentRunDeps(),
                 responses_params,
                 context,
                 turn_summary,
                 ENDPOINT_PATH_STREAMING_QUERY,
+                AgentTurnArtifacts(),
             )
         ]
 
@@ -1553,10 +1580,12 @@ class TestInterruptPartialTokenAccumulation:
 
         inner = agent_response_generator(
             mock_agent,
+            AgentRunDeps(),
             responses_params,
             context,
             turn_summary,
             ENDPOINT_PATH_STREAMING_QUERY,
+            AgentTurnArtifacts(),
         )
 
         result = [
@@ -1566,6 +1595,7 @@ class TestInterruptPartialTokenAccumulation:
                 context,
                 responses_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 background_tasks,
                 root_span=_dummy_root_span(),
             )
@@ -1628,6 +1658,7 @@ class TestInterruptPartialTokenAccumulation:
                 context,
                 responses_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 background_tasks,
                 root_span=_dummy_root_span(),
             )
@@ -1740,6 +1771,7 @@ class TestCompactedTurnPersistence:
                 context,
                 compacted_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 [],
                 turn=PendingTurn.for_request(
                     context.client, compacted_params, "the original question"
@@ -1781,6 +1813,7 @@ class TestCompactedTurnPersistence:
                 context,
                 responses_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 [],
                 root_span=_dummy_root_span(),
             )
@@ -1831,6 +1864,7 @@ class TestCompactedTurnPersistence:
                 context,
                 compacted_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 [],
                 turn=turn,
                 root_span=_dummy_root_span(),
@@ -1886,6 +1920,7 @@ class TestCompactedTurnPersistence:
                 context,
                 compacted_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 [],
                 turn=turn,
                 root_span=_dummy_root_span(),
@@ -1932,6 +1967,7 @@ class TestCompactedTurnPersistence:
                 context,
                 compacted_params,
                 turn_summary,
+                AgentTurnArtifacts(),
                 [],
                 turn=PendingTurn.for_request(context.client, compacted_params, "q"),
                 root_span=_dummy_root_span(),

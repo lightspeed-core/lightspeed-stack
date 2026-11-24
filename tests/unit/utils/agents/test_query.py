@@ -389,13 +389,20 @@ class TestRetrieveAgentResponse:
             return_value=mock_agent,
         )
 
-        summary = await retrieve_agent_response(
+        summary, artifacts = await retrieve_agent_response(
             client=mocker.AsyncMock(),
             responses_params=make_responses_params(input_text="Say hello"),
             endpoint_path=ENDPOINT_PATH_QUERY,
         )
 
-        mock_agent.run.assert_awaited_once_with("Say hello", conversation_id="conv_123")
+        assert artifacts.is_recorded()
+        assert artifacts.run is run_result
+
+        mock_agent.run.assert_awaited_once_with(
+            "Say hello",
+            conversation_id="conv_123",
+            deps=mocker.ANY,
+        )
         assert summary.llm_response == "Hello!"
         assert summary.id == "resp-success"
 
@@ -420,10 +427,13 @@ class TestRetrieveAgentResponse:
         run_result = make_agent_run_result(content="Answer")
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(return_value=run_result)
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+        mocker.patch(
+            "utils.agents.query.build_agent",
+            return_value=mock_agent,
+        )
         client = mocker.AsyncMock()
 
-        summary = await retrieve_agent_response(
+        summary, _artifacts = await retrieve_agent_response(
             client=client,
             responses_params=params,
             endpoint_path=ENDPOINT_PATH_QUERY,
@@ -431,7 +441,9 @@ class TestRetrieveAgentResponse:
         )
 
         mock_agent.run.assert_awaited_once_with(
-            "new question", conversation_id="conv_123"
+            "new question",
+            conversation_id="conv_123",
+            deps=mocker.ANY,
         )
         assert summary.llm_response == "Answer"
 
@@ -481,7 +493,10 @@ class TestRetrieveAgentResponse:
         """
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(side_effect=ApiException(status=None))
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+        mocker.patch(
+            "utils.agents.query.build_agent",
+            return_value=mock_agent,
+        )
 
         with caplog.at_level("WARNING"):
             with pytest.raises(HTTPException):
@@ -514,7 +529,10 @@ class TestRetrieveAgentResponse:
         """
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(side_effect=RuntimeError("kaboom"))
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+        mocker.patch(
+            "utils.agents.query.build_agent",
+            return_value=mock_agent,
+        )
 
         with caplog.at_level("ERROR"):
             with pytest.raises(HTTPException):
@@ -578,7 +596,7 @@ class TestRetrieveAgentResponse:
             )
 
         client = mocker.AsyncMock()
-        summary = await retrieve_agent_response(
+        summary, _artifacts = await retrieve_agent_response(
             client=client,
             responses_params=params,
             endpoint_path=ENDPOINT_PATH_QUERY,
@@ -689,7 +707,10 @@ class TestQueryCompactedTurnPersistence:
         mock_agent.model.last_output_items = [
             OpenAIResponseMessage(role="assistant", content="Answer")
         ]
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+        mocker.patch(
+            "utils.agents.query.build_agent",
+            return_value=mock_agent,
+        )
         client, stored = client_capturing_writes(mocker)
 
         await retrieve_agent_response(
@@ -720,7 +741,10 @@ class TestQueryCompactedTurnPersistence:
         mock_agent.model.last_output_items = [
             OpenAIResponseMessage(role="assistant", content="Answer")
         ]
-        mocker.patch("utils.agents.query.build_agent", return_value=mock_agent)
+        mocker.patch(
+            "utils.agents.query.build_agent",
+            return_value=mock_agent,
+        )
         client, stored = client_capturing_writes(mocker)
 
         await retrieve_agent_response(

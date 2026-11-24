@@ -79,8 +79,8 @@ from utils.query import (
 )
 from utils.quota_utils import check_tokens_available
 from utils.rag.vector_search import build_rag_context
+from utils.referenced_documents import deduplicate_referenced_documents
 from utils.responses import (
-    deduplicate_referenced_documents,
     extract_vector_store_ids_from_tools,
     prepare_responses_params,
 )
@@ -347,7 +347,7 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
             media_type=response_media_type,
         )
 
-    generator, turn_summary = await retrieve_agent_response_generator(
+    generator, turn_summary, artifacts = await retrieve_agent_response_generator(
         responses_params=responses_params,
         context=context,
         endpoint_path=endpoint_path,
@@ -366,6 +366,7 @@ async def _handle_streaming_query_with_tracing(  # pylint: disable=too-many-loca
             context=context,
             responses_params=responses_params,
             turn_summary=turn_summary,
+            artifacts=artifacts,
             background_topic_summary_tasks=_background_topic_summary_tasks,
             root_span=root_span,
         ),
@@ -391,7 +392,7 @@ async def shutdown_background_topic_summary_tasks() -> None:
     await asyncio.gather(*tasks, return_exceptions=True)
 
 
-async def generate_response_with_compaction(
+async def generate_response_with_compaction(  # pylint: disable=too-many-locals
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     endpoint_path: str,
@@ -454,11 +455,13 @@ async def generate_response_with_compaction(
                     context_status = item.context_status
                     summarization_usage = item.summarization_usage
 
-            generator, turn_summary = await retrieve_agent_response_generator(
-                responses_params=responses_params,
-                context=context,
-                endpoint_path=endpoint_path,
-                image_attachments=image_attachments,
+            generator, turn_summary, artifacts = (
+                await retrieve_agent_response_generator(
+                    responses_params=responses_params,
+                    context=context,
+                    endpoint_path=endpoint_path,
+                    image_attachments=image_attachments,
+                )
             )
         except HTTPException as e:
             yield http_exception_stream_event(e)
@@ -502,6 +505,7 @@ async def generate_response_with_compaction(
             context,
             responses_params,
             turn_summary,
+            artifacts,
             background_topic_summary_tasks=_background_topic_summary_tasks,
             root_span=root_span,
             emit_start=False,

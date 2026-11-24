@@ -13,6 +13,7 @@ from pydantic_ai_skills import SkillsCapability
 
 from conversations.agent_history.service import AgentHistoryService
 from log import get_logger
+from models.common.agents import AgentRunDeps
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.skills import SkillMetadata
 from models.common.tools import CatalogTool, CatalogToolParameter
@@ -270,7 +271,7 @@ def build_agent(
     config: AppConfig,
     shields: Optional[list[str]] = None,
     no_tools: bool = False,
-) -> Agent[None, str]:
+) -> Agent[AgentRunDeps, str]:
     """Build a Pydantic AI agent that mirrors ``responses_params`` on the OGX backend.
 
     Uses ``OgxProvider`` with the same ``AsyncOgxClient`` (or library client)
@@ -306,5 +307,6 @@ def build_agent(
         model,
         instructions=responses_params.instructions,
         capabilities=capabilities,
+        deps_type=AgentRunDeps,
         defer_model_check=True,
     )
