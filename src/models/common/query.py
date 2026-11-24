@@ -56,15 +56,15 @@ class Attachment(BaseModel):
     """
 
     attachment_type: str = Field(
-        description="The attachment type, like 'log', 'configuration', 'image' etc.",
+        description="Category of the attachment, such as log, configuration, or image.",
         examples=["log", "image"],
     )
     content_type: str = Field(
-        description="The content type as defined in MIME standard",
+        description="MIME type of the attachment content, such as text/plain or image/png.",
         examples=["text/plain", "image/jpeg", "image/png", "image/webp"],
     )
     content: str = Field(
-        description="The actual attachment content (text or base64-encoded image data)",
+        description="Plain text for text attachments or base64-encoded bytes for images.",
         examples=["warning: quota exceeded"],
     )
 

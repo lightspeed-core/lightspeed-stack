@@ -12100,7 +12100,7 @@
                     "attachment_type": {
                         "type": "string",
                         "title": "Attachment Type",
-                        "description": "The attachment type, like 'log', 'configuration', 'image' etc.",
+                        "description": "Category of the attachment, such as log, configuration, or image.",
                         "examples": [
                             "log",
                             "image"
@@ -12109,7 +12109,7 @@
                     "content_type": {
                         "type": "string",
                         "title": "Content Type",
-                        "description": "The content type as defined in MIME standard",
+                        "description": "MIME type of the attachment content, such as text/plain or image/png.",
                         "examples": [
                             "text/plain",
                             "image/jpeg",
@@ -12120,7 +12120,7 @@
                     "content": {
                         "type": "string",
                         "title": "Content",
-                        "description": "The actual attachment content (text or base64-encoded image data)",
+                        "description": "Plain text for text attachments or base64-encoded bytes for images.",
                         "examples": [
                             "warning: quota exceeded"
                         ]
@@ -14251,7 +14251,7 @@
                     "conversation_id": {
                         "type": "string",
                         "title": "Conversation Id",
-                        "description": "The required conversation ID (UUID)",
+                        "description": "UUID of the conversation containing the response being rated.",
                         "examples": [
                             "c5260aec-4d82-4370-9fdf-05cf908b3f16"
                         ]
@@ -14259,7 +14259,7 @@
                     "user_question": {
                         "type": "string",
                         "title": "User Question",
-                        "description": "User question (the query string)",
+                        "description": "Original question that prompted the response being rated.",
                         "examples": [
                             "What is Kubernetes?"
                         ]
@@ -14267,7 +14267,7 @@
                     "llm_response": {
                         "type": "string",
                         "title": "Llm Response",
-                        "description": "Response from LLM",
+                        "description": "Assistant response being rated.",
                         "examples": [
                             "Kubernetes is an open-source container orchestration system for automating ..."
                         ]
@@ -14282,7 +14282,7 @@
                             }
                         ],
                         "title": "Sentiment",
-                        "description": "User sentiment, if provided must be -1 or 1",
+                        "description": "Overall rating of the response. Use -1 for negative feedback or 1 for positive feedback.",
                         "examples": [
                             -1,
                             1
@@ -14299,7 +14299,7 @@
                             }
                         ],
                         "title": "User Feedback",
-                        "description": "Feedback on the LLM response.",
+                        "description": "Free-text comments about the assistant response.",
                         "examples": [
                             "I'm not satisfied with the response because it is too vague."
                         ]
@@ -14324,7 +14324,7 @@
                             }
                         ],
                         "title": "Categories",
-                        "description": "List of positive or negative feedback categories.",
+                        "description": "Predefined categories describing what worked or what went wrong.",
                         "examples": [
                             [
                                 "incorrect",
@@ -14414,7 +14414,7 @@
                     "status": {
                         "type": "boolean",
                         "title": "Status",
-                        "description": "Desired state of feedback enablement, must be False or True",
+                        "description": "Set to true to enable feedback or false to disable it.",
                         "default": false,
                         "examples": [
                             true,
@@ -18785,7 +18785,7 @@
                     "query": {
                         "type": "string",
                         "title": "Query",
-                        "description": "The query string",
+                        "description": "Question or instruction for the assistant to answer.",
                         "examples": [
                             "What is Kubernetes?"
                         ]
@@ -18800,7 +18800,7 @@
                             }
                         ],
                         "title": "Conversation Id",
-                        "description": "The optional conversation ID (UUID)",
+                        "description": "UUID of the conversation associated with this query.",
                         "examples": [
                             "c5260aec-4d82-4370-9fdf-05cf908b3f16"
                         ]
@@ -18815,7 +18815,7 @@
                             }
                         ],
                         "title": "Provider",
-                        "description": "The optional provider",
+                        "description": "Identifier of the inference provider to use for this query.",
                         "examples": [
                             "openai",
                             "watsonx"
@@ -18831,7 +18831,7 @@
                             }
                         ],
                         "title": "Model",
-                        "description": "The optional model",
+                        "description": "Identifier of the language model to use for this query.",
                         "examples": [
                             "gpt4mini"
                         ]
@@ -18846,7 +18846,7 @@
                             }
                         ],
                         "title": "System Prompt",
-                        "description": "The optional system prompt.",
+                        "description": "Per-request instructions for the model. The server can disable this override.",
                         "examples": [
                             "You are OpenShift assistant.",
                             "You are Ansible assistant."
@@ -18865,7 +18865,7 @@
                             }
                         ],
                         "title": "Attachments",
-                        "description": "The optional list of attachments.",
+                        "description": "Files or text supplied as context, such as logs, configuration, or images.",
                         "examples": [
                             {
                                 "attachment_type": "log",
@@ -18911,7 +18911,7 @@
                             }
                         ],
                         "title": "Generate Topic Summary",
-                        "description": "Whether to generate topic summary for new conversations",
+                        "description": "Whether to generate a topic summary when starting a conversation.",
                         "default": true,
                         "examples": [
                             true,
@@ -18928,7 +18928,7 @@
                             }
                         ],
                         "title": "Media Type",
-                        "description": "Media type for the response format",
+                        "description": "Requested response media type, such as application/json or text/plain.",
                         "examples": [
                             "application/json",
                             "text/plain"
@@ -19055,7 +19055,7 @@
                             }
                         ],
                         "title": "Conversation Id",
-                        "description": "The optional conversation ID (UUID)",
+                        "description": "UUID of the conversation associated with this response, when available.",
                         "examples": [
                             "c5260aec-4d82-4370-9fdf-05cf908b3f16"
                         ]
@@ -19063,7 +19063,7 @@
                     "response": {
                         "type": "string",
                         "title": "Response",
-                        "description": "Response from LLM",
+                        "description": "Answer generated by the assistant.",
                         "examples": [
                             "Kubernetes is an open-source container orchestration system for automating ..."
                         ]
@@ -19082,7 +19082,7 @@
                         },
                         "type": "array",
                         "title": "Referenced Documents",
-                        "description": "List of documents referenced in generating the response",
+                        "description": "Source documents referenced while generating the answer.",
                         "examples": [
                             [
                                 {
@@ -19114,7 +19114,7 @@
                     "input_tokens": {
                         "type": "integer",
                         "title": "Input Tokens",
-                        "description": "Number of tokens sent to LLM",
+                        "description": "Number of input tokens sent to the model.",
                         "default": 0,
                         "examples": [
                             150,
@@ -19125,7 +19125,7 @@
                     "output_tokens": {
                         "type": "integer",
                         "title": "Output Tokens",
-                        "description": "Number of tokens received from LLM",
+                        "description": "Number of output tokens returned by the model.",
                         "default": 0,
                         "examples": [
                             50,
@@ -19161,7 +19161,7 @@
                         },
                         "type": "array",
                         "title": "Tool Results",
-                        "description": "List of tool results"
+                        "description": "Results returned by tools called while generating the answer."
                     }
                 },
                 "type": "object",
@@ -22332,7 +22332,7 @@
                     "request_id": {
                         "type": "string",
                         "title": "Request Id",
-                        "description": "The active streaming request ID to interrupt",
+                        "description": "Identifier of the in-progress streaming request to interrupt.",
                         "examples": [
                             "123e4567-e89b-12d3-a456-426614174000"
                         ]
