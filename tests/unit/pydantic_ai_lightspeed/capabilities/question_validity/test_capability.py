@@ -28,6 +28,7 @@ from pydantic_ai_lightspeed.capabilities.utils import (
     extract_conversation_id,
     extract_message_str_from_user_content,
 )
+from utils.blocked_turns import shield_refusal_of
 
 _MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
 
@@ -331,6 +332,7 @@ class TestWrapRun:
         mock_handler.assert_not_awaited()
         assert isinstance(result, AgentRunResult)
         assert result.output == DEFAULT_INVALID_QUESTION_RESPONSE
+        assert shield_refusal_of(result) == DEFAULT_INVALID_QUESTION_RESPONSE
 
     @pytest.mark.asyncio
     async def test_rejected_question_persists_turn_to_conversation(

@@ -41,6 +41,7 @@ from pydantic_ai_lightspeed.capabilities.utils import (
     message_to_str,
 )
 from pydantic_ai_lightspeed.ogx import OgxResponsesModel
+from utils.blocked_turns import SHIELD_BLOCKED_METADATA_KEY
 from utils.conversations import append_turn_to_conversation
 
 if TYPE_CHECKING:
@@ -140,6 +141,7 @@ class QuestionValidity(AbstractSafetyCapability):
                 ModelResponse(
                     [TextPart(self.config.invalid_question_response)],
                     finish_reason="stop",
+                    metadata={SHIELD_BLOCKED_METADATA_KEY: True},
                 ),
             ],
         )

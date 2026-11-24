@@ -63,6 +63,7 @@ from models.api.requests import QueryRequest
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import Action
 from utils.agents.error_handler import map_agent_inference_error
+from utils.blocked_turns import shield_refusal_of
 from utils.conversation_compaction import apply_compaction_blocking
 from utils.mcp.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.otel_tracing import (
@@ -253,6 +254,7 @@ async def _compact_a2a_request(
 async def _persist_compacted_a2a_turn(
     turn: PendingTurn,
     agent: Any,
+    run_result: Optional[AgentRunResult[str]],
     task_id: str,
 ) -> None:
     """Append a completed compacted A2A turn to the conversation (LCORE-3883).
@@ -266,11 +268,15 @@ async def _persist_compacted_a2a_turn(
         turn: The pending turn of the request. Nothing is written when OGX
             stores the turn itself.
         agent: The pydantic-ai agent whose model captured the output items.
+        run_result: The result of the agent run. When a shield rejected the
+            run, the turn is stored as a blocked turn (LCORE-3788).
         task_id: A2A task identifier, used for error reporting.
 
     """
     try:
-        await turn.store_completed(captured_output_items(agent))
+        await turn.store_agent_turn(
+            captured_output_items(agent), shield_refusal_of(run_result)
+        )
     except Exception:  # pylint: disable=broad-except
         # The caller already has its answer; the cost of the failure is that the
         # next turn in this context loses this one.
@@ -603,7 +609,7 @@ class A2AAgentExecutor(AgentExecutor):
                 )
                 return
 
-            await _persist_compacted_a2a_turn(turn, agent, task_id)
+            await _persist_compacted_a2a_turn(turn, agent, self._run_result, task_id)
             turn.ensure_settled()
 
             _record_execution_span(

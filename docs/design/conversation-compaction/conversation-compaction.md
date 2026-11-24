@@ -318,6 +318,7 @@ Add `compaction` field to the root `Configuration` class.
 | `src/configuration.py`                 | Add `compaction_configuration` property to `AppConfig` singleton           |
 | `src/utils/conversation_compaction.py` | New module: `apply_compaction()` / `apply_compaction_blocking()`, `needs_compaction_path()`, marker helpers, per-conversation lock |
 | `src/utils/pending_turn.py`            | `PendingTurn`, the owner of every turn the endpoints store themselves: decides whether the turn is ours, stores it against the input as it arrived, and stores it once — LCORE-3908 |
+| `src/utils/blocked_turns.py`           | The mark of a turn a shield blocked: the id prefix, the predicate, and the filter compaction applies — LCORE-3788 |
 | `src/models/common/responses/responses_api_params.py` | `omit_conversation` flag — drops the `conversation` parameter from the request body in compacted mode |
 | `src/app/endpoints/query.py`           | Call `apply_compaction_blocking()` after preparing params; store the turn in compacted mode |
 | `src/app/endpoints/streaming_query.py` | Compaction-aware SSE path that emits the `compaction` event before summarizing (R12) |
@@ -355,12 +356,14 @@ and the completed turn is appended to the conversation items afterward.
 That append has one owner, `PendingTurn` in `src/utils/pending_turn.py`
 (LCORE-3908). An endpoint creates it from the parameters the request is sent
 with and the `original_input` of the `CompactionResult`, and reports how the
-turn ended: `store_completed`, `store_blocked` or `store_interrupted`.
-The first report settles the turn and every later one does nothing, so a turn is
-stored once even when several paths of a request want to store it (the end of a
-stream, the cancellation handler, the interrupt callback). `PendingTurn` also
-covers the other turns OGX does not store: a request a shield blocked on
-`/v1/responses`, an interrupted stream, a continuation from
+turn ended: `store_completed`, `store_blocked` or `store_interrupted`. The
+agent endpoints report the end of a run through `store_agent_turn`, which
+stores a completed turn, or a blocked one when a shield capability rejected the
+run. The first report settles the turn and every later one does nothing, so a
+turn is stored once even when several paths of a request want to store it (the
+end of a stream, the cancellation handler, the interrupt callback).
+`PendingTurn` also covers the other turns OGX does not store: a request a
+shield blocked on `/v1/responses`, an interrupted stream, a continuation from
 `previous_response_id`.
 
 A compacted request that loses its turn through a change in the code fails.
@@ -379,24 +382,32 @@ a final response, and a failed write where the failure is logged.
 The shield capabilities (question validity, Granite Guardian) are the one writer
 outside the owner. They store the turn they rejected from inside the agent run,
 and only when the model was handed the conversation, so never in compacted mode.
+There the owner stores the turn they rejected.
 
 What is stored, per endpoint and per way a turn can end. "OGX" means the
-`conversation` parameter was sent and OGX stores the turn itself. The last
-column says what a failed write does to the request.
+`conversation` parameter was sent and OGX stores the turn itself. "Capability"
+means the shield capability writes, from inside the agent run: the turn,
+blocked, when it rejected the input, or the refusal over the answer OGX stored
+when it rejected the output or a tool result. "Blocked" means stored with the
+mark described under [Blocked turns](#blocked-turns). The last column says what
+a failed write of the owner does to the request.
 
 | Endpoint | Turn ended | Not compacted | Compacted | Failed write |
 |---|---|---|---|---|
 | `/v1/query` | completed | OGX | stored | request fails |
+| | rejected by a shield capability | capability | stored, blocked | request fails |
 | | model call failed | not stored | not stored | |
 | | run did not finish with success | OGX | not stored | |
 | `/v1/streaming_query` | completed, also when the run did not finish with success | OGX | stored when the stream ends | logged |
+| | rejected by a shield capability | capability | stored when the stream ends, blocked | logged |
 | | interrupted by the client | stored, with the answer so far | stored, with the answer so far | logged |
 | | client stopped reading | OGX | not stored | |
 | `/v1/responses` | completed, incomplete or failed | OGX; stored when continuing from `previous_response_id` | stored | request fails; a stream ends before `[DONE]` |
-| | blocked by a shield | stored | stored | request fails |
+| | blocked by a shield | stored, blocked | stored, blocked | request fails |
 | | stream without a final response | not stored | not stored | |
 | | `store: false` | not stored | never compacted | |
 | A2A | completed | OGX | stored | logged |
+| | rejected by a shield capability | capability | stored, blocked | logged |
 | | agent run failed | not stored | not stored | |
 
 `tests/integration/endpoints/test_turn_persistence.py` pins the table. It runs
@@ -404,7 +415,74 @@ the real handlers and compares the conversation item by item after the request.
 The compacted column is covered row by row; the other column for the rows where
 lightspeed-stack stores the turn, and for a completed turn on each endpoint. The
 last column is covered for a completed turn on each endpoint and for an
-interrupted stream.
+interrupted stream. The capability cells are covered for a rejected input on
+`/v1/query` and `/v1/streaming_query`, in
+`tests/integration/endpoints/test_granite_guardian_integration.py`.
+
+## Blocked turns
+
+A turn a shield blocked stays in the conversation, so the history is complete,
+and must not reach the model again (LCORE-3788). Compaction builds the model's
+context from the stored items, so a blocked turn has to be recognizable there.
+
+- **The mark.** A conversation item has no metadata, so the mark is the item
+  id: the messages of a blocked turn are stored under an id that starts with
+  `msg_blocked_` (`src/utils/blocked_turns.py`), in place of any id the client
+  sent. Other items of the turn keep their id; the model's context is built
+  from messages only. Both writers of a blocked turn set the mark: the owner,
+  through `store_blocked`, and the shield capabilities, through
+  `append_turn_to_conversation`.
+- **The filter.** `_load_compaction_state` leaves the marked items out of the
+  recent items. That list feeds the token estimate, the partition, the
+  summarizer and the explicit input, so a blocked turn takes no buffer slot and
+  is neither summarized nor replayed. `needs_compaction_path` leaves them out
+  of its estimate. The filter runs after the stored items were cut at the count
+  the last marker records, which is an index into the stored items, blocked
+  ones included. A marked message is never read as a summary marker, even when
+  its text starts with the marker prefix: its text would otherwise be sent to
+  the model as a summary.
+- **A rejected agent run.** On `/v1/query`, `/v1/streaming_query` and A2A the
+  run ends like any other, with a refusal in place of the answer. The
+  capability flags the response it returns, and the endpoint hands the refusal
+  to `store_agent_turn`. In compacted mode the turn is stored as the input as
+  it arrived and the refusal, also when Granite Guardian rejected the output or
+  a tool result: what the model returned is not stored.
+
+Not covered:
+
+- `GET /v1/conversations/{conversation_id}` returns blocked turns, on purpose.
+  Only what the model reads is filtered.
+- A turn stored before the mark existed carries none and is treated like any
+  other turn, and a summary that already holds a blocked text keeps it. Stored
+  conversations are not migrated.
+- Outside compacted mode, when Granite Guardian rejects the output or a tool
+  result, the capability replaces the answer OGX stored with the refusal
+  (`replace_last_assistant_message`). Neither the question nor that refusal is
+  marked, so a later compaction replays or summarizes them.
+- A request that is not served in compacted mode is sent with the
+  `conversation` parameter, and OGX builds the model's context itself, without
+  regard to the mark. OGX 1.2.5 takes the messages it stored with the earlier
+  responses of the conversation or, when it has stored none, the conversation
+  items. A blocked turn at the start of a conversation, before any answered
+  turn, is therefore sent to the model by the next request and, because OGX
+  stores the context it built, by every later request until the conversation is
+  compacted.
+- A stream the client interrupts is stored without the mark
+  (`store_interrupted`), also when the interrupt lands while a shield is still
+  judging the input, or just after it rejected it: the endpoint learns the
+  verdict only when the run ends. The question is then replayed like that of
+  any other interrupted turn. Outside compacted mode, an interrupt just after
+  the rejection adds a second copy of the question, without the mark, to the
+  turn the capability stored.
+- The topic summary of a new conversation is generated from the first query
+  also when a shield blocked it, unless the request turned
+  `generate_topic_summary` off. On `/v1/query`, `/v1/streaming_query` and
+  `/v1/responses` the blocked text is then sent to the model in the request
+  that returned the refusal. That call is outside compaction and the mark.
+- The mark depends on OGX storing a message under the id it is sent, which a
+  unit test pins for the pinned OGX version only
+  (`tests/unit/utils/test_blocked_turns.py`): an OGX server of another version
+  is not covered.
 
 ## Fetching conversation history
 

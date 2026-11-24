@@ -54,6 +54,7 @@ from pydantic_ai_lightspeed.capabilities.utils import (
     extract_conversation_id,
     message_to_str,
 )
+from utils.blocked_turns import SHIELD_BLOCKED_METADATA_KEY
 from utils.conversations import (
     append_turn_to_conversation,
     replace_last_assistant_message,
@@ -511,7 +512,11 @@ class GraniteGuardian(AbstractSafetyCapability):
         if request_parts:
             messages.append(ModelRequest(list(request_parts)))
         messages.append(
-            ModelResponse([TextPart(violation_message)], finish_reason="stop")
+            ModelResponse(
+                [TextPart(violation_message)],
+                finish_reason="stop",
+                metadata={SHIELD_BLOCKED_METADATA_KEY: True},
+            )
         )
         state = GraphAgentState(usage=ctx.usage, message_history=messages)
 

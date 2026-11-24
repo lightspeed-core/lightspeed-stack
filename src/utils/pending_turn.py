@@ -26,7 +26,8 @@ that fails where the failure is logged.
 The shield capabilities (``pydantic_ai_lightspeed.capabilities``) are the one
 writer outside this module. They store the turn they rejected from inside the
 agent run, and only when the model was handed the conversation, so never in
-compacted mode.
+compacted mode. There the turn they rejected is stored here, as a blocked
+turn: :meth:`PendingTurn.store_agent_turn`.
 """
 
 from collections.abc import AsyncIterator, Sequence
@@ -56,10 +57,10 @@ class PendingTurn:
     """The turn of the request being served, until it is settled.
 
     A turn is settled by the first of :meth:`store_completed`,
-    :meth:`store_blocked` and :meth:`store_interrupted` that is called. Every
-    later call does nothing, so the write happens once when several paths of a
-    request want it (the end of a stream, the cancellation handler, the
-    interrupt callback).
+    :meth:`store_blocked`, :meth:`store_agent_turn` and
+    :meth:`store_interrupted` that is called. Every later call does nothing,
+    so the write happens once when several paths of a request want it (the
+    end of a stream, the cancellation handler, the interrupt callback).
 
     Attributes:
         client: OGX client used for the write.
@@ -191,6 +192,38 @@ class PendingTurn:
 
         """
         return await self._store("blocked", [refusal], blocked=True)
+
+    async def store_agent_turn(
+        self,
+        output_items: Sequence[OpenAIResponseOutput],
+        shield_refusal: Optional[str] = None,
+    ) -> bool:
+        """Store the turn of an agent run, as blocked when a shield rejected it.
+
+        A shield that runs inside the agent stores the turn it rejected
+        itself when the model was handed the conversation. Otherwise it
+        cannot, and the turn is stored here: the input as it arrived and the
+        refusal, in place of whatever the model returned (LCORE-3788).
+
+        Parameters:
+            output_items: The output items of the turn, as OGX returned them.
+            shield_refusal: The refusal, when a shield rejected the run.
+
+        Returns:
+            Whether this call stored the turn.
+
+        Raises:
+            HTTPException: When the write fails.
+
+        """
+        if shield_refusal is None:
+            return await self.store_completed(output_items)
+        if self.left_to_ogx:
+            self._settle("left to the shield")
+            return False
+        return await self.store_blocked(
+            OpenAIResponseMessage(role="assistant", content=shield_refusal)
+        )
 
     async def store_interrupted(self, partial_response: str) -> bool:
         """Store the turn of a stream the client interrupted.

@@ -14,14 +14,22 @@ never start with the prefix.
 
 Only turns stored with the mark are recognized. A blocked turn stored before
 the mark existed looks like any other turn.
+
+A shield that runs inside the agent rejects a run by returning a refusal in
+place of the model's answer. To the endpoint that looks like any other answer,
+so the shield flags the response it returns: ``SHIELD_BLOCKED_METADATA_KEY`` in
+its metadata, which :func:`shield_refusal_of` reads back.
 """
 
 import secrets
 from collections.abc import Sequence
-from typing import Any, Final
+from typing import Any, Final, Optional
 
 BLOCKED_ITEM_ID_PREFIX: Final[str] = "msg_blocked_"
 """Start of the id of every message that belongs to a blocked turn."""
+
+SHIELD_BLOCKED_METADATA_KEY: Final[str] = "lightspeed_shield_blocked"
+"""Metadata key of the response a shield returns when it rejects an agent run."""
 
 
 def new_blocked_item_id() -> str:
@@ -98,3 +106,27 @@ def mark_blocked(items: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
         )
         for item in items
     ]
+
+
+def shield_refusal_of(run_result: Any) -> Optional[str]:
+    """Return the refusal of an agent run, when a shield rejected the run.
+
+    The flag is read from the metadata of the last response of the run.
+    pydantic-ai keeps that metadata for the application and does not send it
+    to a model.
+
+    Parameters:
+        run_result: The result of the agent run.
+
+    Returns:
+        The refusal text when the last response carries
+        ``SHIELD_BLOCKED_METADATA_KEY``, else ``None``.
+
+    """
+    response: Any = getattr(run_result, "response", None)
+    metadata = getattr(response, "metadata", None)
+    if not isinstance(metadata, dict):
+        return None
+    if metadata.get(SHIELD_BLOCKED_METADATA_KEY) is not True:
+        return None
+    return response.text or ""

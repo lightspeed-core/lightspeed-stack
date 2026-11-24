@@ -33,6 +33,7 @@ from utils.agents.tool_processor import (
     process_native_tool_call,
     process_native_tool_result,
 )
+from utils.blocked_turns import shield_refusal_of
 from utils.conversation_compaction import (
     agent_prompt_text,
 )
@@ -319,6 +320,7 @@ async def retrieve_agent_response(
         # Capture the structured output items OGX returned so compacted mode can
         # persist the turn exactly as OGX would have (LCORE-3883).
         turn_summary.output_items = captured_output_items(agent)
+        turn_summary.shield_refusal = shield_refusal_of(run_result)
 
         set_span_attributes(
             span,
@@ -335,6 +337,9 @@ async def retrieve_agent_response(
         # In compacted mode the conversation parameter was not sent, so OGX did
         # not persist this turn. It is stored here, to keep the recent-turn
         # buffer and the audit history intact for the next request (LCORE-3883).
-        await turn.store_completed(turn_summary.output_items)
+        # A turn a shield rejected is stored as a blocked turn (LCORE-3788).
+        await turn.store_agent_turn(
+            turn_summary.output_items, turn_summary.shield_refusal
+        )
 
         return turn_summary

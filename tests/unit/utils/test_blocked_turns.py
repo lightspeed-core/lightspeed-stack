@@ -1,16 +1,23 @@
 """Unit tests for the mark of a turn a shield blocked (LCORE-3788)."""
 
+import re
+
+from ogx.core.conversations.conversations import ConversationServiceImpl
 from ogx_api.openai_responses import OpenAIResponseMessage
 from ogx_client.models.open_ai_response_message11_variants import (
     OpenAIResponseMessage11Variants as ConversationItem,
 )
+from pydantic_ai.messages import ModelResponse, TextPart
+from pytest_mock import MockerFixture
 
 from utils.blocked_turns import (
     BLOCKED_ITEM_ID_PREFIX,
+    SHIELD_BLOCKED_METADATA_KEY,
     exclude_blocked_items,
     is_blocked_item,
     mark_blocked,
     new_blocked_item_id,
+    shield_refusal_of,
 )
 
 
@@ -40,6 +47,22 @@ def test_is_blocked_item_reads_the_id_prefix() -> None:
     assert not is_blocked_item(_msg("x", "msg_0123456789abcdef"))
     assert not is_blocked_item(_msg("x"))
     assert not is_blocked_item({"type": "function_call"})
+
+
+def test_ogx_keeps_the_id_a_blocked_message_is_sent_with() -> None:
+    """The mark rests on OGX storing a message under the id it is sent.
+
+    Fails when an ogx upgrade starts to replace ids the caller supplies.
+    """
+    service = object.__new__(ConversationServiceImpl)  # the method does not use self
+    blocked_id = new_blocked_item_id()
+
+    # pylint: disable=protected-access
+    kept = service._get_or_generate_item_id(_msg("x", blocked_id), {})
+    generated = service._get_or_generate_item_id(_msg("x"), {})
+
+    assert kept == blocked_id
+    assert re.fullmatch(r"msg_[0-9a-f]+", generated)
 
 
 def test_exclude_blocked_items_keeps_the_rest_as_they_are() -> None:
@@ -78,3 +101,18 @@ def test_mark_blocked_gives_every_message_a_new_blocked_id() -> None:
     # the dicts handed in are not modified
     assert items[0]["id"] == "msg_client"
     assert "id" not in items[2]
+
+
+def test_shield_refusal_of_reads_the_flag_a_shield_sets(mocker: MockerFixture) -> None:
+    """Only a run whose last response carries the flag was rejected by a shield."""
+    refusal = ModelResponse(
+        [TextPart("refused")], metadata={SHIELD_BLOCKED_METADATA_KEY: True}
+    )
+
+    assert shield_refusal_of(mocker.Mock(response=refusal)) == "refused"
+    assert (
+        shield_refusal_of(mocker.Mock(response=ModelResponse([TextPart("answer")])))
+        is None
+    )
+    # a test double that answers every attribute is not a rejected run
+    assert shield_refusal_of(mocker.MagicMock()) is None
