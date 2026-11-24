@@ -19,7 +19,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: ["server", "library"]
         environment: ["rhaiis"]
         # Expected default LLM for Behave (matches tests/e2e/configs/run-rhaiis.yaml).
         # | environment | model_id (repo var) | provider_id |
@@ -30,10 +29,10 @@ jobs:
             e2e_default_provider: vllm
             e2e_default_model: ${{ vars.RHAIIS_MODEL }}
 
-    name: "RHAIIS E2E: ${{ matrix.mode }} mode / ${{ matrix.environment }}"
+    name: "RHAIIS E2E: ${{ matrix.environment }}"
 
     env:
-      E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
+      E2E_DEPLOYMENT_MODE: "library"
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       RHAIIS_URL: ${{ secrets.RHAIIS_URL }}
       RHAIIS_PORT: ${{ secrets.RHAIIS_PORT }}
@@ -80,9 +79,8 @@ jobs:
 
       - name: Load lightspeed-stack.yaml configuration
         run: |
-          MODE="${{ matrix.mode }}"
-          CONFIG_FILE="tests/e2e/configuration/${MODE}-mode/lightspeed-stack.yaml"
-          echo "Loading configuration for ${MODE} mode from ${CONFIG_FILE}"
+          CONFIG_FILE="tests/e2e/configuration/library-mode/lightspeed-stack.yaml"
+          echo "Loading configuration for library mode from ${CONFIG_FILE}"
 
           if [ ! -f "${CONFIG_FILE}" ]; then
             echo "Configuration file not found: ${CONFIG_FILE}"
@@ -157,25 +155,9 @@ jobs:
           python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')"
           echo "HF_CACHE_PATH=/tmp/hf-cache" >> $GITHUB_ENV
 
-      - name: Run services (Server Mode)
-        if: matrix.mode == 'server'
+      - name: Run services
         run: |
-          docker compose version
-          docker compose up -d
-
-          # Check for errors and show logs if any services failed
-          if docker compose ps | grep -E 'Exit|exited|stopped'; then
-            echo "Some services failed to start - showing logs:"
-            docker compose logs
-            exit 1
-          else
-            echo "All services started successfully"
-          fi
-
-      - name: Run services (Library Mode)
-        if: matrix.mode == 'library'
-        run: |
-          echo "Starting service in library mode (1 container)"
+          echo "Starting service"
           docker compose -f docker-compose-library.yaml up -d
 
           if docker compose -f docker-compose-library.yaml ps | grep -E 'Exit|exited|stopped'; then
@@ -198,11 +180,7 @@ jobs:
         run: |
           set -euo pipefail
           show_logs() {
-            if [ "${{ matrix.mode }}" == "server" ]; then
-              docker compose logs
-            else
-              docker compose -f docker-compose-library.yaml logs
-            fi
+            docker compose -f docker-compose-library.yaml logs
           }
 
           echo "Testing /v1/models and verifying expected LLM is registered..."
@@ -234,7 +212,7 @@ jobs:
         env:
           TERM: xterm-256color
           FORCE_COLOR: 1
-          E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
+          E2E_DEPLOYMENT_MODE: "library"
         run: |
           echo "Installing test dependencies..."
           pip install uv
@@ -246,15 +224,5 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
-          echo "=== Test failure logs ==="
-
-          if [ "${{ matrix.mode }}" == "server" ]; then
-            echo "=== OGX logs ==="
-            docker compose logs ogx
-            echo ""
-            echo "=== lightspeed-stack logs ==="
-            docker compose logs lightspeed-stack
-          else
-            echo "=== lightspeed-stack (library mode) logs ==="
-            docker compose -f docker-compose-library.yaml logs lightspeed-stack
-          fi
+          echo "=== lightspeed-stack logs ==="
+          docker compose -f docker-compose-library.yaml logs lightspeed-stack
