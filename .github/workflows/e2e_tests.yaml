@@ -22,7 +22,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: ["server", "library"]
         environment: ["ci"]
         is_release_06:
           - ${{ github.base_ref == 'release/0.6' }}
@@ -42,11 +41,9 @@ jobs:
           - name: shields
             tags: "not @skip and @cfg_shields"
           - name: other
-            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_unified or @cfg_compaction or @cfg_a2a)"
+            tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_compaction or @cfg_a2a or @cfg_quota)"
           # Server-only; listed in shard (not matrix.include) so it expands with
           # mode=server before any library jobs. include would append after library.
-          - name: tls
-            tags: "not @skip and @cfg_tls"
           - name: group 1
             tags: "not @skip and @e2e_group_1"
           - name: group 2
@@ -54,10 +51,6 @@ jobs:
           - name: group 3
             tags: "not @skip and @e2e_group_3"
         exclude:
-          - mode: library
-            shard:
-              name: tls
-              tags: "not @skip and @cfg_tls"
           - is_release_06: true
             shard:
               name: default
@@ -85,11 +78,7 @@ jobs:
           - is_release_06: true
             shard:
               name: other
-              tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_unified or @cfg_compaction or @cfg_a2a)"
-          - is_release_06: true
-            shard:
-              name: tls
-              tags: "not @skip and @cfg_tls"
+              tags: "not @skip and (@cfg_rh_identity or @cfg_negative or @cfg_byok_pdf or @cfg_compaction or @cfg_a2a or @cfg_quota)"
           - is_release_06: false
             shard:
               name: group 1
@@ -103,12 +92,12 @@ jobs:
               name: group 3
               tags: "not @skip and @e2e_group_3"
 
-    name: "E2E: ${{ matrix.mode }} / ${{ matrix.environment }} / ${{ matrix.shard.name }}"
+    name: "E2E: ${{ matrix.environment }} / ${{ matrix.shard.name }}"
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       E2E_OPENAI_MODEL: ${{ (github.event.pull_request.base.ref == 'release/0.6' || github.ref == 'refs/heads/release/0.6') && 'gpt-4o-mini' || vars.E2E_OPENAI_MODEL }}
-      E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
+      E2E_DEPLOYMENT_MODE: "library"
       FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
       E2E_OGX_HOSTNAME: ogx
       E2E_LLAMA_HOSTNAME: ${{ vars.E2E_LLAMA_HOSTNAME || 'llama-stack' }}
@@ -150,9 +139,8 @@ jobs:
 
       - name: Load lightspeed-stack.yaml configuration
         run: |
-          MODE="${{ matrix.mode }}"
-          CONFIG_FILE="tests/e2e/configuration/${MODE}-mode/lightspeed-stack.yaml"
-          echo "Loading configuration for ${MODE} mode"
+          CONFIG_FILE="tests/e2e/configuration/library-mode/lightspeed-stack.yaml"
+          echo "Loading configuration for library mode"
           echo "Source: ${CONFIG_FILE}"
           
           if [ ! -f "${CONFIG_FILE}" ]; then
@@ -200,7 +188,7 @@ jobs:
       - name: Show final configuration
         run: |
           echo "=== Configuration Summary ==="
-          echo "Deployment mode: ${{ matrix.mode }}"
+          echo "Deployment mode: library"
           echo "Environment: ${{ matrix.environment }}"
           echo "E2E shard (Makefile test-e2e-tagged): ${{ matrix.shard.tags }}"
           echo "Source config: tests/e2e/configs/run-${{ matrix.environment }}.yaml"
@@ -233,35 +221,12 @@ jobs:
           mkdir -p ./tmp/.gcp-keys-dummy
           echo "✅ Dummy directory created."
 
-      - name: Run services (Server Mode)
-        if: matrix.mode == 'server'
+      - name: Run services
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           E2E_OPENAI_MODEL: ${{ (github.event.pull_request.base.ref == 'release/0.6' || github.ref == 'refs/heads/release/0.6') && 'gpt-4o-mini' || vars.E2E_OPENAI_MODEL }}
         run: |
-          # Debug: Check if environment variable is available for docker-compose
-          echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
-          echo "OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
-
-          docker compose version
-          docker compose up -d
-
-          # Check for errors and show logs if any services failed
-          if docker compose ps | grep -E 'Exit|exited|stopped'; then
-            echo "Some services failed to start - showing logs:"
-            docker compose logs
-            exit 1
-          else
-            echo "All services started successfully"
-          fi
-
-      - name: Run services (Library Mode)
-        if: matrix.mode == 'library'
-        env: 
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          E2E_OPENAI_MODEL: ${{ (github.event.pull_request.base.ref == 'release/0.6' || github.ref == 'refs/heads/release/0.6') && 'gpt-4o-mini' || vars.E2E_OPENAI_MODEL }}
-        run: |
-          echo "Starting service in library mode (1 container)"
+          echo "Starting service (1 container)"
           docker compose -f docker-compose-library.yaml up -d
 
           if docker compose -f docker-compose-library.yaml ps | grep -E 'Exit|exited|stopped'; then
@@ -306,11 +271,7 @@ jobs:
 
           echo "Service did not become ready within $((MAX_ATTEMPTS * SLEEP_INTERVAL)) seconds"
           echo "Showing service logs..."
-          if [ "${{ matrix.mode }}" == "server" ]; then
-            docker compose logs
-          else
-            docker compose -f docker-compose-library.yaml logs
-          fi
+          docker compose -f docker-compose-library.yaml log
           exit 1
 
       - name: Quick connectivity test
@@ -318,11 +279,7 @@ jobs:
           echo "Testing basic connectivity before full test suite..."
           curl -f http://localhost:8080/v1/models || {
             echo "❌ Basic connectivity failed - showing logs"
-            if [ "${{ matrix.mode }}" == "server" ]; then
-              docker compose logs
-            else
-              docker compose -f docker-compose-library.yaml logs
-            fi
+            docker compose -f docker-compose-library.yaml logs
             exit 1
           }
 
@@ -330,7 +287,7 @@ jobs:
         env:
           TERM: xterm-256color
           FORCE_COLOR: 1
-          E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
+          E2E_DEPLOYMENT_MODE: "library"
           # Matches Makefile test-e2e-tagged / E2E_BEHAVE_TAG_EXPR (one @cfg_* pack per job).
           E2E_BEHAVE_TAG_EXPR: "${{ matrix.shard.tags }}"
         run: |
@@ -345,15 +302,4 @@ jobs:
         if: failure()
         run: |
           echo "=== Test failure logs ==="
-          
-          if [ "${{ matrix.mode }}" == "server" ]; then
-            SERVICE=$(docker compose config --services | grep -E '^(ogx|llama-stack)$' | head -1)
-            echo "=== ${SERVICE} logs ==="
-            docker compose logs "$SERVICE"
-            echo ""
-            echo "=== lightspeed-stack logs ==="
-            docker compose logs lightspeed-stack
-          else
-            echo "=== lightspeed-stack (library mode) logs ==="
-            docker compose -f docker-compose-library.yaml logs lightspeed-stack
-          fi
+          docker compose -f docker-compose-library.yaml logs lightspeed-stack

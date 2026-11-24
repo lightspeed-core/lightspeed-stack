@@ -18,7 +18,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: ["server", "library"]
         environment: ["azure", "vertexai", "watsonx", "bedrock"]
         # Expected default LLM for Behave (matches tests/e2e/configs/run-<env>.yaml).
         # | environment | model_id                                   | provider_id   |
@@ -41,7 +40,7 @@ jobs:
             e2e_default_model: google.gemma-4-31b
             e2e_default_provider: aws-bedrock
     
-    name: "E2E: ${{ matrix.mode }} mode / ${{ matrix.environment }}"
+    name: "E2E: ${{ matrix.environment }}"
     
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -49,7 +48,7 @@ jobs:
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       TENANT_ID: ${{ secrets.TENANT_ID }}
-      E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
+      E2E_DEPLOYMENT_MODE: "library"
       FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
       E2E_DEFAULT_MODEL_OVERRIDE: ${{ matrix.e2e_default_model }}
       E2E_DEFAULT_PROVIDER_OVERRIDE: ${{ matrix.e2e_default_provider }}
@@ -106,9 +105,8 @@ jobs:
 
       - name: Load lightspeed-stack.yaml configuration
         run: |
-          MODE="${{ matrix.mode }}"
-          CONFIG_FILE="tests/e2e/configuration/${MODE}-mode/lightspeed-stack.yaml"
-          echo "Loading configuration for ${MODE} mode"
+          CONFIG_FILE="tests/e2e/configuration/library-mode/lightspeed-stack.yaml"
+          echo "Loading configuration for library mode"
           echo "Source: ${CONFIG_FILE}"
           
           if [ ! -f "${CONFIG_FILE}" ]; then
@@ -206,7 +204,7 @@ jobs:
       - name: Show final configuration
         run: |
           echo "=== Configuration Summary ==="
-          echo "Deployment mode: ${{ matrix.mode }}"
+          echo "Deployment mode: library"
           echo "Environment: ${{ matrix.environment }}"
           echo "Source config: tests/e2e/configs/run-${{ matrix.environment }}.yaml"
           echo ""
@@ -238,40 +236,7 @@ jobs:
           mkdir -p ./tmp/.gcp-keys-dummy
           echo "✅ Dummy directory created."
 
-      - name: Run services (Server Mode)
-        if: matrix.mode == 'server'
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TENANT_ID: ${{ secrets.TENANT_ID }}
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          VERTEX_AI_LOCATION: ${{ env.VERTEX_AI_LOCATION }}
-          VERTEX_AI_PROJECT: ${{ env.VERTEX_AI_PROJECT }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-          GCP_KEYS_PATH: ${{ env.GCP_KEYS_PATH }}
-          WATSONX_PROJECT_ID: ${{ secrets.WATSONX_PROJECT_ID }}
-          WATSONX_API_KEY: ${{ secrets.WATSONX_API_KEY }}
-          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
-
-        run: |
-          # Debug: Check if environment variable is available for docker-compose
-          echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
-          echo "OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
-
-          docker compose version
-          docker compose up -d
-
-          # Check for errors and show logs if any services failed
-          if docker compose ps | grep -E 'Exit|exited|stopped'; then
-            echo "Some services failed to start - showing logs:"
-            docker compose logs
-            exit 1
-          else
-            echo "All services started successfully"
-          fi
-
       - name: Run services (Library Mode)
-        if: matrix.mode == 'library'
         env: 
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TENANT_ID: ${{ secrets.TENANT_ID }}
@@ -286,7 +251,7 @@ jobs:
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
 
         run: |
-          echo "Starting service in library mode (1 container)"
+          echo "Starting service"
           docker compose -f docker-compose-library.yaml up -d
 
           if docker compose -f docker-compose-library.yaml ps | grep -E 'Exit|exited|stopped'; then
@@ -309,11 +274,7 @@ jobs:
         run: |
           set -euo pipefail
           show_logs() {
-            if [ "${{ matrix.mode }}" == "server" ]; then
-              docker compose logs
-            else
-              docker compose -f docker-compose-library.yaml logs
-            fi
+            docker compose -f docker-compose-library.yaml logs
           }
 
           echo "Testing /v1/models and verifying expected LLM is registered..."
@@ -391,7 +352,7 @@ jobs:
         env:
           TERM: xterm-256color
           FORCE_COLOR: 1
-          E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
+          E2E_DEPLOYMENT_MODE: "library"
         run: |
           echo "Installing test dependencies..."
           pip install uv
@@ -405,13 +366,5 @@ jobs:
         run: |
           echo "=== Test failure logs ==="
           
-          if [ "${{ matrix.mode }}" == "server" ]; then
-            echo "=== OGX logs ==="
-            docker compose logs ogx
-            echo ""
-            echo "=== lightspeed-stack logs ==="
-            docker compose logs lightspeed-stack
-          else
-            echo "=== lightspeed-stack (library mode) logs ==="
-            docker compose -f docker-compose-library.yaml logs lightspeed-stack
-          fi
+          echo "=== lightspeed-stack (library mode) logs ==="
+          docker compose -f docker-compose-library.yaml logs lightspeed-stack
