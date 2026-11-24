@@ -8,6 +8,14 @@ Lightspeed Core Knowledge/RAG Module.
 
 ``Knowledge`` capability: vector-similarity search ("RAG") over knowledge sources.
 
+## [errors.py](errors.py)
+
+Exceptions raised by the knowledge source registry.
+
+## [registry.py](registry.py)
+
+Singleton registry of configured knowledge sources.
+
 ## [reranker.py](reranker.py)
 
 Cross-encoder reranking for `Knowledge` search results.

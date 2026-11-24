@@ -24,6 +24,14 @@ Unit tests for knowledge.sources.pgvector.
 
 Unit tests for knowledge.reranker.
 
+## [test_registry.py](test_registry.py)
+
+Unit tests for the KnowledgeSourceRegistry singleton.
+
+## [test_okp.py](test_okp.py)
+
+Unit tests for knowledge.sources.okp.
+
 ## [test_search.py](test_search.py)
 
 Unit tests for knowledge.search.

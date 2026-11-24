@@ -23,8 +23,15 @@ from mcp.types import (
 )
 from pytest_mock import MockerFixture, MockType
 
+import constants
 from knowledge.sources.okp import OkpKnowledgeSource, OkpProductFilter
 from knowledge.types import KnowledgeMatch, KnowledgeReadiness
+from models.config import (
+    OkpConfiguration,
+    RagConfiguration,
+    RetrievalConfiguration,
+    RetrievalStrategyConfiguration,
+)
 
 _BASE_URL = "https://host.example"
 _LOGGER_NAME = "lightspeed_stack.knowledge.sources.okp"
@@ -205,6 +212,66 @@ class TestOkpKnowledgeSourceConfiguration:
 
         assert len(second.headers) == 0
         assert "X-Trace" not in second.headers
+
+
+class TestOkpKnowledgeSourceFromRagConfiguration:
+    """Tests for building an OKP source from RAG configuration."""
+
+    def test_returns_none_when_okp_is_not_a_retrieval_source(self) -> None:
+        """The default OKP block does not register a source by itself."""
+        assert OkpKnowledgeSource.from_rag_configuration(RagConfiguration()) is None
+
+    def test_maps_okp_settings_and_retrieval_mode(self) -> None:
+        """URL, offline mode, row count, and exposure come from configuration."""
+        rag = RagConfiguration(
+            okp=OkpConfiguration(
+                rhokp_url="https://okp.example/mcp",
+                offline=False,
+                max_chunks=3,
+            ),
+            retrieval=RetrievalConfiguration(
+                inline=RetrievalStrategyConfiguration(sources=["okp"]),
+                tool=RetrievalStrategyConfiguration(sources=["okp"]),
+            ),
+        )
+
+        source = OkpKnowledgeSource.from_rag_configuration(rag)
+
+        assert source is not None
+        assert source.name == constants.OKP_RAG_ID
+        assert source.base_url == "https://okp.example/mcp"
+        assert source.rows == 3
+        assert source.offline is False
+        assert source.mode == {"auto", "tool"}
+        assert len(source.products) == 0
+
+    def test_uses_the_default_url_when_rhokp_url_is_unset(self) -> None:
+        """An inline OKP source without a URL uses the built-in default."""
+        rag = RagConfiguration(
+            retrieval=RetrievalConfiguration(
+                inline=RetrievalStrategyConfiguration(sources=["okp"]),
+            ),
+        )
+
+        source = OkpKnowledgeSource.from_rag_configuration(rag)
+
+        assert source is not None
+        assert source.base_url == constants.RH_SERVER_OKP_DEFAULT_URL
+        assert source.mode == {"auto"}
+        assert source.rows == constants.DEFAULT_OKP_RAG_MAX_CHUNKS
+        assert source.offline is True
+
+    def test_rejects_a_row_count_the_search_tool_will_not_accept(self) -> None:
+        """max_chunks outside 1 through 20 is rejected at construction."""
+        rag = RagConfiguration(
+            okp=OkpConfiguration(max_chunks=21),
+            retrieval=RetrievalConfiguration(
+                tool=RetrievalStrategyConfiguration(sources=["okp"]),
+            ),
+        )
+
+        with pytest.raises(ValueError, match="rows must be between 1 and 20"):
+            OkpKnowledgeSource.from_rag_configuration(rag)
 
 
 class TestOkpKnowledgeSourceSearch:
