@@ -8855,7 +8855,12 @@
                                     "conversations": [
                                         {
                                             "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                            "created_at": "2024-01-01T00:00:00Z",
+                                            "last_message_at": "2024-01-01T00:05:00Z",
                                             "last_message_timestamp": 1704067200.0,
+                                            "last_used_model": "gemini/gemini-2.0-flash",
+                                            "last_used_provider": "gemini",
+                                            "message_count": 5,
                                             "topic_summary": "Openshift Microservices Deployment Strategies"
                                         }
                                     ]
@@ -13458,37 +13463,6 @@
                     "summarized"
                 ]
             },
-            "ConversationData": {
-                "properties": {
-                    "conversation_id": {
-                        "type": "string",
-                        "title": "Conversation Id"
-                    },
-                    "topic_summary": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Topic Summary"
-                    },
-                    "last_message_timestamp": {
-                        "type": "number",
-                        "title": "Last Message Timestamp"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "conversation_id",
-                    "topic_summary",
-                    "last_message_timestamp"
-                ],
-                "title": "ConversationData",
-                "description": "Model representing conversation data returned by cache list operations.\n\nAttributes:\n    conversation_id: The conversation ID\n    topic_summary: The topic summary for the conversation (can be None)\n    last_message_timestamp: The timestamp of the last message in the conversation"
-            },
             "ConversationDeleteResponse": {
                 "properties": {
                     "deleted": {
@@ -13721,6 +13695,131 @@
                 "type": "object",
                 "title": "ConversationHistoryConfiguration",
                 "description": "Conversation history configuration."
+            },
+            "ConversationListItemV2": {
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id",
+                        "description": "Conversation ID (UUID)",
+                        "examples": [
+                            "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                        ]
+                    },
+                    "created_at": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created At",
+                        "description": "When the conversation was created",
+                        "examples": [
+                            "2024-01-01T01:00:00Z"
+                        ]
+                    },
+                    "last_message_at": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Message At",
+                        "description": "When the last message was sent",
+                        "examples": [
+                            "2024-01-01T01:00:00Z"
+                        ]
+                    },
+                    "message_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Message Count",
+                        "description": "Number of user messages in the conversation",
+                        "examples": [
+                            42
+                        ]
+                    },
+                    "last_used_model": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Used Model",
+                        "description": "Identification of the last model used for the conversation",
+                        "examples": [
+                            "gpt-4-turbo",
+                            "gpt-3.5-turbo-0125"
+                        ]
+                    },
+                    "last_used_provider": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Used Provider",
+                        "description": "Identification of the last provider used for the conversation",
+                        "examples": [
+                            "openai",
+                            "gemini"
+                        ]
+                    },
+                    "topic_summary": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Topic Summary",
+                        "description": "Topic summary for the conversation",
+                        "examples": [
+                            "Openshift Microservices Deployment Strategies"
+                        ]
+                    },
+                    "last_message_timestamp": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Message Timestamp",
+                        "description": "Unix epoch of the last cached message when cache is configured",
+                        "examples": [
+                            1704067200.0
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversation_id"
+                ],
+                "title": "ConversationListItemV2",
+                "description": "v2 conversations list item: envelope metadata plus cache activity timestamp."
             },
             "ConversationResponse": {
                 "properties": {
@@ -13971,7 +14070,7 @@
                 "properties": {
                     "conversations": {
                         "items": {
-                            "$ref": "#/components/schemas/ConversationData"
+                            "$ref": "#/components/schemas/ConversationListItemV2"
                         },
                         "type": "array",
                         "title": "Conversations"
@@ -13988,7 +14087,12 @@
                         "conversations": [
                             {
                                 "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "created_at": "2024-01-01T00:00:00Z",
+                                "last_message_at": "2024-01-01T00:05:00Z",
                                 "last_message_timestamp": 1704067200.0,
+                                "last_used_model": "gemini/gemini-2.0-flash",
+                                "last_used_provider": "gemini",
+                                "message_count": 5,
                                 "topic_summary": "Openshift Microservices Deployment Strategies"
                             }
                         ]

@@ -9,6 +9,9 @@ from authentication import get_auth_dependency
 from authorization.middleware import authorize
 from cache.cache_entry import CacheEntry
 from configuration import configuration
+from conversations.display_history.persistence.facade.conversation import (
+    list_conversations as list_user_conversations,
+)
 from log import get_logger
 from models.api.requests import ConversationUpdateRequest
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -27,6 +30,7 @@ from models.api.responses.successful import (
     ConversationUpdateResponse,
 )
 from models.common import (
+    ConversationListItemV2,
     ConversationTurn,
     Message,
 )
@@ -107,13 +111,42 @@ async def get_conversations_list_endpoint_handler(
             response = InternalServerErrorResponse.cache_unavailable()
             raise HTTPException(**response.model_dump())
 
-        conversations = configuration.conversation_cache.list(
+        cached_conversations = configuration.conversation_cache.list(
             user_id, skip_userid_check
         )
-        logger.info("Conversations for user %s: %s", user_id, len(conversations))
+        envelope_by_id = {
+            row.conversation_id: row
+            for row in list_user_conversations(user_id, others_allowed=False)
+        }
 
-        span.set_attribute("conversations.count", len(conversations))
-        return ConversationsListResponseV2(conversations=conversations)
+        response_conversations: list[ConversationListItemV2] = []
+        for cached_conversation in cached_conversations:
+            row = envelope_by_id.get(cached_conversation.conversation_id)
+            response_conversations.append(
+                ConversationListItemV2.model_construct(
+                    conversation_id=cached_conversation.conversation_id,
+                    created_at=(
+                        row.created_at.isoformat() if row and row.created_at else None
+                    ),
+                    last_message_at=(
+                        row.last_turn_at.isoformat()
+                        if row and row.last_turn_at
+                        else None
+                    ),
+                    message_count=row.turn_count if row else None,
+                    last_used_model=row.last_used_model if row else None,
+                    last_used_provider=row.last_used_provider if row else None,
+                    topic_summary=cached_conversation.topic_summary,
+                    last_message_timestamp=cached_conversation.last_message_timestamp,
+                )
+            )
+
+        logger.info(
+            "Conversations for user %s: %s", user_id, len(response_conversations)
+        )
+
+        span.set_attribute("conversations.count", len(response_conversations))
+        return ConversationsListResponseV2(conversations=response_conversations)
 
 
 @router.get(

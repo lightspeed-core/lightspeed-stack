@@ -10,8 +10,8 @@ from models.api.responses.successful.bases import (
     AbstractSuccessfulResponse,
 )
 from models.common.conversation import (
-    ConversationData,
     ConversationDetails,
+    ConversationListItemV2,
     ConversationTurn,
 )
 
@@ -165,7 +165,7 @@ class ConversationsListResponseV2(AbstractSuccessfulResponse):
 
     """
 
-    conversations: list[ConversationData]
+    conversations: list[ConversationListItemV2]
 
     model_config = {
         "json_schema_extra": {
@@ -174,6 +174,11 @@ class ConversationsListResponseV2(AbstractSuccessfulResponse):
                     "conversations": [
                         {
                             "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                            "created_at": "2024-01-01T00:00:00Z",
+                            "last_message_at": "2024-01-01T00:05:00Z",
+                            "message_count": 5,
+                            "last_used_model": "gemini/gemini-2.0-flash",
+                            "last_used_provider": "gemini",
                             "topic_summary": "Openshift Microservices Deployment Strategies",
                             "last_message_timestamp": 1704067200.0,
                         }

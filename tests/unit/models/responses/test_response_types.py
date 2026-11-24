@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from models.common import (
     ConversationData,
     ConversationDetails,
+    ConversationListItemV2,
     ProviderHealthStatus,
 )
 
@@ -65,6 +66,27 @@ class TestConversationData:
         """Test ConversationData raises ValidationError when required fields are missing."""
         with pytest.raises(ValidationError):
             ConversationData()  # type: ignore[call-arg]
+
+
+class TestConversationListItemV2:
+    """Test cases for ConversationListItemV2 type."""
+
+    def test_includes_envelope_and_timestamp(self) -> None:
+        """Test list item carries v1 envelope fields and optional cache timestamp."""
+        item = ConversationListItemV2.model_construct(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+            message_count=3,
+            last_message_timestamp=1704067200.0,
+        )
+        assert item.message_count == 3
+        assert item.last_message_timestamp == 1704067200.0
+
+    def test_timestamp_optional(self) -> None:
+        """Test list item allows missing cache timestamp."""
+        item = ConversationListItemV2.model_construct(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+        )
+        assert item.last_message_timestamp is None
 
 
 class TestProviderHealthStatus:
