@@ -22,17 +22,17 @@ class FeedbackRequest(BaseModel):
     """
 
     conversation_id: str = Field(
-        description="The required conversation ID (UUID)",
+        description="UUID of the conversation containing the response being rated.",
         examples=["c5260aec-4d82-4370-9fdf-05cf908b3f16"],
     )
 
     user_question: str = Field(
-        description="User question (the query string)",
+        description="Original question that prompted the response being rated.",
         examples=["What is Kubernetes?"],
     )
 
     llm_response: str = Field(
-        description="Response from LLM",
+        description="Assistant response being rated.",
         examples=[
             "Kubernetes is an open-source container orchestration system for automating ..."
         ],
@@ -40,7 +40,10 @@ class FeedbackRequest(BaseModel):
 
     sentiment: Optional[int] = Field(
         None,
-        description="User sentiment, if provided must be -1 or 1",
+        description=(
+            "Overall rating of the response. "
+            "Use -1 for negative feedback or 1 for positive feedback."
+        ),
         examples=[-1, 1],
     )
 
@@ -48,14 +51,14 @@ class FeedbackRequest(BaseModel):
     user_feedback: Optional[str] = Field(
         default=None,
         max_length=4096,
-        description="Feedback on the LLM response.",
+        description="Free-text comments about the assistant response.",
         examples=["I'm not satisfied with the response because it is too vague."],
     )
 
     # Optional list of predefined feedback categories for positive and negative feedback
     categories: Optional[list[FeedbackCategory | PositiveFeedbackCategory]] = Field(
         default=None,
-        description="List of positive or negative feedback categories.",
+        description="Predefined categories describing what worked or what went wrong.",
         examples=[
             ["incorrect", "incomplete"],
             ["helpful", "accurate", "resolved_issue"],
@@ -202,7 +205,7 @@ class FeedbackStatusUpdateRequest(BaseModel):
 
     status: bool = Field(
         False,
-        description="Desired state of feedback enablement, must be False or True",
+        description="Set to true to enable feedback or false to disable it.",
         examples=[True, False],
     )
 

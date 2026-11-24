@@ -29,37 +29,37 @@ class QueryRequest(BaseModel):
     """
 
     query: str = Field(
-        description="The query string",
+        description="Question or instruction for the assistant to answer.",
         examples=["What is Kubernetes?"],
     )
 
     conversation_id: Optional[str] = Field(
         None,
-        description="The optional conversation ID (UUID)",
+        description="UUID of the conversation associated with this query.",
         examples=["c5260aec-4d82-4370-9fdf-05cf908b3f16"],
     )
 
     provider: Optional[str] = Field(
         None,
-        description="The optional provider",
+        description="Identifier of the inference provider to use for this query.",
         examples=["openai", "watsonx"],
     )
 
     model: Optional[str] = Field(
         None,
-        description="The optional model",
+        description="Identifier of the language model to use for this query.",
         examples=["gpt4mini"],
     )
 
     system_prompt: Optional[str] = Field(
         None,
-        description="The optional system prompt.",
+        description="Per-request instructions for the model. The server can disable this override.",
         examples=["You are OpenShift assistant.", "You are Ansible assistant."],
     )
 
     attachments: Optional[list[Attachment]] = Field(
         None,
-        description="The optional list of attachments.",
+        description="Files or text supplied as context, such as logs, configuration, or images.",
         examples=[
             {
                 "attachment_type": "log",
@@ -87,13 +87,13 @@ class QueryRequest(BaseModel):
 
     generate_topic_summary: Optional[bool] = Field(
         True,
-        description="Whether to generate topic summary for new conversations",
+        description="Whether to generate a topic summary when starting a conversation.",
         examples=[True, False],
     )
 
     media_type: Optional[str] = Field(
         None,
-        description="Media type for the response format",
+        description="Requested response media type, such as application/json or text/plain.",
         examples=[MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT],
     )
 
@@ -255,7 +255,7 @@ class StreamingInterruptRequest(BaseModel):
     """
 
     request_id: str = Field(
-        description="The active streaming request ID to interrupt",
+        description="Identifier of the in-progress streaming request to interrupt.",
         examples=["123e4567-e89b-12d3-a456-426614174000"],
     )
 
