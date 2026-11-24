@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" id="chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3" class="pygal-chart" viewBox="0 0 800 600">
-  <!--Generated with pygal 3.1.3 (etree) ©Kozea 2012-2026 on 2026-11-23-->
+<svg xmlns="http://www.w3.org/2000/svg" id="chart-4c2024c5-f106-420b-8f10-aabf8065df2b" class="pygal-chart" viewBox="0 0 800 600">
+  <!--Generated with pygal 3.1.3 (etree) ©Kozea 2012-2026 on 2026-11-24-->
   <!--http://pygal.org-->
   <!--http://github.com/Kozea/pygal-->
   <defs>
-    <style type="text/css">#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3{-webkit-user-select:none;-webkit-font-smoothing:antialiased;font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .title{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .legends .legend text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis text.major{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay text.value{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay text.label{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 text.no_data{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:64px}
-#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3{background-color:rgba(249,249,249,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 path,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 line,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 rect,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 circle{-webkit-transition:150ms;-moz-transition:150ms;transition:150ms}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .graph &gt; .background{fill:rgba(249,249,249,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .plot &gt; .background{fill:rgba(255,255,255,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .graph{fill:rgba(0,0,0,.87)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 text.no_data{fill:rgba(0,0,0,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .title{fill:rgba(0,0,0,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .legends .legend text{fill:rgba(0,0,0,.87)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .legends .legend:hover text{fill:rgba(0,0,0,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis .line{stroke:rgba(0,0,0,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis .guide.line{stroke:rgba(0,0,0,.54)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis .major.line{stroke:rgba(0,0,0,.87)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis text.major{fill:rgba(0,0,0,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.y .guides:hover .guide.line,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .line-graph .axis.x .guides:hover .guide.line,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .stackedline-graph .axis.x .guides:hover .guide.line,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .xy-graph .axis.x .guides:hover .guide.line{stroke:rgba(0,0,0,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis .guides:hover text{fill:rgba(0,0,0,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .reactive{fill-opacity:.7;stroke-opacity:.8;stroke-width:1}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .ci{stroke:rgba(0,0,0,.87)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .reactive.active,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .active .reactive{fill-opacity:.8;stroke-opacity:.9;stroke-width:4}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .ci .reactive.active{stroke-width:1.5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .series text{fill:rgba(0,0,0,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip rect{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,1);-webkit-transition:opacity 150ms;-moz-transition:opacity 150ms;transition:opacity 150ms}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip .label{fill:rgba(0,0,0,.87)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip .label{fill:rgba(0,0,0,.87)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip .legend{font-size:.8em;fill:rgba(0,0,0,.54)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip .x_label{font-size:.6em;fill:rgba(0,0,0,1)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip .xlink{font-size:.5em;text-decoration:underline}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip .value{font-size:1.5em}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .bound{font-size:.5em}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .max-value{font-size:.75em;fill:rgba(0,0,0,.54)}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .map-element{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,.54) !important}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .map-element .reactive{fill-opacity:inherit;stroke-opacity:inherit}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-0,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-0 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-1,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-1 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-2,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-2 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-3,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-3 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-4,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-4 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-5,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-5 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-6,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-6 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-7,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-7 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-8,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-8 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-9,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-9 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-10,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-10 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-11,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-11 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-12,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-12 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-13,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-13 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-14,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-14 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-15,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-15 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-16,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-16 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-17,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-17 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-18,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-18 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-19,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-19 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-20,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-20 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-21,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-21 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-22,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .color-22 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-0 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-1 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-2 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-3 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-4 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-5 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-6 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-7 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-8 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-9 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-10 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-11 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-12 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-13 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-14 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-15 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-16 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-17 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-18 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-19 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-20 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-21 text{fill:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .text-overlay .color-22 text{fill:black}
-#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 text.no_data{text-anchor:middle}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .guide.line{fill:none}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .centered{text-anchor:middle}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .title{text-anchor:middle}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .legends .legend text{fill-opacity:1}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.x text{text-anchor:middle}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.x:not(.web) text[transform]{text-anchor:start}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.x:not(.web) text[transform].backwards{text-anchor:end}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.y text{text-anchor:end}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.y text[transform].backwards{text-anchor:start}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.y2 text{text-anchor:start}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.y2 text[transform].backwards{text-anchor:end}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis .guide.line{stroke-dasharray:4,4;stroke:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis .major.guide.line{stroke-dasharray:6,6;stroke:black}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .horizontal .axis.y .guide.line,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .horizontal .axis.y2 .guide.line,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .vertical .axis.x .guide.line{opacity:0}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .horizontal .axis.always_show .guide.line,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .vertical .axis.always_show .guide.line{opacity:1 !important}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.y .guides:hover .guide.line,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.y2 .guides:hover .guide.line,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis.x .guides:hover .guide.line{opacity:1}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .axis .guides:hover text{opacity:1}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .nofill{fill:none}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .subtle-fill{fill-opacity:.2}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .dot{stroke-width:1px;fill-opacity:1;stroke-opacity:1}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .dot.active{stroke-width:5px}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .dot.negative{fill:transparent}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 text,#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 tspan{stroke:none !important}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .series text.active{opacity:1}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip rect{fill-opacity:.95;stroke-width:.5}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .tooltip text{fill-opacity:1}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .showable{visibility:hidden}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .showable.shown{visibility:visible}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .gauge-background{fill:rgba(229,229,229,1);stroke:none}#chart-7edb9c46-9bdf-483e-8889-2bb60d0737f3 .bg-lines{stroke:rgba(249,249,249,1);stroke-width:2px}
+    <style type="text/css">#chart-4c2024c5-f106-420b-8f10-aabf8065df2b{-webkit-user-select:none;-webkit-font-smoothing:antialiased;font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .title{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .legends .legend text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis text.major{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay text.value{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay text.label{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b text.no_data{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:64px}
+#chart-4c2024c5-f106-420b-8f10-aabf8065df2b{background-color:rgba(249,249,249,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b path,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b line,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b rect,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b circle{-webkit-transition:150ms;-moz-transition:150ms;transition:150ms}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .graph &gt; .background{fill:rgba(249,249,249,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .plot &gt; .background{fill:rgba(255,255,255,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .graph{fill:rgba(0,0,0,.87)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b text.no_data{fill:rgba(0,0,0,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .title{fill:rgba(0,0,0,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .legends .legend text{fill:rgba(0,0,0,.87)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .legends .legend:hover text{fill:rgba(0,0,0,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis .line{stroke:rgba(0,0,0,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis .guide.line{stroke:rgba(0,0,0,.54)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis .major.line{stroke:rgba(0,0,0,.87)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis text.major{fill:rgba(0,0,0,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.y .guides:hover .guide.line,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .line-graph .axis.x .guides:hover .guide.line,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .stackedline-graph .axis.x .guides:hover .guide.line,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .xy-graph .axis.x .guides:hover .guide.line{stroke:rgba(0,0,0,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis .guides:hover text{fill:rgba(0,0,0,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .reactive{fill-opacity:.7;stroke-opacity:.8;stroke-width:1}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .ci{stroke:rgba(0,0,0,.87)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .reactive.active,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .active .reactive{fill-opacity:.8;stroke-opacity:.9;stroke-width:4}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .ci .reactive.active{stroke-width:1.5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .series text{fill:rgba(0,0,0,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip rect{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,1);-webkit-transition:opacity 150ms;-moz-transition:opacity 150ms;transition:opacity 150ms}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip .label{fill:rgba(0,0,0,.87)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip .label{fill:rgba(0,0,0,.87)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip .legend{font-size:.8em;fill:rgba(0,0,0,.54)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip .x_label{font-size:.6em;fill:rgba(0,0,0,1)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip .xlink{font-size:.5em;text-decoration:underline}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip .value{font-size:1.5em}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .bound{font-size:.5em}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .max-value{font-size:.75em;fill:rgba(0,0,0,.54)}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .map-element{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,.54) !important}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .map-element .reactive{fill-opacity:inherit;stroke-opacity:inherit}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-0,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-0 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-1,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-1 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-2,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-2 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-3,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-3 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-4,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-4 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-5,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-5 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-6,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-6 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-7,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-7 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-8,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-8 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-9,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-9 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-10,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-10 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-11,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-11 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-12,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-12 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-13,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-13 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-14,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-14 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-15,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-15 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-16,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-16 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-17,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-17 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-18,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-18 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-19,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-19 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-20,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-20 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-21,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-21 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-22,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-22 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-23,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .color-23 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-0 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-1 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-2 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-3 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-4 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-5 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-6 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-7 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-8 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-9 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-10 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-11 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-12 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-13 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-14 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-15 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-16 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-17 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-18 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-19 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-20 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-21 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-22 text{fill:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .text-overlay .color-23 text{fill:black}
+#chart-4c2024c5-f106-420b-8f10-aabf8065df2b text.no_data{text-anchor:middle}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .guide.line{fill:none}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .centered{text-anchor:middle}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .title{text-anchor:middle}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .legends .legend text{fill-opacity:1}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.x text{text-anchor:middle}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.x:not(.web) text[transform]{text-anchor:start}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.x:not(.web) text[transform].backwards{text-anchor:end}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.y text{text-anchor:end}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.y text[transform].backwards{text-anchor:start}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.y2 text{text-anchor:start}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.y2 text[transform].backwards{text-anchor:end}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis .guide.line{stroke-dasharray:4,4;stroke:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis .major.guide.line{stroke-dasharray:6,6;stroke:black}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .horizontal .axis.y .guide.line,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .horizontal .axis.y2 .guide.line,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .vertical .axis.x .guide.line{opacity:0}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .horizontal .axis.always_show .guide.line,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .vertical .axis.always_show .guide.line{opacity:1 !important}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.y .guides:hover .guide.line,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.y2 .guides:hover .guide.line,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis.x .guides:hover .guide.line{opacity:1}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .axis .guides:hover text{opacity:1}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .nofill{fill:none}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .subtle-fill{fill-opacity:.2}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .dot{stroke-width:1px;fill-opacity:1;stroke-opacity:1}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .dot.active{stroke-width:5px}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .dot.negative{fill:transparent}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b text,#chart-4c2024c5-f106-420b-8f10-aabf8065df2b tspan{stroke:none !important}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .series text.active{opacity:1}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip rect{fill-opacity:.95;stroke-width:.5}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .tooltip text{fill-opacity:1}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .showable{visibility:hidden}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .showable.shown{visibility:visible}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .gauge-background{fill:rgba(229,229,229,1);stroke:none}#chart-4c2024c5-f106-420b-8f10-aabf8065df2b .bg-lines{stroke:rgba(249,249,249,1);stroke-width:2px}
 .tooltip .value{font-size:1em !important}.axis text{font-size:9px !important}</style>
-    <script type="text/javascript">window.pygal = window.pygal || {};window.pygal.config = window.pygal.config || {};window.pygal.config['7edb9c46-9bdf-483e-8889-2bb60d0737f3'] = {"allow_interruptions": false, "box_mode": "tukey", "classes": ["pygal-chart"], "css": ["file://style.css", "file://graph.css", "inline:\n                .tooltip .value {\n                    font-size: 1em !important;\n                }\n                .axis text {\n                    font-size: 9px !important;\n                }\n            "], "defs": [], "disable_xml_declaration": false, "dots_size": 2.5, "dynamic_print_values": false, "explicit_size": false, "fill": false, "force_uri_protocol": "https", "formatter": null, "half_pie": false, "height": 600, "include_x_axis": false, "inner_radius": 0, "interpolate": null, "interpolation_parameters": {}, "interpolation_precision": 250, "inverse_y_axis": false, "js": ["file:///tmp/ramdisk/lightspeed-stack-LCORE-3/.venv/lib64/python3.14/site-packages/pygaljs/static/2.0.x/pygal-tooltips.js"], "legend_at_bottom": false, "legend_at_bottom_columns": null, "legend_box_size": 12, "logarithmic": false, "margin": 20, "margin_bottom": null, "margin_left": null, "margin_right": null, "margin_top": null, "max_scale": 20, "min_scale": 20, "missing_value_fill_truncation": "x", "no_data_text": "No data", "no_prefix": false, "order_min": null, "pretty_print": false, "print_labels": false, "print_values": false, "print_values_position": "center", "print_zeroes": true, "range": [4, 45], "reverse_direction": false, "rounded_bars": null, "secondary_range": null, "show_dots": true, "show_legend": false, "show_minor_x_labels": true, "show_minor_y_labels": true, "show_only_major_dots": false, "show_x_guides": false, "show_x_labels": true, "show_y_guides": true, "show_y_labels": true, "spacing": 10, "stack_from_top": false, "strict": false, "stroke": true, "stroke_style": null, "style": {"background": "rgba(249, 249, 249, 1)", "ci_colors": [], "colors": ["#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5"], "dot_opacity": "1", "font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "foreground": "rgba(0, 0, 0, .87)", "foreground_strong": "rgba(0, 0, 0, 1)", "foreground_subtle": "rgba(0, 0, 0, .54)", "guide_stroke_color": "black", "guide_stroke_dasharray": "4,4", "label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "label_font_size": 10, "legend_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "legend_font_size": 14, "major_guide_stroke_color": "black", "major_guide_stroke_dasharray": "6,6", "major_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "major_label_font_size": 10, "no_data_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "no_data_font_size": 64, "opacity": ".7", "opacity_hover": ".8", "plot_background": "rgba(255, 255, 255, 1)", "stroke_opacity": ".8", "stroke_opacity_hover": ".9", "stroke_width": "1", "stroke_width_hover": "4", "title_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "title_font_size": 16, "tooltip_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "tooltip_font_size": 14, "transition": "150ms", "value_background": "rgba(229, 229, 229, 1)", "value_colors": [], "value_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_font_size": 16, "value_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_label_font_size": 10}, "title": "Speed in Microseconds (us)", "tooltip_border_radius": 0, "tooltip_fancy_mode": true, "truncate_label": 50, "truncate_legend": null, "width": 800, "x_label_rotation": 270, "x_labels": ["test_noop_cache_1000_long_conversations_key_at_end", "test_memory_cache_1000_medium_conversations_key_at_beginning", "test_memory_cache_1000_short_conversations_key_at_beginning", "test_memory_cache_1000_long_conversations_key_at_beginning", "test_noop_cache_1000_extra_long_conversations_key_at_end", "test_noop_cache_1000_short_conversations_key_at_end", "test_noop_cache_1000_medium_conversations_key_at_end", "test_memory_cache_1000_extra_long_conversations_key_at_beginning", "test_memory_cache_1000_medium_conversations_key_at_end", "test_memory_cache_1000_long_conversations_key_at_end", "test_noop_cache_1000_long_conversations_key_at_beginning", "test_memory_cache_1000_short_conversations_key_at_end", "test_noop_cache_1000_extra_long_conversations_key_at_beginning", "test_memory_cache_1000_extra_long_conversations_key_at_end", "test_noop_cache_1000_short_conversations_key_at_beginning", "test_noop_cache_1000_medium_conversations_key_at_beginning", "test_sqlite_cache_1000_short_conversations_key_at_beginning", "test_sqlite_cache_1000_medium_conversations_key_at_beginning", "test_sqlite_cache_1000_long_conversations_key_at_beginning", "test_sqlite_cache_1000_medium_conversations_key_at_end", "test_sqlite_cache_1000_extra_long_conversations_key_at_end", "test_sqlite_cache_1000_long_conversations_key_at_end", "test_sqlite_cache_1000_short_conversations_key_at_end"], "x_labels_major": null, "x_labels_major_count": null, "x_labels_major_every": null, "x_title": "Trial", "xrange": null, "y_label_rotation": 0, "y_labels": null, "y_labels_major": null, "y_labels_major_count": null, "y_labels_major_every": null, "y_title": "Duration", "zero": 4, "legends": ["tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_long_conversations_key_at_end - 105108 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_medium_conversations_key_at_beginning - 83438 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_short_conversations_key_at_beginning - 99960 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_long_conversations_key_at_beginning - 89374 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_extra_long_conversations_key_at_end - 46916 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_short_conversations_key_at_end - 83914 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_medium_conversations_key_at_end - 98367 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_extra_long_conversations_key_at_beginning - 80724 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_medium_conversations_key_at_end - 109650 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_long_conversations_key_at_end - 106056 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_long_conversations_key_at_beginning - 63244 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_short_conversations_key_at_end - 96638 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_extra_long_conversations_key_at_beginning - 104254 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_extra_long_conversations_key_at_end - 51870 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_short_conversations_key_at_beginning - 75598 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_medium_conversations_key_at_beginning - 72042 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_short_conversations_key_at_beginning - 5638 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_medium_conversations_key_at_beginning - 7357 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_long_conversations_key_at_beginning - 5969 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_medium_conversations_key_at_end - 7259 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_extra_long_conversations_key_at_end - 7306 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_long_conversations_key_at_end - 6705 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_short_conversations_key_at_end - 5933 rounds"]}</script>
+    <script type="text/javascript">window.pygal = window.pygal || {};window.pygal.config = window.pygal.config || {};window.pygal.config['4c2024c5-f106-420b-8f10-aabf8065df2b'] = {"allow_interruptions": false, "box_mode": "tukey", "classes": ["pygal-chart"], "css": ["file://style.css", "file://graph.css", "inline:\n                .tooltip .value {\n                    font-size: 1em !important;\n                }\n                .axis text {\n                    font-size: 9px !important;\n                }\n            "], "defs": [], "disable_xml_declaration": false, "dots_size": 2.5, "dynamic_print_values": false, "explicit_size": false, "fill": false, "force_uri_protocol": "https", "formatter": null, "half_pie": false, "height": 600, "include_x_axis": false, "inner_radius": 0, "interpolate": null, "interpolation_parameters": {}, "interpolation_precision": 250, "inverse_y_axis": false, "js": ["file:///tmp/ramdisk/lightspeed-stack-LCORE-1/.venv/lib64/python3.14/site-packages/pygaljs/static/2.0.x/pygal-tooltips.js"], "legend_at_bottom": false, "legend_at_bottom_columns": null, "legend_box_size": 12, "logarithmic": false, "margin": 20, "margin_bottom": null, "margin_left": null, "margin_right": null, "margin_top": null, "max_scale": 20, "min_scale": 20, "missing_value_fill_truncation": "x", "no_data_text": "No data", "no_prefix": false, "order_min": null, "pretty_print": false, "print_labels": false, "print_values": false, "print_values_position": "center", "print_zeroes": true, "range": [4, 26], "reverse_direction": false, "rounded_bars": null, "secondary_range": null, "show_dots": true, "show_legend": false, "show_minor_x_labels": true, "show_minor_y_labels": true, "show_only_major_dots": false, "show_x_guides": false, "show_x_labels": true, "show_y_guides": true, "show_y_labels": true, "spacing": 10, "stack_from_top": false, "strict": false, "stroke": true, "stroke_style": null, "style": {"background": "rgba(249, 249, 249, 1)", "ci_colors": [], "colors": ["#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5"], "dot_opacity": "1", "font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "foreground": "rgba(0, 0, 0, .87)", "foreground_strong": "rgba(0, 0, 0, 1)", "foreground_subtle": "rgba(0, 0, 0, .54)", "guide_stroke_color": "black", "guide_stroke_dasharray": "4,4", "label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "label_font_size": 10, "legend_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "legend_font_size": 14, "major_guide_stroke_color": "black", "major_guide_stroke_dasharray": "6,6", "major_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "major_label_font_size": 10, "no_data_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "no_data_font_size": 64, "opacity": ".7", "opacity_hover": ".8", "plot_background": "rgba(255, 255, 255, 1)", "stroke_opacity": ".8", "stroke_opacity_hover": ".9", "stroke_width": "1", "stroke_width_hover": "4", "title_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "title_font_size": 16, "tooltip_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "tooltip_font_size": 14, "transition": "150ms", "value_background": "rgba(229, 229, 229, 1)", "value_colors": [], "value_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_font_size": 16, "value_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_label_font_size": 10}, "title": "Speed in Microseconds (us)", "tooltip_border_radius": 0, "tooltip_fancy_mode": true, "truncate_label": 50, "truncate_legend": null, "width": 800, "x_label_rotation": 270, "x_labels": ["test_noop_cache_1000_medium_conversations_key_at_beginning", "test_memory_cache_1000_short_conversations_key_at_beginning", "test_noop_cache_1000_medium_conversations_key_at_end", "test_noop_cache_1000_short_conversations_key_at_beginning", "test_noop_cache_1000_extra_long_conversations_key_at_end", "test_noop_cache_1000_long_conversations_key_at_end", "test_noop_cache_1000_short_conversations_key_at_end", "test_memory_cache_1000_short_conversations_key_at_end", "test_noop_cache_1000_extra_long_conversations_key_at_beginning", "test_memory_cache_1000_extra_long_conversations_key_at_beginning", "test_memory_cache_1000_long_conversations_key_at_beginning", "test_memory_cache_1000_medium_conversations_key_at_beginning", "test_memory_cache_1000_extra_long_conversations_key_at_end", "test_noop_cache_1000_long_conversations_key_at_beginning", "test_memory_cache_1000_long_conversations_key_at_end", "test_memory_cache_1000_medium_conversations_key_at_end", "test_sqlite_cache_1000_short_conversations_key_at_beginning", "test_sqlite_cache_1000_medium_conversations_key_at_end", "test_sqlite_cache_1000_short_conversations_key_at_end", "test_sqlite_cache_1000_long_conversations_key_at_end", "test_sqlite_cache_1000_long_conversations_key_at_beginning", "test_sqlite_cache_1000_medium_conversations_key_at_beginning", "test_sqlite_cache_1000_extra_long_conversations_key_at_beginning", "test_sqlite_cache_1000_extra_long_conversations_key_at_end"], "x_labels_major": null, "x_labels_major_count": null, "x_labels_major_every": null, "x_title": "Trial", "xrange": null, "y_label_rotation": 0, "y_labels": null, "y_labels_major": null, "y_labels_major_count": null, "y_labels_major_every": null, "y_title": "Duration", "zero": 4, "legends": ["tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_medium_conversations_key_at_beginning - 104167 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_short_conversations_key_at_beginning - 110351 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_medium_conversations_key_at_end - 97886 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_short_conversations_key_at_beginning - 108649 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_extra_long_conversations_key_at_end - 99632 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_long_conversations_key_at_end - 113948 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_short_conversations_key_at_end - 78531 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_short_conversations_key_at_end - 82543 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_extra_long_conversations_key_at_beginning - 92107 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_extra_long_conversations_key_at_beginning - 84162 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_long_conversations_key_at_beginning - 87905 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_medium_conversations_key_at_beginning - 107090 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_extra_long_conversations_key_at_end - 102145 rounds", "tests/benchmarks/test_noop_cache_get.py::test_noop_cache_1000_long_conversations_key_at_beginning - 91059 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_long_conversations_key_at_end - 105955 rounds", "tests/benchmarks/test_memory_cache_get.py::test_memory_cache_1000_medium_conversations_key_at_end - 94030 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_short_conversations_key_at_beginning - 7353 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_medium_conversations_key_at_end - 7472 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_short_conversations_key_at_end - 6862 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_long_conversations_key_at_end - 7996 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_long_conversations_key_at_beginning - 6523 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_medium_conversations_key_at_beginning - 7441 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_extra_long_conversations_key_at_beginning - 5651 rounds", "tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_1000_extra_long_conversations_key_at_end - 7421 rounds"]}</script>
     <script type="text/javascript">(function() {
   var $, get_translation, init, init_svg, matches, padding, r_translation, sibl, svg_ns, tooltip_timeout, xlink_ns;
 
@@ -367,193 +367,203 @@
           <title>4</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 175.618199 h712.000000" class="guide line"/>
-          <text x="-5" y="179.11819887429644" class="">8</text>
+          <path d="M0.000000 176.884615 h712.000000" class="guide line"/>
+          <text x="-5" y="180.3846153846154" class="">6</text>
+          <title>6</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 159.576923 h712.000000" class="guide line"/>
+          <text x="-5" y="163.0769230769231" class="">8</text>
           <title>8</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 157.044090 h712.000000" class="guide line"/>
-          <text x="-5" y="160.54409005628517" class="">12</text>
+          <path d="M0.000000 142.269231 h712.000000" class="major guide line"/>
+          <text x="-5" y="145.76923076923077" class="major">10</text>
+          <title>10</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 124.961538 h712.000000" class="guide line"/>
+          <text x="-5" y="128.46153846153848" class="">12</text>
           <title>12</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 138.469981 h712.000000" class="guide line"/>
-          <text x="-5" y="141.96998123827393" class="">16</text>
+          <path d="M0.000000 107.653846 h712.000000" class="guide line"/>
+          <text x="-5" y="111.15384615384617" class="">14</text>
+          <title>14</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 90.346154 h712.000000" class="guide line"/>
+          <text x="-5" y="93.84615384615387" class="">16</text>
           <title>16</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 119.895872 h712.000000" class="major guide line"/>
-          <text x="-5" y="123.39587242026266" class="major">20</text>
+          <path d="M0.000000 73.038462 h712.000000" class="guide line"/>
+          <text x="-5" y="76.53846153846156" class="">18</text>
+          <title>18</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 55.730769 h712.000000" class="major guide line"/>
+          <text x="-5" y="59.230769230769226" class="major">20</text>
           <title>20</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 101.321764 h712.000000" class="guide line"/>
-          <text x="-5" y="104.82176360225142" class="">24</text>
+          <path d="M0.000000 38.423077 h712.000000" class="guide line"/>
+          <text x="-5" y="41.923076923076934" class="">22</text>
+          <title>22</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 21.115385 h712.000000" class="guide line"/>
+          <text x="-5" y="24.615384615384613" class="">24</text>
           <title>24</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 82.747655 h712.000000" class="guide line"/>
-          <text x="-5" y="86.24765478424015" class="">28</text>
-          <title>28</title>
-        </g>
-        <g class="guides">
-          <path d="M0.000000 64.173546 h712.000000" class="guide line"/>
-          <text x="-5" y="67.67354596622891" class="">32</text>
-          <title>32</title>
-        </g>
-        <g class="guides">
-          <path d="M0.000000 45.599437 h712.000000" class="guide line"/>
-          <text x="-5" y="49.099437148217646" class="">36</text>
-          <title>36</title>
-        </g>
-        <g class="guides">
-          <path d="M0.000000 27.025328 h712.000000" class="major guide line"/>
-          <text x="-5" y="30.525328330206378" class="major">40</text>
-          <title>40</title>
-        </g>
-        <g class="guides">
-          <path d="M0.000000 8.451220 h712.000000" class="guide line"/>
-          <text x="-5" y="11.951219512195138" class="">44</text>
-          <title>44</title>
+          <path d="M0.000000 3.807692 h712.000000" class="guide line"/>
+          <text x="-5" y="7.307692307692321" class="">26</text>
+          <title>26</title>
         </g>
       </g>
       <g class="axis x">
         <path d="M0.000000 0.000000 v198.000000" class="line"/>
         <g class="guides">
-          <path d="M28.575251 0.000000 v198.000000" class="guide line"/>
-          <text x="28.575250836120404" y="213.0" class="backwards" transform="rotate(270 28.575251 213.000000)">test_noop_cache_1000_long_conversations_key_at_end</text>
-        </g>
-        <g class="guides">
-          <path d="M58.341137 0.000000 v198.000000" class="guide line"/>
-          <text x="58.34113712374582" y="213.0" class="backwards" transform="rotate(270 58.341137 213.000000)">test_memory_cache_1000_medium_conversations_key_a…</text>
-          <title>test_memory_cache_1000_medium_conversations_key_at_beginning</title>
-        </g>
-        <g class="guides">
-          <path d="M88.107023 0.000000 v198.000000" class="guide line"/>
-          <text x="88.10702341137123" y="213.0" class="backwards" transform="rotate(270 88.107023 213.000000)">test_memory_cache_1000_short_conversations_key_at…</text>
-          <title>test_memory_cache_1000_short_conversations_key_at_beginning</title>
-        </g>
-        <g class="guides">
-          <path d="M117.872910 0.000000 v198.000000" class="guide line"/>
-          <text x="117.87290969899665" y="213.0" class="backwards" transform="rotate(270 117.872910 213.000000)">test_memory_cache_1000_long_conversations_key_at_…</text>
-          <title>test_memory_cache_1000_long_conversations_key_at_beginning</title>
-        </g>
-        <g class="guides">
-          <path d="M147.638796 0.000000 v198.000000" class="guide line"/>
-          <text x="147.63879598662206" y="213.0" class="backwards" transform="rotate(270 147.638796 213.000000)">test_noop_cache_1000_extra_long_conversations_key…</text>
-          <title>test_noop_cache_1000_extra_long_conversations_key_at_end</title>
-        </g>
-        <g class="guides">
-          <path d="M177.404682 0.000000 v198.000000" class="guide line"/>
-          <text x="177.4046822742475" y="213.0" class="backwards" transform="rotate(270 177.404682 213.000000)">test_noop_cache_1000_short_conversations_key_at_e…</text>
-          <title>test_noop_cache_1000_short_conversations_key_at_end</title>
-        </g>
-        <g class="guides">
-          <path d="M207.170569 0.000000 v198.000000" class="guide line"/>
-          <text x="207.1705685618729" y="213.0" class="backwards" transform="rotate(270 207.170569 213.000000)">test_noop_cache_1000_medium_conversations_key_at_…</text>
-          <title>test_noop_cache_1000_medium_conversations_key_at_end</title>
-        </g>
-        <g class="guides">
-          <path d="M236.936455 0.000000 v198.000000" class="guide line"/>
-          <text x="236.93645484949835" y="213.0" class="backwards" transform="rotate(270 236.936455 213.000000)">test_memory_cache_1000_extra_long_conversations_k…</text>
-          <title>test_memory_cache_1000_extra_long_conversations_key_at_beginning</title>
-        </g>
-        <g class="guides">
-          <path d="M266.702341 0.000000 v198.000000" class="guide line"/>
-          <text x="266.7023411371237" y="213.0" class="backwards" transform="rotate(270 266.702341 213.000000)">test_memory_cache_1000_medium_conversations_key_a…</text>
-          <title>test_memory_cache_1000_medium_conversations_key_at_end</title>
-        </g>
-        <g class="guides">
-          <path d="M296.468227 0.000000 v198.000000" class="guide line"/>
-          <text x="296.46822742474916" y="213.0" class="backwards" transform="rotate(270 296.468227 213.000000)">test_memory_cache_1000_long_conversations_key_at_…</text>
-          <title>test_memory_cache_1000_long_conversations_key_at_end</title>
-        </g>
-        <g class="guides">
-          <path d="M326.234114 0.000000 v198.000000" class="guide line"/>
-          <text x="326.23411371237455" y="213.0" class="backwards" transform="rotate(270 326.234114 213.000000)">test_noop_cache_1000_long_conversations_key_at_be…</text>
-          <title>test_noop_cache_1000_long_conversations_key_at_beginning</title>
-        </g>
-        <g class="guides">
-          <path d="M356.000000 0.000000 v198.000000" class="guide line"/>
-          <text x="356.0" y="213.0" class="backwards" transform="rotate(270 356.000000 213.000000)">test_memory_cache_1000_short_conversations_key_at…</text>
-          <title>test_memory_cache_1000_short_conversations_key_at_end</title>
-        </g>
-        <g class="guides">
-          <path d="M385.765886 0.000000 v198.000000" class="guide line"/>
-          <text x="385.7658862876254" y="213.0" class="backwards" transform="rotate(270 385.765886 213.000000)">test_noop_cache_1000_extra_long_conversations_key…</text>
-          <title>test_noop_cache_1000_extra_long_conversations_key_at_beginning</title>
-        </g>
-        <g class="guides">
-          <path d="M415.531773 0.000000 v198.000000" class="guide line"/>
-          <text x="415.5317725752509" y="213.0" class="backwards" transform="rotate(270 415.531773 213.000000)">test_memory_cache_1000_extra_long_conversations_k…</text>
-          <title>test_memory_cache_1000_extra_long_conversations_key_at_end</title>
-        </g>
-        <g class="guides">
-          <path d="M445.297659 0.000000 v198.000000" class="guide line"/>
-          <text x="445.29765886287623" y="213.0" class="backwards" transform="rotate(270 445.297659 213.000000)">test_noop_cache_1000_short_conversations_key_at_b…</text>
-          <title>test_noop_cache_1000_short_conversations_key_at_beginning</title>
-        </g>
-        <g class="guides">
-          <path d="M475.063545 0.000000 v198.000000" class="guide line"/>
-          <text x="475.0635451505017" y="213.0" class="backwards" transform="rotate(270 475.063545 213.000000)">test_noop_cache_1000_medium_conversations_key_at_…</text>
+          <path d="M27.955128 0.000000 v198.000000" class="guide line"/>
+          <text x="27.955128205128204" y="213.0" class="backwards" transform="rotate(270 27.955128 213.000000)">test_noop_cache_1000_medium_conversations_key_at_…</text>
           <title>test_noop_cache_1000_medium_conversations_key_at_beginning</title>
         </g>
         <g class="guides">
-          <path d="M504.829431 0.000000 v198.000000" class="guide line"/>
-          <text x="504.829431438127" y="213.0" class="backwards" transform="rotate(270 504.829431 213.000000)">test_sqlite_cache_1000_short_conversations_key_at…</text>
+          <path d="M56.480769 0.000000 v198.000000" class="guide line"/>
+          <text x="56.48076923076923" y="213.0" class="backwards" transform="rotate(270 56.480769 213.000000)">test_memory_cache_1000_short_conversations_key_at…</text>
+          <title>test_memory_cache_1000_short_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M85.006410 0.000000 v198.000000" class="guide line"/>
+          <text x="85.00641025641025" y="213.0" class="backwards" transform="rotate(270 85.006410 213.000000)">test_noop_cache_1000_medium_conversations_key_at_…</text>
+          <title>test_noop_cache_1000_medium_conversations_key_at_end</title>
+        </g>
+        <g class="guides">
+          <path d="M113.532051 0.000000 v198.000000" class="guide line"/>
+          <text x="113.53205128205128" y="213.0" class="backwards" transform="rotate(270 113.532051 213.000000)">test_noop_cache_1000_short_conversations_key_at_b…</text>
+          <title>test_noop_cache_1000_short_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M142.057692 0.000000 v198.000000" class="guide line"/>
+          <text x="142.0576923076923" y="213.0" class="backwards" transform="rotate(270 142.057692 213.000000)">test_noop_cache_1000_extra_long_conversations_key…</text>
+          <title>test_noop_cache_1000_extra_long_conversations_key_at_end</title>
+        </g>
+        <g class="guides">
+          <path d="M170.583333 0.000000 v198.000000" class="guide line"/>
+          <text x="170.58333333333331" y="213.0" class="backwards" transform="rotate(270 170.583333 213.000000)">test_noop_cache_1000_long_conversations_key_at_end</text>
+        </g>
+        <g class="guides">
+          <path d="M199.108974 0.000000 v198.000000" class="guide line"/>
+          <text x="199.10897435897434" y="213.0" class="backwards" transform="rotate(270 199.108974 213.000000)">test_noop_cache_1000_short_conversations_key_at_e…</text>
+          <title>test_noop_cache_1000_short_conversations_key_at_end</title>
+        </g>
+        <g class="guides">
+          <path d="M227.634615 0.000000 v198.000000" class="guide line"/>
+          <text x="227.6346153846154" y="213.0" class="backwards" transform="rotate(270 227.634615 213.000000)">test_memory_cache_1000_short_conversations_key_at…</text>
+          <title>test_memory_cache_1000_short_conversations_key_at_end</title>
+        </g>
+        <g class="guides">
+          <path d="M256.160256 0.000000 v198.000000" class="guide line"/>
+          <text x="256.1602564102564" y="213.0" class="backwards" transform="rotate(270 256.160256 213.000000)">test_noop_cache_1000_extra_long_conversations_key…</text>
+          <title>test_noop_cache_1000_extra_long_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M284.685897 0.000000 v198.000000" class="guide line"/>
+          <text x="284.6858974358974" y="213.0" class="backwards" transform="rotate(270 284.685897 213.000000)">test_memory_cache_1000_extra_long_conversations_k…</text>
+          <title>test_memory_cache_1000_extra_long_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M313.211538 0.000000 v198.000000" class="guide line"/>
+          <text x="313.21153846153845" y="213.0" class="backwards" transform="rotate(270 313.211538 213.000000)">test_memory_cache_1000_long_conversations_key_at_…</text>
+          <title>test_memory_cache_1000_long_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M341.737179 0.000000 v198.000000" class="guide line"/>
+          <text x="341.7371794871795" y="213.0" class="backwards" transform="rotate(270 341.737179 213.000000)">test_memory_cache_1000_medium_conversations_key_a…</text>
+          <title>test_memory_cache_1000_medium_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M370.262821 0.000000 v198.000000" class="guide line"/>
+          <text x="370.26282051282055" y="213.0" class="backwards" transform="rotate(270 370.262821 213.000000)">test_memory_cache_1000_extra_long_conversations_k…</text>
+          <title>test_memory_cache_1000_extra_long_conversations_key_at_end</title>
+        </g>
+        <g class="guides">
+          <path d="M398.788462 0.000000 v198.000000" class="guide line"/>
+          <text x="398.78846153846155" y="213.0" class="backwards" transform="rotate(270 398.788462 213.000000)">test_noop_cache_1000_long_conversations_key_at_be…</text>
+          <title>test_noop_cache_1000_long_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M427.314103 0.000000 v198.000000" class="guide line"/>
+          <text x="427.31410256410254" y="213.0" class="backwards" transform="rotate(270 427.314103 213.000000)">test_memory_cache_1000_long_conversations_key_at_…</text>
+          <title>test_memory_cache_1000_long_conversations_key_at_end</title>
+        </g>
+        <g class="guides">
+          <path d="M455.839744 0.000000 v198.000000" class="guide line"/>
+          <text x="455.8397435897436" y="213.0" class="backwards" transform="rotate(270 455.839744 213.000000)">test_memory_cache_1000_medium_conversations_key_a…</text>
+          <title>test_memory_cache_1000_medium_conversations_key_at_end</title>
+        </g>
+        <g class="guides">
+          <path d="M484.365385 0.000000 v198.000000" class="guide line"/>
+          <text x="484.3653846153846" y="213.0" class="backwards" transform="rotate(270 484.365385 213.000000)">test_sqlite_cache_1000_short_conversations_key_at…</text>
           <title>test_sqlite_cache_1000_short_conversations_key_at_beginning</title>
         </g>
         <g class="guides">
-          <path d="M534.595318 0.000000 v198.000000" class="guide line"/>
-          <text x="534.5953177257525" y="213.0" class="backwards" transform="rotate(270 534.595318 213.000000)">test_sqlite_cache_1000_medium_conversations_key_a…</text>
-          <title>test_sqlite_cache_1000_medium_conversations_key_at_beginning</title>
-        </g>
-        <g class="guides">
-          <path d="M564.361204 0.000000 v198.000000" class="guide line"/>
-          <text x="564.3612040133779" y="213.0" class="backwards" transform="rotate(270 564.361204 213.000000)">test_sqlite_cache_1000_long_conversations_key_at_…</text>
-          <title>test_sqlite_cache_1000_long_conversations_key_at_beginning</title>
-        </g>
-        <g class="guides">
-          <path d="M594.127090 0.000000 v198.000000" class="guide line"/>
-          <text x="594.1270903010034" y="213.0" class="backwards" transform="rotate(270 594.127090 213.000000)">test_sqlite_cache_1000_medium_conversations_key_a…</text>
+          <path d="M512.891026 0.000000 v198.000000" class="guide line"/>
+          <text x="512.8910256410256" y="213.0" class="backwards" transform="rotate(270 512.891026 213.000000)">test_sqlite_cache_1000_medium_conversations_key_a…</text>
           <title>test_sqlite_cache_1000_medium_conversations_key_at_end</title>
         </g>
         <g class="guides">
-          <path d="M623.892977 0.000000 v198.000000" class="guide line"/>
-          <text x="623.8929765886287" y="213.0" class="backwards" transform="rotate(270 623.892977 213.000000)">test_sqlite_cache_1000_extra_long_conversations_k…</text>
-          <title>test_sqlite_cache_1000_extra_long_conversations_key_at_end</title>
+          <path d="M541.416667 0.000000 v198.000000" class="guide line"/>
+          <text x="541.4166666666667" y="213.0" class="backwards" transform="rotate(270 541.416667 213.000000)">test_sqlite_cache_1000_short_conversations_key_at…</text>
+          <title>test_sqlite_cache_1000_short_conversations_key_at_end</title>
         </g>
         <g class="guides">
-          <path d="M653.658863 0.000000 v198.000000" class="guide line"/>
-          <text x="653.6588628762541" y="213.0" class="backwards" transform="rotate(270 653.658863 213.000000)">test_sqlite_cache_1000_long_conversations_key_at_…</text>
+          <path d="M569.942308 0.000000 v198.000000" class="guide line"/>
+          <text x="569.9423076923077" y="213.0" class="backwards" transform="rotate(270 569.942308 213.000000)">test_sqlite_cache_1000_long_conversations_key_at_…</text>
           <title>test_sqlite_cache_1000_long_conversations_key_at_end</title>
         </g>
         <g class="guides">
-          <path d="M683.424749 0.000000 v198.000000" class="guide line"/>
-          <text x="683.4247491638796" y="213.0" class="backwards" transform="rotate(270 683.424749 213.000000)">test_sqlite_cache_1000_short_conversations_key_at…</text>
-          <title>test_sqlite_cache_1000_short_conversations_key_at_end</title>
+          <path d="M598.467949 0.000000 v198.000000" class="guide line"/>
+          <text x="598.4679487179486" y="213.0" class="backwards" transform="rotate(270 598.467949 213.000000)">test_sqlite_cache_1000_long_conversations_key_at_…</text>
+          <title>test_sqlite_cache_1000_long_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M626.993590 0.000000 v198.000000" class="guide line"/>
+          <text x="626.9935897435897" y="213.0" class="backwards" transform="rotate(270 626.993590 213.000000)">test_sqlite_cache_1000_medium_conversations_key_a…</text>
+          <title>test_sqlite_cache_1000_medium_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M655.519231 0.000000 v198.000000" class="guide line"/>
+          <text x="655.5192307692307" y="213.0" class="backwards" transform="rotate(270 655.519231 213.000000)">test_sqlite_cache_1000_extra_long_conversations_k…</text>
+          <title>test_sqlite_cache_1000_extra_long_conversations_key_at_beginning</title>
+        </g>
+        <g class="guides">
+          <path d="M684.044872 0.000000 v198.000000" class="guide line"/>
+          <text x="684.0448717948717" y="213.0" class="backwards" transform="rotate(270 684.044872 213.000000)">test_sqlite_cache_1000_extra_long_conversations_k…</text>
+          <title>test_sqlite_cache_1000_extra_long_conversations_key_at_end</title>
         </g>
       </g>
       <g class="series serie-0 color-0">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M22.026756 192.126078 L35.123746 192.126078" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M15.478261 191.187906 L41.672241 191.187906" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M22.026756 190.142969 L35.123746 190.142969" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M28.575251 192.126078 L28.575251 191.406299" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M28.575251 190.142969 L28.575251 190.900048" class="reactive tooltip-trigger"/>
-            <rect x="15.478260869565217" y="190.9000479820801" height="0.506251029090123" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="28.575250836120397" cy="192.19581276235672" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="28.575250836120397" cy="-102.64067818910775" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4300
-Q1-1.5IQR: 4.4450
-Q1: 4.6000
-Median: 4.6470
-Q3: 4.7090
-Q3+1.5IQR: 4.8720
-Max: 67.9240</desc>
-            <desc class="x centered">28.575250836120397</desc>
-            <desc class="y centered">191.15265994779696</desc>
+            <path stroke-width="3" d="M21.679487 189.727069 L34.230769 189.727069" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M15.403846 188.117179 L40.506410 188.117179" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M21.679487 186.325950 L34.230769 186.325950" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M27.955128 189.727069 L27.955128 188.507059" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M27.955128 186.325950 L27.955128 187.632600" class="reactive tooltip-trigger"/>
+            <rect x="15.403846153846153" y="187.6326004177905" height="0.8744581674153835" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="27.955128205128204" cy="189.88271829442908" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="27.955128205128204" cy="-358.38995967146286" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.4980
+Q1-1.5IQR: 4.5160
+Q1: 4.6570
+Median: 4.7020
+Q3: 4.7580
+Q3+1.5IQR: 4.9090
+Max: 67.8540</desc>
+            <desc class="x centered">27.955128205128204</desc>
+            <desc class="y centered">188.0619714672749</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -561,23 +571,23 @@ Max: 67.9240</desc>
       <g class="series serie-1 color-1">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M51.792642 192.153648 L64.889632 192.153648" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M45.244147 188.559617 L71.438127 188.559617" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M51.792642 173.472904 L64.889632 173.472904" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M58.341137 192.153648 L58.341137 191.048707" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M58.341137 173.472904 L58.341137 184.018223" class="reactive tooltip-trigger"/>
-            <rect x="45.24414715719063" y="184.01822339496653" height="7.030483458442774" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="58.34113712374581" cy="192.15364770067063" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="58.34113712374581" cy="-80.31427802631936" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4390
-Q1-1.5IQR: 4.4390
-Q1: 4.6770
-Median: 5.2130
-Q3: 6.1910
-Q3+1.5IQR: 8.4620
-Max: 63.1160</desc>
-            <desc class="x centered">58.34113712374581</desc>
-            <desc class="y centered">185.8506196718558</desc>
+            <path stroke-width="3" d="M50.205128 189.873651 L62.756410 189.873651" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M43.929487 188.073859 L69.032051 188.073859" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M50.205128 185.798052 L62.756410 185.798052" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M56.480769 189.873651 L56.480769 188.497992" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M56.480769 185.798052 L56.480769 187.416504" class="reactive tooltip-trigger"/>
+            <rect x="43.929487179487175" y="187.41650447664927" height="1.0814871459912752" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="56.480769230769226" cy="189.87365133186373" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="56.480769230769226" cy="-352.2113284033078" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.4990
+Q1-1.5IQR: 4.4990
+Q1: 4.6580
+Median: 4.7070
+Q3: 4.7830
+Q3+1.5IQR: 4.9700
+Max: 67.1400</desc>
+            <desc class="x centered">56.480769230769226</desc>
+            <desc class="y centered">187.93201167050464</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -585,23 +595,23 @@ Max: 63.1160</desc>
       <g class="series serie-2 color-2">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M81.558528 192.144458 L94.655518 192.144458" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M75.010033 189.892411 L101.204013 189.892411" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M81.558528 177.781849 L94.655518 177.781849" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M88.107023 192.144458 L88.107023 191.164931" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M88.107023 177.781849 L88.107023 185.810779" class="reactive tooltip-trigger"/>
-            <rect x="75.01003344481605" y="185.81077909433958" height="5.3541519675634675" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="88.10702341137123" cy="192.14445787953392" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="88.10702341137123" cy="-2486.228101549038" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4410
-Q1-1.5IQR: 4.4410
-Q1: 4.6520
-Median: 4.9260
-Q3: 5.8050
-Q3+1.5IQR: 7.5341
-Max: 581.2380</desc>
-            <desc class="x centered">88.10702341137123</desc>
-            <desc class="y centered">187.35888555147608</desc>
+            <path stroke-width="3" d="M78.730769 189.753262 L91.282051 189.753262" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M72.455128 188.073859 L97.557692 188.073859" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M78.730769 186.256437 L91.282051 186.256437" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M85.006410 189.753262 L85.006410 188.463739" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M85.006410 186.256437 L85.006410 187.580717" class="reactive tooltip-trigger"/>
+            <rect x="72.4551282051282" y="187.5807172431109" height="0.8830214098382498" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="85.00641025641025" cy="189.84796160459518" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="85.00641025641025" cy="-1097.1605285760013" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5020
+Q1-1.5IQR: 4.5130
+Q1: 4.6620
+Median: 4.7070
+Q3: 4.7640
+Q3+1.5IQR: 4.9170
+Max: 153.2230</desc>
+            <desc class="x centered">85.00641025641025</desc>
+            <desc class="y centered">188.0256028729849</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -609,23 +619,23 @@ Max: 581.2380</desc>
       <g class="series serie-3 color-3">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M111.324415 192.139863 L124.421405 192.139863" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M104.775920 188.248785 L130.969900 188.248785" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M111.324415 173.013142 L124.421405 173.013142" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M117.872910 192.139863 L117.872910 191.076547" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M117.872910 173.013142 L117.872910 183.851185" class="reactive tooltip-trigger"/>
-            <rect x="104.77591973244145" y="183.85118488136393" height="7.225361724312478" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="117.87290969899664" cy="192.13986296896556" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="117.87290969899664" cy="-284.72238841480925" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4420
-Q1-1.5IQR: 4.4420
-Q1: 4.6710
-Median: 5.2800
-Q3: 6.2270
-Q3+1.5IQR: 8.5610
-Max: 107.1360</desc>
-            <desc class="x centered">117.87290969899664</desc>
-            <desc class="y centered">185.66590426700787</desc>
+            <path stroke-width="3" d="M107.256410 189.805145 L119.807692 189.805145" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M100.980769 188.039606 L126.083333 188.039606" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M107.256410 186.153174 L119.807692 186.153174" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M113.532051 189.805145 L113.532051 188.446108" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M113.532051 186.153174 L113.532051 187.528834" class="reactive tooltip-trigger"/>
+            <rect x="100.98076923076923" y="187.5288340684313" height="0.9172743795296299" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="113.53205128205127" cy="189.80514539248094" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="113.53205128205127" cy="-475.6237707610885" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5070
+Q1-1.5IQR: 4.5070
+Q1: 4.6640
+Median: 4.7110
+Q3: 4.7700
+Q3+1.5IQR: 4.9290
+Max: 81.4010</desc>
+            <desc class="x centered">113.53205128205127</desc>
+            <desc class="y centered">187.99457371220566</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -633,23 +643,23 @@ Max: 107.1360</desc>
       <g class="series serie-4 color-4">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M141.090301 192.130403 L154.187291 192.130403" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M134.541806 186.107827 L160.735786 186.107827" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M141.090301 171.652508 L154.187291 171.652508" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M147.638796 192.130403 L147.638796 188.021201" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M147.638796 171.652508 L147.638796 181.473454" class="reactive tooltip-trigger"/>
-            <rect x="134.54180602006684" y="181.4734538066678" height="6.547747559908345" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="147.63879598662203" cy="192.13040285897188" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="147.63879598662203" cy="36.10805219956316" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4440
-Q1-1.5IQR: 4.4440
-Q1: 5.3290
-Median: 5.7410
-Q3: 6.7391
-Q3+1.5IQR: 8.8540
-Max: 38.0440</desc>
-            <desc class="x centered">147.63879598662203</desc>
-            <desc class="y centered">183.8770785538609</desc>
+            <path stroke-width="3" d="M135.782051 189.778952 L148.333333 189.778952" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M129.506410 188.100053 L154.608974 188.100053" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M135.782051 186.195991 L148.333333 186.195991" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M142.057692 189.778952 L142.057692 188.506555" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M142.057692 186.195991 L142.057692 187.580717" class="reactive tooltip-trigger"/>
+            <rect x="129.50641025641025" y="187.5807172431109" height="0.9258376219524678" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="142.0576923076923" cy="189.77895194506988" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="142.0576923076923" cy="-259.5026436127148" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5100
+Q1-1.5IQR: 4.5100
+Q1: 4.6570
+Median: 4.7040
+Q3: 4.7640
+Q3+1.5IQR: 4.9240
+Max: 56.4270</desc>
+            <desc class="x centered">142.0576923076923</desc>
+            <desc class="y centered">188.0324534669232</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -657,23 +667,23 @@ Max: 38.0440</desc>
       <g class="series serie-5 color-5">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M170.856187 192.019044 L183.953177 192.019044" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M164.307692 191.104386 L190.501672 191.104386" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M170.856187 190.129184 L183.953177 190.129184" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M177.404682 192.019044 L177.404682 191.308725" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M177.404682 190.129184 L177.404682 190.835179" class="reactive tooltip-trigger"/>
-            <rect x="164.30769230769226" y="190.8351786564092" height="0.4735460773977138" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="177.40468227424745" cy="192.079588553863" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="177.40468227424745" cy="-639.7200434377686" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4550
-Q1-1.5IQR: 4.4680
-Q1: 4.6210
-Median: 4.6650
-Q3: 4.7230
-Q3+1.5IQR: 4.8750
-Max: 183.5860</desc>
-            <desc class="x centered">177.40468227424745</desc>
-            <desc class="y centered">191.07930355201742</desc>
+            <path stroke-width="3" d="M164.307692 189.752758 L176.858974 189.752758" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M158.032051 187.961530 L183.134615 187.961530" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M164.307692 185.997021 L176.858974 185.997021" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M170.583333 189.752758 L170.583333 188.377099" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M170.583333 185.997021 L170.583333 187.425068" class="reactive tooltip-trigger"/>
+            <rect x="158.03205128205124" y="187.4250677190721" height="0.9520310693635281" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="170.5833333333333" cy="189.75275849765882" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="170.5833333333333" cy="-4744.748189168624" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5130
+Q1-1.5IQR: 4.5130
+Q1: 4.6720
+Median: 4.7200
+Q3: 4.7820
+Q3+1.5IQR: 4.9470
+Max: 574.7220</desc>
+            <desc class="x centered">170.5833333333333</desc>
+            <desc class="y centered">187.90269515820995</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -681,23 +691,23 @@ Max: 183.5860</desc>
       <g class="series serie-6 color-6">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M200.622074 192.047154 L213.719064 192.047154" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M194.073579 191.076276 L220.267559 191.076276" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M200.622074 190.022420 L213.719064 190.022420" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M207.170569 192.047154 L207.170569 191.294670" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M207.170569 190.022420 L207.170569 190.784094" class="reactive tooltip-trigger"/>
-            <rect x="194.07357859531766" y="190.78409406244336" height="0.5105756508015133" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="207.17056856187284" cy="192.07931826500604" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="207.17056856187284" cy="-195.15812132754274" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4550
-Q1-1.5IQR: 4.4620
-Q1: 4.6240
-Median: 4.6710
-Q3: 4.7340
-Q3+1.5IQR: 4.8980
-Max: 87.8480</desc>
-            <desc class="x centered">207.17056856187284</desc>
-            <desc class="y centered">191.04492280941184</desc>
+            <path stroke-width="3" d="M192.833333 189.744195 L205.384615 189.744195" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M186.557692 188.091489 L211.660256 188.091489" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M192.833333 186.239311 L205.384615 186.239311" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M199.108974 189.744195 L199.108974 188.489428" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M199.108974 186.239311 L199.108974 187.589280" class="reactive tooltip-trigger"/>
+            <rect x="186.55769230769226" y="187.58928048553375" height="0.9001478946839541" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="199.1089743589743" cy="189.74419525523598" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="199.1089743589743" cy="-306.3460982663986" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5140
+Q1-1.5IQR: 4.5140
+Q1: 4.6590
+Median: 4.7050
+Q3: 4.7630
+Q3+1.5IQR: 4.9190
+Max: 61.8400</desc>
+            <desc class="x centered">199.1089743589743</desc>
+            <desc class="y centered">188.03074081843863</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -705,23 +715,23 @@ Max: 87.8480</desc>
       <g class="series serie-7 color-7">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M230.387960 191.188176 L243.484950 191.188176" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M223.839465 186.516503 L250.033445 186.516503" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M230.387960 182.968692 L243.484950 182.968692" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M236.936455 191.188176 L236.936455 188.104721" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M236.936455 182.968692 L236.936455 186.047552" class="reactive tooltip-trigger"/>
-            <rect x="223.83946488294308" y="186.04755213303844" height="2.0571684903390235" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="236.93645484949826" cy="192.07472335443768" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="236.93645484949826" cy="130.72915351173472" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4560
-Q1-1.5IQR: 4.6470
-Q1: 5.3110
-Median: 5.6530
-Q3: 5.7540
-Q3+1.5IQR: 6.4170
-Max: 17.6670</desc>
-            <desc class="x centered">236.93645484949826</desc>
-            <desc class="y centered">186.96512874465358</desc>
+            <path stroke-width="3" d="M221.358974 189.718002 L233.910256 189.718002" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M215.083333 187.849200 L240.185897 187.849200" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M221.358974 183.228071 L233.910256 183.228071" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M227.634615 189.718002 L227.634615 188.377099" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M227.634615 183.228071 L227.634615 186.317387" class="reactive tooltip-trigger"/>
+            <rect x="215.0833333333333" y="186.31738712566977" height="2.0597116627658636" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="227.63461538461533" cy="189.71800180782492" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="227.63461538461533" cy="-996.4039070683602" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5170
+Q1-1.5IQR: 4.5170
+Q1: 4.6720
+Median: 4.7330
+Q3: 4.9100
+Q3+1.5IQR: 5.2670
+Max: 141.5800</desc>
+            <desc class="x centered">227.63461538461533</desc>
+            <desc class="y centered">187.09795185851937</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -729,23 +739,23 @@ Max: 17.6670</desc>
       <g class="series serie-8 color-8">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M260.153846 192.070128 L273.250836 192.070128" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M253.605351 189.609148 L279.799331 189.609148" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M260.153846 175.450877 L273.250836 175.450877" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M266.702341 192.070128 L266.702341 191.062492" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M266.702341 175.450877 L266.702341 184.817197" class="reactive tooltip-trigger"/>
-            <rect x="253.6053511705685" y="184.8171972561467" height="6.245294328967674" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="266.70234113712365" cy="192.07012844386932" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="266.70234113712365" cy="15.421224243107218" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4570
-Q1-1.5IQR: 4.4570
-Q1: 4.6740
-Median: 4.9870
-Q3: 6.0190
-Q3+1.5IQR: 8.0360
-Max: 42.4990</desc>
-            <desc class="x centered">266.70234113712365</desc>
-            <desc class="y centered">186.60196863643924</desc>
+            <path stroke-width="3" d="M249.884615 189.700875 L262.435897 189.700875" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M243.608974 187.900580 L268.711538 187.900580" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M249.884615 185.953701 L262.435897 185.953701" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M256.160256 189.700875 L256.160256 188.324712" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M256.160256 185.953701 L256.160256 187.373185" class="reactive tooltip-trigger"/>
+            <rect x="243.6089743589743" y="187.3731845443925" height="0.9515273492210099" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="256.16025641025635" cy="189.70087532297924" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="256.16025641025635" cy="-47.596142896809226" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5190
+Q1-1.5IQR: 4.5190
+Q1: 4.6780
+Median: 4.7270
+Q3: 4.7880
+Q3+1.5IQR: 4.9520
+Max: 31.9400</desc>
+            <desc class="x centered">256.16025641025635</desc>
+            <desc class="y centered">187.85061049547332</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -753,23 +763,23 @@ Max: 42.4990</desc>
       <g class="series serie-9 color-9">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M289.919732 192.028504 L303.016722 192.028504" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M283.371237 189.562659 L309.565217 189.562659" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M289.919732 182.792463 L303.016722 182.792463" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M296.468227 192.028504 L296.468227 190.881668" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M296.468227 182.792463 L296.468227 187.644959" class="reactive tooltip-trigger"/>
-            <rect x="283.3712374581939" y="187.64495927768482" height="3.236709062121861" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="296.46822742474905" cy="192.02850395989714" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="296.46822742474905" cy="43.222054914807245" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4660
-Q1-1.5IQR: 4.4660
-Q1: 4.7130
-Median: 4.9970
-Q3: 5.4100
-Q3+1.5IQR: 6.4550
-Max: 36.5120</desc>
-            <desc class="x centered">296.46822742474905</desc>
-            <desc class="y centered">188.58205074477263</desc>
+            <path stroke-width="3" d="M278.410256 189.467149 L290.961538 189.467149" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M272.134615 187.831570 L297.237179 187.831570" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M278.410256 186.117914 L290.961538 186.117914" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M284.685897 189.467149 L284.685897 188.212382" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M284.685897 186.117914 L284.685897 187.373185" class="reactive tooltip-trigger"/>
+            <rect x="272.1346153846153" y="187.3731845443925" height="0.8391977574389671" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="284.68589743589735" cy="189.64042890587677" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="284.68589743589735" cy="-10.246301769207264" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5260
+Q1-1.5IQR: 4.5460
+Q1: 4.6910
+Median: 4.7350
+Q3: 4.7880
+Q3+1.5IQR: 4.9330
+Max: 27.6240</desc>
+            <desc class="x centered">284.68589743589735</desc>
+            <desc class="y centered">187.8004399692783</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -777,23 +787,23 @@ Max: 36.5120</desc>
       <g class="series serie-10 color-10">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M319.685619 192.023909 L332.782609 192.023909" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M313.137124 187.612525 L339.331104 187.612525" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M319.685619 172.437157 L332.782609 172.437157" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M326.234114 192.023909 L326.234114 190.222164" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M326.234114 172.437157 L326.234114 183.108161" class="reactive tooltip-trigger"/>
-            <rect x="313.13712374581934" y="183.10816081357495" height="7.114002715244055" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="326.2341137123745" cy="192.02390904932878" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="326.2341137123745" cy="45.47410167101597" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4670
-Q1-1.5IQR: 4.4670
-Q1: 4.8550
-Median: 5.4170
-Q3: 6.3870
-Q3+1.5IQR: 8.6850
-Max: 36.0270</desc>
-            <desc class="x centered">326.2341137123745</desc>
-            <desc class="y centered">185.0807829494562</desc>
+            <path stroke-width="3" d="M306.935897 189.363887 L319.487179 189.363887" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M300.660256 187.598347 L325.762821 187.598347" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M306.935897 185.745665 L319.487179 185.745665" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M313.211538 189.363887 L313.211538 188.013413" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M313.211538 185.745665 L313.211538 187.104702" class="reactive tooltip-trigger"/>
+            <rect x="300.66025641025635" y="187.10470170842913" height="0.908711137106792" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="313.2115384615384" cy="189.57998248877433" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="313.2115384615384" cy="-14.036292121530693" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5330
+Q1-1.5IQR: 4.5580
+Q1: 4.7140
+Median: 4.7620
+Q3: 4.8190
+Q3+1.5IQR: 4.9761
+Max: 28.0620</desc>
+            <desc class="x centered">313.2115384615384</desc>
+            <desc class="y centered">187.56520266272128</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -801,23 +811,23 @@ Max: 36.0270</desc>
       <g class="series serie-11 color-11">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M349.451505 192.019044 L362.548495 192.019044" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M342.903010 190.031610 L369.096990 190.031610" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M349.451505 178.441353 L362.548495 178.441353" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M356.000000 192.019044 L356.000000 191.081142" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M356.000000 178.441353 L356.000000 186.024578" class="reactive tooltip-trigger"/>
-            <rect x="342.90301003344473" y="186.02457758019665" height="5.056563936048121" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="355.9999999999999" cy="192.01904384990345" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="355.9999999999999" cy="-60.34722929595364" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4680
-Q1-1.5IQR: 4.4680
-Q1: 4.6700
-Median: 4.8960
-Q3: 5.7589
-Q3+1.5IQR: 7.3920
-Max: 58.8160</desc>
-            <desc class="x centered">355.9999999999999</desc>
-            <desc class="y centered">187.51954524805438</desc>
+            <path stroke-width="3" d="M335.461538 189.571419 L348.012821 189.571419" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M329.185897 187.545961 L354.288462 187.545961" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M335.461538 185.356289 L348.012821 185.356289" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M341.737179 189.571419 L341.737179 187.995783" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M341.737179 185.356289 L341.737179 186.939985" class="reactive tooltip-trigger"/>
+            <rect x="329.1858974358974" y="186.93998522182497" height="1.055797418722733" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="341.73717948717945" cy="189.5714192463515" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="341.73717948717945" cy="-18.103832272382846" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5340
+Q1-1.5IQR: 4.5340
+Q1: 4.7160
+Median: 4.7680
+Q3: 4.8380
+Q3+1.5IQR: 5.0211
+Max: 28.5320</desc>
+            <desc class="x centered">341.73717948717945</desc>
+            <desc class="y centered">187.4818873511484</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -825,23 +835,23 @@ Max: 58.8160</desc>
       <g class="series serie-12 color-12">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M379.217391 191.963635 L392.314381 191.963635" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M372.668896 189.205067 L398.862876 189.205067" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M379.217391 175.488177 L392.314381 175.488177" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M385.765886 191.963635 L385.765886 190.737604" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M385.765886 175.488177 L385.765886 184.635833" class="reactive tooltip-trigger"/>
-            <rect x="372.6688963210701" y="184.63583343312507" height="6.1017709459207765" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="385.7658862876253" cy="191.96363463422622" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="385.7658862876253" cy="-62.25114400439509" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4800
-Q1-1.5IQR: 4.4800
-Q1: 4.7440
-Median: 5.0740
-Q3: 6.0580
-Q3+1.5IQR: 8.0280
-Max: 59.2260</desc>
-            <desc class="x centered">385.7658862876253</desc>
-            <desc class="y centered">186.40606327291306</desc>
+            <path stroke-width="3" d="M363.987179 189.545226 L376.538462 189.545226" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M357.711538 187.641164 L382.814103 187.641164" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M363.987179 185.044990 L376.538462 185.044990" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M370.262821 189.545226 L370.262821 188.091489" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M370.262821 185.044990 L370.262821 186.870976" class="reactive tooltip-trigger"/>
+            <rect x="357.7115384615384" y="186.87097556229966" height="1.220513905326925" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="370.26282051282044" cy="189.54522579894044" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="370.26282051282044" cy="-113.13214831928218" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5370
+Q1-1.5IQR: 4.5370
+Q1: 4.7050
+Median: 4.7570
+Q3: 4.8460
+Q3+1.5IQR: 5.0570
+Max: 39.5130</desc>
+            <desc class="x centered">370.26282051282044</desc>
+            <desc class="y centered">187.43876890694867</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -849,23 +859,23 @@ Max: 59.2260</desc>
       <g class="series serie-13 color-13">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M408.983278 191.954175 L422.080268 191.954175" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M402.434783 189.934306 L428.628763 189.934306" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M408.983278 178.162686 L422.080268 178.162686" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M415.531773 191.954175 L415.531773 190.997622" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M415.531773 178.162686 L415.531773 185.861864" class="reactive tooltip-trigger"/>
-            <rect x="402.43478260869557" y="185.86186368830545" height="5.1357585711380125" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="415.5317725752507" cy="191.95417452423254" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="415.5317725752507" cy="-219.5738543546487" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4820
-Q1-1.5IQR: 4.4820
-Q1: 4.6880
-Median: 4.9170
-Q3: 5.7940
-Q3+1.5IQR: 7.4520
-Max: 93.1060</desc>
-            <desc class="x centered">415.5317725752507</desc>
-            <desc class="y centered">187.3821303931748</desc>
+            <path stroke-width="3" d="M392.512821 189.294373 L405.064103 189.294373" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M386.237179 187.589784 L411.339744 187.589784" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M392.512821 185.815178 L405.064103 185.815178" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M398.788462 189.294373 L398.788462 187.995783" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M398.788462 185.815178 L398.788462 187.121828" class="reactive tooltip-trigger"/>
+            <rect x="386.2371794871794" y="187.12182819327484" height="0.8739544472728653" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="398.78846153846143" cy="189.3890725547591" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="398.78846153846143" cy="-4778.705978856494" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5550
+Q1-1.5IQR: 4.5660
+Q1: 4.7160
+Median: 4.7630
+Q3: 4.8170
+Q3+1.5IQR: 4.9680
+Max: 578.6460</desc>
+            <desc class="x centered">398.78846153846143</desc>
+            <desc class="y centered">187.5633892702082</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -873,23 +883,23 @@ Max: 93.1060</desc>
       <g class="series serie-14 color-14">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M438.749164 191.736051 L451.846154 191.736051" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M432.200669 183.683876 L458.394649 183.683876" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M438.749164 166.391606 L451.846154 166.391606" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M445.297659 191.736051 L445.297659 185.778074" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M445.297659 166.391606 L445.297659 178.023487" class="reactive tooltip-trigger"/>
-            <rect x="432.20066889632096" y="178.02348683640278" height="7.754587306244389" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="445.2976588628761" cy="191.73605141666408" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="445.2976588628761" cy="-188.4111708800533" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.5290
-Q1-1.5IQR: 4.5290
-Q1: 5.8120
-Median: 6.2630
-Q3: 7.4820
-Q3+1.5IQR: 9.9870
-Max: 86.3950</desc>
-            <desc class="x centered">445.2976588628761</desc>
-            <desc class="y centered">181.1226188703309</desc>
+            <path stroke-width="3" d="M421.038462 189.155346 L433.589744 189.155346" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M414.762821 187.355554 L439.865385 187.355554" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M421.038462 185.486753 L433.589744 185.486753" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M427.314103 189.155346 L427.314103 187.779687" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M427.314103 185.486753 L427.314103 186.862412" class="reactive tooltip-trigger"/>
+            <rect x="414.76282051282044" y="186.86241231987682" height="0.9172743795296299" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="427.3141025641025" cy="189.36338282749057" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="427.3141025641025" cy="-147.83342893751188" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5580
+Q1-1.5IQR: 4.5820
+Q1: 4.7410
+Median: 4.7900
+Q3: 4.8470
+Q3+1.5IQR: 5.0060
+Max: 43.5230</desc>
+            <desc class="x centered">427.3141025641025</desc>
+            <desc class="y centered">187.32795047559418</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -897,23 +907,23 @@ Max: 86.3950</desc>
       <g class="series serie-15 color-15">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M468.515050 191.689562 L481.612040 191.689562" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M461.966555 187.194388 L488.160535 187.194388" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M468.515050 174.564060 L481.612040 174.564060" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M475.063545 191.689562 L475.063545 189.181822" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M475.063545 174.564060 L475.063545 183.331149" class="reactive tooltip-trigger"/>
-            <rect x="461.9665551839464" y="183.33114912056874" height="5.850672597802912" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="475.06354515050157" cy="191.6895617332666" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="475.06354515050157" cy="-26.305699205854268" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.5390
-Q1-1.5IQR: 4.5390
-Q1: 5.0790
-Median: 5.5070
-Q3: 6.3390
-Q3+1.5IQR: 8.2270
-Max: 51.4850</desc>
-            <desc class="x centered">475.06354515050157</desc>
-            <desc class="y centered">185.19219601629598</desc>
+            <path stroke-width="3" d="M449.564103 189.216297 L462.115385 189.216297" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M443.288462 187.390311 L468.391026 187.390311" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M449.564103 185.391046 L462.115385 185.391046" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M455.839744 189.216297 L455.839744 187.814443" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M455.839744 185.391046 L455.839744 186.844782" class="reactive tooltip-trigger"/>
+            <rect x="443.2884615384615" y="186.8447821148886" height="0.969661274351779" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="455.83974358974353" cy="189.21629654587463" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="455.83974358974353" cy="-353.1291065029799" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.5750
+Q1-1.5IQR: 4.5750
+Q1: 4.7370
+Median: 4.7860
+Q3: 4.8490
+Q3+1.5IQR: 5.0170
+Max: 67.2460</desc>
+            <desc class="x centered">455.83974358974353</desc>
+            <desc class="y centered">187.33137577256332</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -921,23 +931,23 @@ Max: 51.4850</desc>
       <g class="series serie-16 color-16">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M498.280936 110.595066 L511.377926 110.595066" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M491.732441 106.179087 L517.926421 106.179087" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M498.280936 101.470385 L511.377926 101.470385" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M504.829431 110.595066 L504.829431 107.200509" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M504.829431 101.470385 L504.829431 104.878727" class="reactive tooltip-trigger"/>
-            <rect x="491.7324414715718" y="104.87872723187364" height="2.3217812813049648" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="504.82943143812696" cy="110.59506626776638" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="504.82943143812696" cy="-831.8973127598638" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 22.0030
-Q1-1.5IQR: 22.0030
-Q1: 22.7340
-Median: 22.9540
-Q3: 23.2340
-Q3+1.5IQR: 23.9680
-Max: 224.9720</desc>
-            <desc class="x centered">504.82943143812696</desc>
-            <desc class="y centered">106.06475473622359</desc>
+            <path stroke-width="3" d="M478.089744 35.108660 L490.641026 35.108660" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M471.814103 28.245977 L496.916667 28.245977" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M478.089744 20.951102 L490.641026 20.951102" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M484.365385 35.108660 L484.365385 29.846799" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M484.365385 20.951102 L484.365385 26.281468" class="reactive tooltip-trigger"/>
+            <rect x="471.8141025641025" y="26.28146808580138" height="3.5653311687593146" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="484.3653846153845" cy="36.26822363141065" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="484.3653846153845" cy="-5065.044182711782" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 22.2490
+Q1-1.5IQR: 22.3830
+Q1: 22.9910
+Median: 23.1760
+Q3: 23.4030
+Q3+1.5IQR: 24.0190
+Max: 611.7340</desc>
+            <desc class="x centered">484.3653846153845</desc>
+            <desc class="y centered">28.08680107659447</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -945,23 +955,23 @@ Max: 224.9720</desc>
       <g class="series serie-17 color-17">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M528.046823 109.550130 L541.143813 109.550130" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M521.498328 105.050631 L547.692308 105.050631" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M528.046823 99.645394 L541.143813 99.645394" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M534.595318 109.550130 L534.595318 106.155572" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M534.595318 99.645394 L534.595318 103.550528" class="reactive tooltip-trigger"/>
-            <rect x="521.4983277591972" y="103.55052778876157" height="2.605044003401318" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="534.5953177257524" cy="109.55012954675067" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="534.5953177257524" cy="-955.0668637220929" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 22.2280
-Q1-1.5IQR: 22.2280
-Q1: 22.9590
-Median: 23.1970
-Q3: 23.5200
-Q3+1.5IQR: 24.3610
-Max: 251.4970</desc>
-            <desc class="x centered">534.5953177257524</desc>
-            <desc class="y centered">104.79045089118979</desc>
+            <path stroke-width="3" d="M506.615385 34.148066 L519.166667 34.148066" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M500.339744 27.276819 L525.442308 27.276819" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M506.615385 20.016197 L519.166667 20.016197" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M512.891026 34.148066 L512.891026 28.877642" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M512.891026 20.016197 L512.891026 25.321377" class="reactive tooltip-trigger"/>
+            <rect x="500.3397435897435" y="25.321377494157502" height="3.5562642061939584" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="512.8910256410255" cy="35.4718420860859" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="512.8910256410255" cy="-819.5190529813271" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 22.3410
+Q1-1.5IQR: 22.4940
+Q1: 23.1030
+Median: 23.2880
+Q3: 23.5140
+Q3+1.5IQR: 24.1270
+Max: 121.1400</desc>
+            <desc class="x centered">512.8910256410255</desc>
+            <desc class="y centered">27.128020157321146</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -969,23 +979,23 @@ Max: 251.4970</desc>
       <g class="series serie-18 color-18">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M557.812709 108.834945 L570.909699 108.834945" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M551.264214 91.379961 L577.458194 91.379961" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M557.812709 6.816849 L570.909699 6.816849" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M564.361204 108.834945 L564.361204 102.484914" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M564.361204 6.816849 L564.361204 63.466623" class="reactive tooltip-trigger"/>
-            <rect x="551.2642140468226" y="63.466622729058855" height="39.018291241129404" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="564.3612040133778" cy="108.83494523122879" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="564.3612040133778" cy="-1382.2621861947857" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 22.3820
-Q1-1.5IQR: 22.3820
-Q1: 23.7495
-Median: 26.1410
-Q3: 32.1522
-Q3+1.5IQR: 44.3520
-Max: 343.4950</desc>
-            <desc class="x centered">564.3612040133778</desc>
-            <desc class="y centered">74.59665836770382</desc>
+            <path stroke-width="3" d="M535.141026 34.450801 L547.692308 34.450801" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M528.865385 27.155926 L553.967949 27.155926" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M535.141026 19.410222 L547.692308 19.410222" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M541.416667 34.450801 L541.416667 28.834825" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M541.416667 19.410222 L541.416667 25.044331" class="reactive tooltip-trigger"/>
+            <rect x="528.8653846153845" y="25.044331415771296" height="3.790494072465947" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="541.4166666666666" cy="35.29906607720142" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="541.4166666666666" cy="-1895.3393473692522" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 22.3610
+Q1-1.5IQR: 22.4590
+Q1: 23.1080
+Median: 23.3020
+Q3: 23.5460
+Q3+1.5IQR: 24.1970
+Max: 245.4570</desc>
+            <desc class="x centered">541.4166666666666</desc>
+            <desc class="y centered">26.97922122722062</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -993,23 +1003,23 @@ Max: 343.4950</desc>
       <g class="series serie-19 color-19">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M587.578595 107.316462 L600.675585 107.316462" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M581.030100 103.313755 L607.224080 103.313755" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M587.578595 99.046434 L600.675585 99.046434" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M594.127090 107.316462 L594.127090 104.297066" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M594.127090 99.046434 L594.127090 102.176379" class="reactive tooltip-trigger"/>
-            <rect x="581.0301003344481" y="102.17637923996595" height="2.120686371725114" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="594.1270903010032" cy="107.88298787700805" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="594.1270903010032" cy="-757.7214011660241" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 22.5870
-Q1-1.5IQR: 22.7090
-Q1: 23.3593
-Median: 23.5710
-Q3: 23.8160
-Q3+1.5IQR: 24.4900
-Max: 208.9980</desc>
-            <desc class="x centered">594.1270903010032</desc>
-            <desc class="y centered">103.23001926217584</desc>
+            <path stroke-width="3" d="M563.666667 31.595212 L576.217949 31.595212" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M557.391026 24.074670 L582.493590 24.074670" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M563.666667 16.156693 L576.217949 16.156693" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M569.942308 31.595212 L569.942308 25.866403" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M569.942308 16.156693 L569.942308 21.928822" class="reactive tooltip-trigger"/>
+            <rect x="557.3910256410256" y="21.92882233428267" height="3.9375803540819163" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="569.9423076923077" cy="32.201187200701014" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="569.9423076923077" cy="-1013.4608785343855" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 22.7190
+Q1-1.5IQR: 22.7890
+Q1: 23.4510
+Median: 23.6580
+Q3: 23.9060
+Q3+1.5IQR: 24.5730
+Max: 143.5510</desc>
+            <desc class="x centered">569.9423076923077</desc>
+            <desc class="y centered">23.924360050891465</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -1017,23 +1027,23 @@ Max: 208.9980</desc>
       <g class="series serie-20 color-20">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M617.344482 106.220711 L630.441472 106.220711" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M610.795987 102.199354 L636.989967 102.199354" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M617.344482 97.959873 L630.441472 97.959873" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M623.892977 106.220711 L623.892977 103.146716" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M623.892977 97.959873 L623.892977 101.066303" class="reactive tooltip-trigger"/>
-            <rect x="610.7959866220735" y="101.06630290442236" height="2.0804133320377503" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="623.8929765886287" cy="106.95427536448607" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="623.8929765886287" cy="-324.56864199702795" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 22.7870
-Q1-1.5IQR: 22.9450
-Q1: 23.6070
-Median: 23.8110
-Q3: 24.0550
-Q3+1.5IQR: 24.7240
-Max: 115.7170</desc>
-            <desc class="x centered">623.8929765886287</desc>
-            <desc class="y centered">102.11859148234744</desc>
+            <path stroke-width="3" d="M592.192308 30.478968 L604.743590 30.478968" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M585.916667 23.685294 L611.019231 23.685294" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M592.192308 16.269527 L604.743590 16.269527" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M598.467949 30.478968 L598.467949 25.355630" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M598.467949 16.269527 L598.467949 21.704163" class="reactive tooltip-trigger"/>
+            <rect x="585.9166666666666" y="21.704163150718585" height="3.6514673131303255" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="598.4679487179487" cy="31.77705484069884" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="598.4679487179487" cy="-1303.1568808597153" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 22.7680
+Q1-1.5IQR: 22.9180
+Q1: 23.5100
+Median: 23.7030
+Q3: 23.9320
+Q3+1.5IQR: 24.5600
+Max: 177.0270</desc>
+            <desc class="x centered">598.4679487179487</desc>
+            <desc class="y centered">23.498716530461735</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -1041,23 +1051,23 @@ Max: 115.7170</desc>
       <g class="series serie-21 color-21">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M647.110368 106.313691 L660.207358 106.313691" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M640.561873 101.800137 L666.755853 101.800137" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M647.110368 92.782490 L660.207358 92.782490" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M653.658863 106.313691 L653.658863 102.928323" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M653.658863 92.782490 L653.658863 98.863043" class="reactive tooltip-trigger"/>
-            <rect x="640.5618729096989" y="98.8630432868953" height="4.065279553139376" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="653.658862876254" cy="106.31369077348575" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="653.658862876254" cy="-1038.5201700423017" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 22.9250
-Q1-1.5IQR: 22.9250
-Q1: 23.6540
-Median: 23.8970
-Q3: 24.5295
-Q3+1.5IQR: 25.8390
-Max: 269.4690</desc>
-            <desc class="x centered">653.658862876254</desc>
-            <desc class="y centered">100.53753681354729</desc>
+            <path stroke-width="3" d="M620.717949 30.461842 L633.269231 30.461842" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M614.442308 22.647127 L639.544872 22.647127" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M620.717949 14.503484 L633.269231 14.503484" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M626.993590 30.461842 L626.993590 24.481676" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M626.993590 14.503484 L626.993590 20.483649" class="reactive tooltip-trigger"/>
+            <rect x="614.4423076923076" y="20.48364924539169" height="3.9980267711843283" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="626.9935897435897" cy="31.283409101028866" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="626.9935897435897" cy="-5103.0523860656585" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 22.8250
+Q1-1.5IQR: 22.9200
+Q1: 23.6110
+Median: 23.8230
+Q3: 24.0730
+Q3+1.5IQR: 24.7640
+Max: 616.1261</desc>
+            <desc class="x centered">626.9935897435897</desc>
+            <desc class="y centered">22.515555556290423</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -1065,23 +1075,47 @@ Max: 269.4690</desc>
       <g class="series serie-22 color-22">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M676.876254 100.634652 L689.973244 100.634652" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M670.327759 77.212500 L696.521739 77.212500" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M676.876254 44.758917 L689.973244 44.758917" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M683.424749 100.634652 L683.424749 79.775920" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M683.424749 44.758917 L683.424749 65.757051" class="reactive tooltip-trigger"/>
-            <rect x="670.3277591973243" y="65.75705050295622" height="14.018869427413676" width="26.193979933110363" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="683.4247491638795" cy="100.6346515998538" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="683.4247491638795" cy="-1492.7035645938095" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 24.1480
-Q1-1.5IQR: 24.1480
-Q1: 28.6400
-Median: 29.1920
-Q3: 31.6590
-Q3+1.5IQR: 36.1810
-Max: 367.2790</desc>
-            <desc class="x centered">683.4247491638795</desc>
-            <desc class="y centered">73.62780795992295</desc>
+            <path stroke-width="3" d="M649.243590 30.781704 L661.794872 30.781704" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M642.967949 23.339742 L668.070513 23.339742" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M649.243590 15.498835 L661.794872 15.498835" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M655.519231 30.781704 L655.519231 25.102637" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M655.519231 15.498835 L655.519231 21.253837" class="reactive tooltip-trigger"/>
+            <rect x="642.9679487179487" y="21.25383734330535" height="3.8487996789626777" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="655.5192307692308" cy="30.781703839078546" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="655.5192307692308" cy="-777.2539107030112" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 22.8830
+Q1-1.5IQR: 22.8830
+Q1: 23.5393
+Median: 23.7430
+Q3: 23.9840
+Q3+1.5IQR: 24.6490
+Max: 116.2560</desc>
+            <desc class="x centered">655.5192307692308</desc>
+            <desc class="y centered">23.19535107462883</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-23 color-23">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M677.769231 25.987296 L690.320513 25.987296" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M671.493590 17.852719 L696.596154 17.852719" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M677.769231 9.017468 L690.320513 9.017468" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M684.044872 25.987296 L684.044872 19.646466" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M684.044872 9.017468 L684.044872 15.392928" class="reactive tooltip-trigger"/>
+            <rect x="671.4935897435897" y="15.392927555044992" height="4.253538813477803" width="25.1025641025641" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="684.0448717948718" cy="26.33335126048098" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="684.0448717948718" cy="-25060.447958764544" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 23.3970
+Q1-1.5IQR: 23.4370
+Q1: 24.1697
+Median: 24.3770
+Q3: 24.6613
+Q3+1.5IQR: 25.3980
+Max: 2922.3140</desc>
+            <desc class="x centered">684.0448717948718</desc>
+            <desc class="y centered">17.57937520566901</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -1116,6 +1150,7 @@ Max: 367.2790</desc>
       <g class="series serie-20 color-20"/>
       <g class="series serie-21 color-21"/>
       <g class="series serie-22 color-22"/>
+      <g class="series serie-23 color-23"/>
     </g>
     <g transform="translate(68, 46)" class="plot text-overlay">
       <g class="series serie-0 color-0"/>
@@ -1141,6 +1176,7 @@ Max: 367.2790</desc>
       <g class="series serie-20 color-20"/>
       <g class="series serie-21 color-21"/>
       <g class="series serie-22 color-22"/>
+      <g class="series serie-23 color-23"/>
     </g>
     <g transform="translate(68, 46)" class="plot tooltip-overlay">
       <g transform="translate(0 0)" style="opacity: 0" class="tooltip">
