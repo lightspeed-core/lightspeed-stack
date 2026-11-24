@@ -432,9 +432,8 @@ WRITERS = {
     # Granite Guardian replaces the answer OGX stored when it rejects an
     # output or a tool result: the last assistant message is deleted and the
     # violation message appended, again only when the model was handed the
-    # conversation. conversations_v1.py only names the function in a comment
+    # conversation.
     "replace_last_assistant_message": [
-        "app/endpoints/conversations_v1.py",
         "pydantic_ai_lightspeed/capabilities/granite_guardian/_capability.py",
         "utils/conversations.py",
     ],

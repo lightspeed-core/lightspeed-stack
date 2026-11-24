@@ -1085,12 +1085,9 @@ def mock_ogx_client_fixture(
     """
     # Patch AsyncOgxClientHolder at multiple import locations
     # This ensures the mock is active both during app startup (app.main)
-    # and during endpoint execution (query, conversations_v1, responses, etc.)
+    # and during endpoint execution (query, responses, etc.)
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
     mocker.patch("app.main.AsyncOgxClientHolder", mock_holder_class)
-    mocker.patch(
-        "app.endpoints.conversations_v1.AsyncOgxClientHolder", mock_holder_class
-    )
     mocker.patch("app.endpoints.a2a.AsyncOgxClientHolder", mock_holder_class)
     mocker.patch("app.endpoints.responses.AsyncOgxClientHolder", mock_holder_class)
     mocker.patch("utils.endpoints.AsyncOgxClientHolder", mock_holder_class)

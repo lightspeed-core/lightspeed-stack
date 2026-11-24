@@ -11,6 +11,10 @@ ogx:
   url: http://localhost:8321
 user_data_collection:
   feedback_enabled: false
+conversation_cache:
+  type: sqlite
+  sqlite:
+    db_path: /tmp/rh-identity-conversation-cache.db
 authentication:
   module: "rh-identity"
   rh_identity_config:
