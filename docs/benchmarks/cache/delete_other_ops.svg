@@ -1,0 +1,710 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" id="chart-cdea5910-fc9d-425a-b254-87c3e33e22d9" class="pygal-chart" viewBox="0 0 800 600">
+  <!--Generated with pygal 3.1.3 (etree) ©Kozea 2012-2026 on 2026-11-23-->
+  <!--http://pygal.org-->
+  <!--http://github.com/Kozea/pygal-->
+  <defs>
+    <style type="text/css">#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9{-webkit-user-select:none;-webkit-font-smoothing:antialiased;font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .title{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .legends .legend text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis text.major{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay text.value{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay text.label{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 text.no_data{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:64px}
+#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9{background-color:rgba(249,249,249,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 path,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 line,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 rect,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 circle{-webkit-transition:150ms;-moz-transition:150ms;transition:150ms}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .graph &gt; .background{fill:rgba(249,249,249,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .plot &gt; .background{fill:rgba(255,255,255,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .graph{fill:rgba(0,0,0,.87)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 text.no_data{fill:rgba(0,0,0,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .title{fill:rgba(0,0,0,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .legends .legend text{fill:rgba(0,0,0,.87)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .legends .legend:hover text{fill:rgba(0,0,0,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis .line{stroke:rgba(0,0,0,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis .guide.line{stroke:rgba(0,0,0,.54)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis .major.line{stroke:rgba(0,0,0,.87)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis text.major{fill:rgba(0,0,0,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.y .guides:hover .guide.line,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .line-graph .axis.x .guides:hover .guide.line,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .stackedline-graph .axis.x .guides:hover .guide.line,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .xy-graph .axis.x .guides:hover .guide.line{stroke:rgba(0,0,0,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis .guides:hover text{fill:rgba(0,0,0,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .reactive{fill-opacity:.7;stroke-opacity:.8;stroke-width:1}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .ci{stroke:rgba(0,0,0,.87)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .reactive.active,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .active .reactive{fill-opacity:.8;stroke-opacity:.9;stroke-width:4}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .ci .reactive.active{stroke-width:1.5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .series text{fill:rgba(0,0,0,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip rect{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,1);-webkit-transition:opacity 150ms;-moz-transition:opacity 150ms;transition:opacity 150ms}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip .label{fill:rgba(0,0,0,.87)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip .label{fill:rgba(0,0,0,.87)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip .legend{font-size:.8em;fill:rgba(0,0,0,.54)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip .x_label{font-size:.6em;fill:rgba(0,0,0,1)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip .xlink{font-size:.5em;text-decoration:underline}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip .value{font-size:1.5em}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .bound{font-size:.5em}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .max-value{font-size:.75em;fill:rgba(0,0,0,.54)}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .map-element{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,.54) !important}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .map-element .reactive{fill-opacity:inherit;stroke-opacity:inherit}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-0,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-0 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-1,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-1 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-2,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-2 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-3,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-3 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-4,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-4 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-5,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-5 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-6,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-6 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-7,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-7 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-8,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .color-8 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay .color-0 text{fill:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay .color-1 text{fill:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay .color-2 text{fill:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay .color-3 text{fill:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay .color-4 text{fill:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay .color-5 text{fill:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay .color-6 text{fill:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay .color-7 text{fill:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .text-overlay .color-8 text{fill:black}
+#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 text.no_data{text-anchor:middle}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .guide.line{fill:none}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .centered{text-anchor:middle}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .title{text-anchor:middle}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .legends .legend text{fill-opacity:1}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.x text{text-anchor:middle}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.x:not(.web) text[transform]{text-anchor:start}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.x:not(.web) text[transform].backwards{text-anchor:end}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.y text{text-anchor:end}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.y text[transform].backwards{text-anchor:start}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.y2 text{text-anchor:start}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.y2 text[transform].backwards{text-anchor:end}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis .guide.line{stroke-dasharray:4,4;stroke:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis .major.guide.line{stroke-dasharray:6,6;stroke:black}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .horizontal .axis.y .guide.line,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .horizontal .axis.y2 .guide.line,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .vertical .axis.x .guide.line{opacity:0}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .horizontal .axis.always_show .guide.line,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .vertical .axis.always_show .guide.line{opacity:1 !important}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.y .guides:hover .guide.line,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.y2 .guides:hover .guide.line,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis.x .guides:hover .guide.line{opacity:1}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .axis .guides:hover text{opacity:1}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .nofill{fill:none}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .subtle-fill{fill-opacity:.2}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .dot{stroke-width:1px;fill-opacity:1;stroke-opacity:1}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .dot.active{stroke-width:5px}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .dot.negative{fill:transparent}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 text,#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 tspan{stroke:none !important}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .series text.active{opacity:1}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip rect{fill-opacity:.95;stroke-width:.5}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .tooltip text{fill-opacity:1}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .showable{visibility:hidden}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .showable.shown{visibility:visible}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .gauge-background{fill:rgba(229,229,229,1);stroke:none}#chart-cdea5910-fc9d-425a-b254-87c3e33e22d9 .bg-lines{stroke:rgba(249,249,249,1);stroke-width:2px}
+.tooltip .value{font-size:1em !important}.axis text{font-size:9px !important}</style>
+    <script type="text/javascript">window.pygal = window.pygal || {};window.pygal.config = window.pygal.config || {};window.pygal.config['cdea5910-fc9d-425a-b254-87c3e33e22d9'] = {"allow_interruptions": false, "box_mode": "tukey", "classes": ["pygal-chart"], "css": ["file://style.css", "file://graph.css", "inline:\n                .tooltip .value {\n                    font-size: 1em !important;\n                }\n                .axis text {\n                    font-size: 9px !important;\n                }\n            "], "defs": [], "disable_xml_declaration": false, "dots_size": 2.5, "dynamic_print_values": false, "explicit_size": false, "fill": false, "force_uri_protocol": "https", "formatter": null, "half_pie": false, "height": 600, "include_x_axis": false, "inner_radius": 0, "interpolate": null, "interpolation_parameters": {}, "interpolation_precision": 250, "inverse_y_axis": false, "js": ["file:///tmp/ramdisk/lightspeed-stack-LCORE-3/.venv/lib64/python3.14/site-packages/pygaljs/static/2.0.x/pygal-tooltips.js"], "legend_at_bottom": false, "legend_at_bottom_columns": null, "legend_box_size": 12, "logarithmic": false, "margin": 20, "margin_bottom": null, "margin_left": null, "margin_right": null, "margin_top": null, "max_scale": 20, "min_scale": 20, "missing_value_fill_truncation": "x", "no_data_text": "No data", "no_prefix": false, "order_min": null, "pretty_print": false, "print_labels": false, "print_values": false, "print_values_position": "center", "print_zeroes": true, "range": [2, 45], "reverse_direction": false, "rounded_bars": null, "secondary_range": null, "show_dots": true, "show_legend": false, "show_minor_x_labels": true, "show_minor_y_labels": true, "show_only_major_dots": false, "show_x_guides": false, "show_x_labels": true, "show_y_guides": true, "show_y_labels": true, "spacing": 10, "stack_from_top": false, "strict": false, "stroke": true, "stroke_style": null, "style": {"background": "rgba(249, 249, 249, 1)", "ci_colors": [], "colors": ["#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5", "#3F51B5"], "dot_opacity": "1", "font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "foreground": "rgba(0, 0, 0, .87)", "foreground_strong": "rgba(0, 0, 0, 1)", "foreground_subtle": "rgba(0, 0, 0, .54)", "guide_stroke_color": "black", "guide_stroke_dasharray": "4,4", "label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "label_font_size": 10, "legend_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "legend_font_size": 14, "major_guide_stroke_color": "black", "major_guide_stroke_dasharray": "6,6", "major_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "major_label_font_size": 10, "no_data_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "no_data_font_size": 64, "opacity": ".7", "opacity_hover": ".8", "plot_background": "rgba(255, 255, 255, 1)", "stroke_opacity": ".8", "stroke_opacity_hover": ".9", "stroke_width": "1", "stroke_width_hover": "4", "title_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "title_font_size": 16, "tooltip_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "tooltip_font_size": 14, "transition": "150ms", "value_background": "rgba(229, 229, 229, 1)", "value_colors": [], "value_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_font_size": 16, "value_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_label_font_size": 10}, "title": "Speed in Microseconds (us)", "tooltip_border_radius": 0, "tooltip_fancy_mode": true, "truncate_label": 50, "truncate_legend": null, "width": 800, "x_label_rotation": 270, "x_labels": ["test_noop_cache_skip_user_id_check", "test_memory_cache_skip_user_id_check", "test_memory_cache_existing_conversation", "test_noop_cache_nonexistent_conversation", "test_memory_cache_nonexistent_conversation", "test_noop_cache_existing_conversation", "test_sqlite_cache_nonexistent_conversation", "test_sqlite_cache_skip_user_id_check", "test_sqlite_cache_existing_conversation"], "x_labels_major": null, "x_labels_major_count": null, "x_labels_major_every": null, "x_title": "Trial", "xrange": null, "y_label_rotation": 0, "y_labels": null, "y_labels_major": null, "y_labels_major_count": null, "y_labels_major_every": null, "y_title": "Duration", "zero": 2, "legends": ["tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_skip_user_id_check - 124317 rounds", "tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_skip_user_id_check - 125110 rounds", "tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_existing_conversation - 91853 rounds", "tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_nonexistent_conversation - 42053 rounds", "tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_nonexistent_conversation - 57684 rounds", "tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_existing_conversation - 66239 rounds", "tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_nonexistent_conversation - 3601 rounds", "tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_skip_user_id_check - 4778 rounds", "tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_existing_conversation - 4233 rounds"]}</script>
+    <script type="text/javascript">(function() {
+  var $, get_translation, init, init_svg, matches, padding, r_translation, sibl, svg_ns, tooltip_timeout, xlink_ns;
+
+  svg_ns = 'http://www.w3.org/2000/svg';
+
+  xlink_ns = 'http://www.w3.org/1999/xlink';
+
+  $ = function(sel, ctx) {
+    if (ctx == null) {
+      ctx = null;
+    }
+    ctx = ctx || document;
+    return Array.prototype.slice.call(ctx.querySelectorAll(sel), 0).filter(function(e) {
+      return e !== ctx;
+    });
+  };
+
+  matches = function(el, selector) {
+    return (el.matches || el.matchesSelector || el.msMatchesSelector || el.mozMatchesSelector || el.webkitMatchesSelector || el.oMatchesSelector).call(el, selector);
+  };
+
+  sibl = function(el, match) {
+    if (match == null) {
+      match = null;
+    }
+    return Array.prototype.filter.call(el.parentElement.children, function(child) {
+      return child !== el &amp;&amp; (!match || matches(child, match));
+    });
+  };
+
+  Array.prototype.one = function() {
+    return this.length &gt; 0 &amp;&amp; this[0] || {};
+  };
+
+  padding = 5;
+
+  tooltip_timeout = null;
+
+  r_translation = /translate\((\d+)[ ,]+(\d+)\)/;
+
+  get_translation = function(el) {
+    return (r_translation.exec(el.getAttribute('transform')) || []).slice(1).map(function(x) {
+      return +x;
+    });
+  };
+
+  init = function(ctx) {
+    var bbox, box, config, el, graph, inner_svg, num, parent, tooltip, tooltip_el, tt, uid, untooltip, xconvert, yconvert, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2, _ref3;
+    if ($('svg', ctx).length) {
+      inner_svg = $('svg', ctx).one();
+      parent = inner_svg.parentElement;
+      box = inner_svg.viewBox.baseVal;
+      bbox = parent.getBBox();
+      xconvert = function(x) {
+        return ((x - box.x) / box.width) * bbox.width;
+      };
+      yconvert = function(y) {
+        return ((y - box.y) / box.height) * bbox.height;
+      };
+    } else {
+      xconvert = yconvert = function(x) {
+        return x;
+      };
+    }
+    if (((_ref = window.pygal) != null ? _ref.config : void 0) != null) {
+      if (window.pygal.config.no_prefix != null) {
+        config = window.pygal.config;
+      } else {
+        uid = ctx.id.replace('chart-', '');
+        config = window.pygal.config[uid];
+      }
+    } else {
+      config = window.config;
+    }
+    tooltip_el = null;
+    graph = $('.graph').one();
+    tt = $('.tooltip', ctx).one();
+    _ref1 = $('.reactive', ctx);
+    for (_i = 0, _len = _ref1.length; _i &lt; _len; _i++) {
+      el = _ref1[_i];
+      el.addEventListener('mouseenter', (function(el) {
+        return function() {
+          return el.classList.add('active');
+        };
+      })(el));
+      el.addEventListener('mouseleave', (function(el) {
+        return function() {
+          return el.classList.remove('active');
+        };
+      })(el));
+    }
+    _ref2 = $('.activate-serie', ctx);
+    for (_j = 0, _len1 = _ref2.length; _j &lt; _len1; _j++) {
+      el = _ref2[_j];
+      num = el.id.replace('activate-serie-', '');
+      el.addEventListener('mouseenter', (function(num) {
+        return function() {
+          var re, _k, _len2, _ref3, _results;
+          _ref3 = $('.serie-' + num + ' .reactive', ctx);
+          _results = [];
+          for (_k = 0, _len2 = _ref3.length; _k &lt; _len2; _k++) {
+            re = _ref3[_k];
+            _results.push(re.classList.add('active'));
+          }
+          return _results;
+        };
+      })(num));
+      el.addEventListener('mouseleave', (function(num) {
+        return function() {
+          var re, _k, _len2, _ref3, _results;
+          _ref3 = $('.serie-' + num + ' .reactive', ctx);
+          _results = [];
+          for (_k = 0, _len2 = _ref3.length; _k &lt; _len2; _k++) {
+            re = _ref3[_k];
+            _results.push(re.classList.remove('active'));
+          }
+          return _results;
+        };
+      })(num));
+      el.addEventListener('click', (function(el, num) {
+        return function() {
+          var ov, re, rect, show, _k, _l, _len2, _len3, _ref3, _ref4, _results;
+          rect = $('rect', el).one();
+          show = rect.style.fill !== '';
+          rect.style.fill = show ? '' : 'transparent';
+          _ref3 = $('.serie-' + num + ' .reactive', ctx);
+          for (_k = 0, _len2 = _ref3.length; _k &lt; _len2; _k++) {
+            re = _ref3[_k];
+            re.style.display = show ? '' : 'none';
+          }
+          _ref4 = $('.text-overlay .serie-' + num, ctx);
+          _results = [];
+          for (_l = 0, _len3 = _ref4.length; _l &lt; _len3; _l++) {
+            ov = _ref4[_l];
+            _results.push(ov.style.display = show ? '' : 'none');
+          }
+          return _results;
+        };
+      })(el, num));
+    }
+    _ref3 = $('.tooltip-trigger', ctx);
+    for (_k = 0, _len2 = _ref3.length; _k &lt; _len2; _k++) {
+      el = _ref3[_k];
+      el.addEventListener('mouseenter', (function(el) {
+        return function() {
+          return tooltip_el = tooltip(el);
+        };
+      })(el));
+    }
+    tt.addEventListener('mouseenter', function() {
+      return tooltip_el != null ? tooltip_el.classList.add('active') : void 0;
+    });
+    tt.addEventListener('mouseleave', function() {
+      return tooltip_el != null ? tooltip_el.classList.remove('active') : void 0;
+    });
+    ctx.addEventListener('mouseleave', function() {
+      if (tooltip_timeout) {
+        clearTimeout(tooltip_timeout);
+      }
+      return untooltip(0);
+    });
+    graph.addEventListener('mousemove', function(el) {
+      if (tooltip_timeout) {
+        return;
+      }
+      if (!matches(el.target, '.background')) {
+        return;
+      }
+      return untooltip(1000);
+    });
+    tooltip = function(el) {
+      var a, baseline, cls, current_x, current_y, dy, h, i, key, keys, label, legend, name, plot_x, plot_y, rect, serie_index, subval, text, text_group, texts, traversal, value, w, x, x_elt, x_label, xlink, y, y_elt, _l, _len3, _len4, _len5, _m, _n, _ref4, _ref5, _ref6, _ref7, _ref8;
+      clearTimeout(tooltip_timeout);
+      tooltip_timeout = null;
+      tt.style.opacity = 1;
+      tt.style.display = '';
+      text_group = $('g.text', tt).one();
+      rect = $('rect', tt).one();
+      text_group.innerHTML = '';
+      label = sibl(el, '.label').one().textContent;
+      x_label = sibl(el, '.x_label').one().textContent;
+      value = sibl(el, '.value').one().textContent;
+      xlink = sibl(el, '.xlink').one().textContent;
+      serie_index = null;
+      parent = el;
+      traversal = [];
+      while (parent) {
+        traversal.push(parent);
+        if (parent.classList.contains('series')) {
+          break;
+        }
+        parent = parent.parentElement;
+      }
+      if (parent) {
+        _ref4 = parent.classList;
+        for (_l = 0, _len3 = _ref4.length; _l &lt; _len3; _l++) {
+          cls = _ref4[_l];
+          if (cls.indexOf('serie-') === 0) {
+            serie_index = +cls.replace('serie-', '');
+            break;
+          }
+        }
+      }
+      legend = null;
+      if (serie_index !== null) {
+        legend = config.legends[serie_index];
+      }
+      dy = 0;
+      keys = [[label, 'label']];
+      _ref5 = value.split('\n');
+      for (i = _m = 0, _len4 = _ref5.length; _m &lt; _len4; i = ++_m) {
+        subval = _ref5[i];
+        keys.push([subval, 'value-' + i]);
+      }
+      if (config.tooltip_fancy_mode) {
+        keys.push([xlink, 'xlink']);
+        keys.unshift([x_label, 'x_label']);
+        keys.unshift([legend, 'legend']);
+      }
+      texts = {};
+      for (_n = 0, _len5 = keys.length; _n &lt; _len5; _n++) {
+        _ref6 = keys[_n], key = _ref6[0], name = _ref6[1];
+        if (key) {
+          text = document.createElementNS(svg_ns, 'text');
+          text.textContent = key;
+          text.setAttribute('x', padding);
+          text.setAttribute('dy', dy);
+          text.classList.add(name.indexOf('value') === 0 ? 'value' : name);
+          if (name.indexOf('value') === 0 &amp;&amp; config.tooltip_fancy_mode) {
+            text.classList.add('color-' + serie_index);
+          }
+          if (name === 'xlink') {
+            a = document.createElementNS(svg_ns, 'a');
+            a.setAttributeNS(xlink_ns, 'href', key);
+            a.textContent = void 0;
+            a.appendChild(text);
+            text.textContent = 'Link &gt;';
+            text_group.appendChild(a);
+          } else {
+            text_group.appendChild(text);
+          }
+          dy += text.getBBox().height + padding / 2;
+          baseline = padding;
+          if (text.style.dominantBaseline !== void 0) {
+            text.style.dominantBaseline = 'text-before-edge';
+          } else {
+            baseline += text.getBBox().height * .8;
+          }
+          text.setAttribute('y', baseline);
+          texts[name] = text;
+        }
+      }
+      w = text_group.getBBox().width + 2 * padding;
+      h = text_group.getBBox().height + 2 * padding;
+      rect.setAttribute('width', w);
+      rect.setAttribute('height', h);
+      if (texts.value) {
+        texts.value.setAttribute('dx', (w - texts.value.getBBox().width) / 2 - padding);
+      }
+      if (texts.x_label) {
+        texts.x_label.setAttribute('dx', w - texts.x_label.getBBox().width - 2 * padding);
+      }
+      if (texts.xlink) {
+        texts.xlink.setAttribute('dx', w - texts.xlink.getBBox().width - 2 * padding);
+      }
+      x_elt = sibl(el, '.x').one();
+      y_elt = sibl(el, '.y').one();
+      x = parseInt(x_elt.textContent);
+      if (x_elt.classList.contains('centered')) {
+        x -= w / 2;
+      } else if (x_elt.classList.contains('left')) {
+        x -= w;
+      } else if (x_elt.classList.contains('auto')) {
+        x = xconvert(el.getBBox().x + el.getBBox().width / 2) - w / 2;
+      }
+      y = parseInt(y_elt.textContent);
+      if (y_elt.classList.contains('centered')) {
+        y -= h / 2;
+      } else if (y_elt.classList.contains('top')) {
+        y -= h;
+      } else if (y_elt.classList.contains('auto')) {
+        y = yconvert(el.getBBox().y + el.getBBox().height / 2) - h / 2;
+      }
+      _ref7 = get_translation(tt.parentElement), plot_x = _ref7[0], plot_y = _ref7[1];
+      if (x + w + plot_x &gt; config.width) {
+        x = config.width - w - plot_x;
+      }
+      if (y + h + plot_y &gt; config.height) {
+        y = config.height - h - plot_y;
+      }
+      if (x + plot_x &lt; 0) {
+        x = -plot_x;
+      }
+      if (y + plot_y &lt; 0) {
+        y = -plot_y;
+      }
+      _ref8 = get_translation(tt), current_x = _ref8[0], current_y = _ref8[1];
+      if (current_x === x &amp;&amp; current_y === y) {
+        return el;
+      }
+      tt.setAttribute('transform', "translate(" + x + " " + y + ")");
+      return el;
+    };
+    return untooltip = function(ms) {
+      return tooltip_timeout = setTimeout(function() {
+        tt.style.display = 'none';
+        tt.style.opacity = 0;
+        if (tooltip_el != null) {
+          tooltip_el.classList.remove('active');
+        }
+        return tooltip_timeout = null;
+      }, ms);
+    };
+  };
+
+  init_svg = function() {
+    var chart, charts, _i, _len, _results;
+    charts = $('.pygal-chart');
+    if (charts.length) {
+      _results = [];
+      for (_i = 0, _len = charts.length; _i &lt; _len; _i++) {
+        chart = charts[_i];
+        _results.push(init(chart));
+      }
+      return _results;
+    }
+  };
+
+  if (document.readyState !== 'loading') {
+    init_svg();
+  } else {
+    document.addEventListener('DOMContentLoaded', function() {
+      return init_svg();
+    });
+  }
+
+  window.pygal = window.pygal || {};
+
+  window.pygal.init = init;
+
+  window.pygal.init_svg = init_svg;
+
+}).call(this);
+</script>
+  </defs>
+  <title>Speed in Microseconds (us)</title>
+  <g class="graph custombox-graph vertical">
+    <rect x="0" y="0" width="800" height="600" class="background"/>
+    <g transform="translate(68, 46)" class="plot">
+      <rect x="0" y="0" width="712.0" height="246.0" class="background"/>
+      <g class="axis y always_show">
+        <path d="M0.000000 246.000000 h712.000000" class="line"/>
+        <g class="guides">
+          <path d="M0.000000 230.267442 h712.000000" class="guide line"/>
+          <text x="-5" y="233.7674418604651" class="">4</text>
+          <title>4</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 208.263864 h712.000000" class="guide line"/>
+          <text x="-5" y="211.76386404293382" class="">8</text>
+          <title>8</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 186.260286 h712.000000" class="guide line"/>
+          <text x="-5" y="189.7602862254025" class="">12</text>
+          <title>12</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 164.256708 h712.000000" class="guide line"/>
+          <text x="-5" y="167.7567084078712" class="">16</text>
+          <title>16</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 142.253131 h712.000000" class="major guide line"/>
+          <text x="-5" y="145.7531305903399" class="major">20</text>
+          <title>20</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 120.249553 h712.000000" class="guide line"/>
+          <text x="-5" y="123.7495527728086" class="">24</text>
+          <title>24</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 98.245975 h712.000000" class="guide line"/>
+          <text x="-5" y="101.74597495527729" class="">28</text>
+          <title>28</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 76.242397 h712.000000" class="guide line"/>
+          <text x="-5" y="79.74239713774597" class="">32</text>
+          <title>32</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 54.238819 h712.000000" class="guide line"/>
+          <text x="-5" y="57.738819320214674" class="">36</text>
+          <title>36</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 32.235242 h712.000000" class="major guide line"/>
+          <text x="-5" y="35.73524150268338" class="major">40</text>
+          <title>40</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 10.231664 h712.000000" class="guide line"/>
+          <text x="-5" y="13.731663685152057" class="">44</text>
+          <title>44</title>
+        </g>
+      </g>
+      <g class="axis x">
+        <path d="M0.000000 0.000000 v246.000000" class="line"/>
+        <g class="guides">
+          <path d="M51.726496 0.000000 v246.000000" class="guide line"/>
+          <text x="51.72649572649573" y="261.0" class="backwards" transform="rotate(270 51.726496 261.000000)">test_noop_cache_skip_user_id_check</text>
+        </g>
+        <g class="guides">
+          <path d="M127.794872 0.000000 v246.000000" class="guide line"/>
+          <text x="127.7948717948718" y="261.0" class="backwards" transform="rotate(270 127.794872 261.000000)">test_memory_cache_skip_user_id_check</text>
+        </g>
+        <g class="guides">
+          <path d="M203.863248 0.000000 v246.000000" class="guide line"/>
+          <text x="203.8632478632479" y="261.0" class="backwards" transform="rotate(270 203.863248 261.000000)">test_memory_cache_existing_conversation</text>
+        </g>
+        <g class="guides">
+          <path d="M279.931624 0.000000 v246.000000" class="guide line"/>
+          <text x="279.93162393162396" y="261.0" class="backwards" transform="rotate(270 279.931624 261.000000)">test_noop_cache_nonexistent_conversation</text>
+        </g>
+        <g class="guides">
+          <path d="M356.000000 0.000000 v246.000000" class="guide line"/>
+          <text x="356.0" y="261.0" class="backwards" transform="rotate(270 356.000000 261.000000)">test_memory_cache_nonexistent_conversation</text>
+        </g>
+        <g class="guides">
+          <path d="M432.068376 0.000000 v246.000000" class="guide line"/>
+          <text x="432.0683760683761" y="261.0" class="backwards" transform="rotate(270 432.068376 261.000000)">test_noop_cache_existing_conversation</text>
+        </g>
+        <g class="guides">
+          <path d="M508.136752 0.000000 v246.000000" class="guide line"/>
+          <text x="508.1367521367521" y="261.0" class="backwards" transform="rotate(270 508.136752 261.000000)">test_sqlite_cache_nonexistent_conversation</text>
+        </g>
+        <g class="guides">
+          <path d="M584.205128 0.000000 v246.000000" class="guide line"/>
+          <text x="584.2051282051282" y="261.0" class="backwards" transform="rotate(270 584.205128 261.000000)">test_sqlite_cache_skip_user_id_check</text>
+        </g>
+        <g class="guides">
+          <path d="M660.273504 0.000000 v246.000000" class="guide line"/>
+          <text x="660.2735042735043" y="261.0" class="backwards" transform="rotate(270 660.273504 261.000000)">test_sqlite_cache_existing_conversation</text>
+        </g>
+      </g>
+      <g class="series serie-0 color-0">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M34.991453 237.314108 L68.461538 237.314108" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M18.256410 236.500175 L85.196581 236.500175" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M34.991453 235.493164 L68.461538 235.493164" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M51.726496 237.314108 L51.726496 236.714385" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M51.726496 235.493164 L51.726496 236.224808" class="reactive tooltip-trigger"/>
+            <rect x="18.256410256410255" y="236.22480758322212" height="0.48957693045676365" width="66.94017094017093" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="51.72649572649572" cy="237.31410824863343" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="51.72649572649572" cy="-2970.889920918474" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 2.7190
+Q1-1.5IQR: 2.7190
+Q1: 2.8280
+Median: 2.8670
+Q3: 2.9170
+Q3+1.5IQR: 3.0500
+Max: 585.9340</desc>
+            <desc class="x centered">51.72649572649572</desc>
+            <desc class="y centered">236.44932775564612</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-1 color-1">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M111.059829 237.281128 L144.529915 237.281128" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M94.324786 236.406358 L161.264957 236.406358" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M111.059829 234.877110 L144.529915 234.877110" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M127.794872 237.281128 L127.794872 236.659631" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M127.794872 234.877110 L127.794872 235.944638" class="reactive tooltip-trigger"/>
+            <rect x="94.32478632478632" y="235.9446376589908" height="0.7149936466383053" width="66.94017094017093" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="127.79487179487178" cy="237.28112824612393" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="127.79487179487178" cy="-5.40750342441558" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 2.7250
+Q1-1.5IQR: 2.7250
+Q1: 2.8380
+Median: 2.8840
+Q3: 2.9680
+Q3+1.5IQR: 3.1620
+Max: 46.8430</desc>
+            <desc class="x centered">127.79487179487178</desc>
+            <desc class="y centered">236.23377302079754</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-2 color-2">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M187.128205 227.654490 L220.598291 227.654490" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M170.393162 226.548859 L237.333333 226.548859" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M187.128205 225.366062 L220.598291 225.366062" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M203.863248 227.654490 L203.863248 226.796369" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M203.863248 225.366062 L203.863248 226.224182" class="reactive tooltip-trigger"/>
+            <rect x="170.39316239316236" y="226.22418216206066" height="0.5721870338301187" width="66.94017094017093" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="203.8632478632478" cy="227.72589295594045" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="203.8632478632478" cy="-0.8472976405273585" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.4620
+Q1-1.5IQR: 4.4750
+Q1: 4.6310
+Median: 4.6760
+Q3: 4.7350
+Q3+1.5IQR: 4.8910
+Max: 46.0140</desc>
+            <desc class="x centered">203.8632478632478</desc>
+            <desc class="y centered">226.51799235917454</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-3 color-3">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M263.196581 227.582766 L296.666667 227.582766" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M246.461538 226.510436 L313.401709 226.510436" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M263.196581 225.333082 L296.666667 225.333082" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M279.931624 227.582766 L279.931624 226.757946" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M279.931624 225.333082 L279.931624 226.186079" class="reactive tooltip-trigger"/>
+            <rect x="246.46153846153842" y="226.18607905236522" height="0.5718668396309852" width="66.94017094017093" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="279.9316239316239" cy="227.7041197504002" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="279.9316239316239" cy="50.20126352541163" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.4660
+Q1-1.5IQR: 4.4880
+Q1: 4.6380
+Median: 4.6830
+Q3: 4.7419
+Q3+1.5IQR: 4.8970
+Max: 36.7340</desc>
+            <desc class="x centered">279.9316239316239</desc>
+            <desc class="y centered">226.4740617150551</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-4 color-4">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M339.264957 227.560993 L372.735043 227.560993" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M322.529915 226.416939 L389.470085 226.416939" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M339.264957 225.151532 L372.735043 225.151532" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M356.000000 227.560993 L356.000000 226.675336" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M356.000000 225.151532 L356.000000 226.064725" class="reactive tooltip-trigger"/>
+            <rect x="322.52991452991444" y="226.06472545089815" height="0.6106103377246939" width="66.94017094017093" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="355.9999999999999" cy="227.67113974789066" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="355.9999999999999" cy="-79.23500011005638" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.4720
+Q1-1.5IQR: 4.4920
+Q1: 4.6530
+Median: 4.7000
+Q3: 4.7640
+Q3+1.5IQR: 4.9300
+Max: 60.2640</desc>
+            <desc class="x centered">355.9999999999999</desc>
+            <desc class="y centered">226.37390496956988</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-5 color-5">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M415.333333 227.539220 L448.803419 227.539220" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M398.598291 226.488342 L465.538462 226.488342" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M415.333333 225.366062 L448.803419 225.366062" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M432.068376 227.539220 L432.068376 226.724646" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M432.068376 225.366062 L432.068376 226.180316" class="reactive tooltip-trigger"/>
+            <rect x="398.5982905982905" y="226.180315556781" height="0.5443301385065524" width="66.94017094017093" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="432.0683760683759" cy="227.63239624979698" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="432.0683760683759" cy="-333.04045417989494" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.4790
+Q1-1.5IQR: 4.4960
+Q1: 4.6440
+Median: 4.6870
+Q3: 4.7430
+Q3+1.5IQR: 4.8910
+Max: 106.4030</desc>
+            <desc class="x centered">432.0683760683759</desc>
+            <desc class="y centered">226.45971701493443</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-6 color-6">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M491.401709 20.188180 L524.871795 20.188180" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M474.666667 16.062478 L541.606838 16.062478" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M491.401709 10.666245 L524.871795 10.666245" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M508.136752 20.188180 L508.136752 17.096705" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M508.136752 10.666245 L508.136752 14.498890" class="reactive tooltip-trigger"/>
+            <rect x="474.6666666666666" y="14.4988898864176" height="2.5978155860224206" width="66.94017094017093" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="508.136752136752" cy="20.18818046495798" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="508.136752136752" cy="-3308.1885739628337" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 42.1900
+Q1-1.5IQR: 42.1900
+Q1: 42.7520
+Median: 42.9400
+Q3: 43.2243
+Q3+1.5IQR: 43.9210
+Max: 647.2510</desc>
+            <desc class="x centered">508.136752136752</desc>
+            <desc class="y centered">15.70249988091527</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-7 color-7">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M567.470085 19.968207 L600.940171 19.968207" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M550.735043 15.419048 L617.675214 15.419048" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M567.470085 8.658308 L600.940171 8.658308" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M584.205128 19.968207 L584.205128 16.678852" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M584.205128 8.658308 L584.205128 13.460580" class="reactive tooltip-trigger"/>
+            <rect x="550.7350427350426" y="13.460580147216376" height="3.218271895370094" width="66.94017094017093" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="584.2051282051281" cy="19.96820705016154" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="584.2051282051281" cy="-1295.41677944784" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 42.2300
+Q1-1.5IQR: 42.2300
+Q1: 42.8280
+Median: 43.0570
+Q3: 43.4130
+Q3+1.5IQR: 44.2860
+Max: 281.3520</desc>
+            <desc class="x centered">584.2051282051281</desc>
+            <desc class="y centered">14.836998950979932</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-8 color-8">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M643.538462 19.269864 L677.008547 19.269864" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M626.803419 15.105738 L693.743590 15.105738" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M643.538462 8.465871 L677.008547 8.465871" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M660.273504 19.269864 L660.273504 16.306146" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M660.273504 8.465871 L660.273504 12.949230" class="reactive tooltip-trigger"/>
+            <rect x="626.8034188034187" y="12.949230011219356" height="3.356915983589687" width="66.94017094017093" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="660.2735042735042" cy="19.269863501877552" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="660.2735042735042" cy="-1866.6624423325234" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 42.3570
+Q1-1.5IQR: 42.3570
+Q1: 42.8957
+Median: 43.1139
+Q3: 43.5060
+Q3+1.5IQR: 44.3210
+Max: 385.1980</desc>
+            <desc class="x centered">660.2735042735042</desc>
+            <desc class="y centered">14.419369657065772</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+    </g>
+    <g class="titles">
+      <text x="400.0" y="26" class="title plot_title">Speed in Microseconds (us)</text>
+      <text x="424.0" y="580.0" class="title">Trial</text>
+      <text x="0" y="195.0" class="title" transform="rotate(-90 0.000000 169.000000)">Duration</text>
+    </g>
+    <g transform="translate(68, 46)" class="plot overlay">
+      <g class="series serie-0 color-0"/>
+      <g class="series serie-1 color-1"/>
+      <g class="series serie-2 color-2"/>
+      <g class="series serie-3 color-3"/>
+      <g class="series serie-4 color-4"/>
+      <g class="series serie-5 color-5"/>
+      <g class="series serie-6 color-6"/>
+      <g class="series serie-7 color-7"/>
+      <g class="series serie-8 color-8"/>
+    </g>
+    <g transform="translate(68, 46)" class="plot text-overlay">
+      <g class="series serie-0 color-0"/>
+      <g class="series serie-1 color-1"/>
+      <g class="series serie-2 color-2"/>
+      <g class="series serie-3 color-3"/>
+      <g class="series serie-4 color-4"/>
+      <g class="series serie-5 color-5"/>
+      <g class="series serie-6 color-6"/>
+      <g class="series serie-7 color-7"/>
+      <g class="series serie-8 color-8"/>
+    </g>
+    <g transform="translate(68, 46)" class="plot tooltip-overlay">
+      <g transform="translate(0 0)" style="opacity: 0" class="tooltip">
+        <rect rx="0" ry="0" width="0" height="0" class="tooltip-box"/>
+        <g class="text"/>
+      </g>
+    </g>
+  </g>
+</svg>

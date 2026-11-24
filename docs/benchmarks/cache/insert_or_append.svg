@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" id="chart-b0740017-139c-416c-9e9c-2fa3c21d8f85" class="pygal-chart" viewBox="0 0 800 600">
-  <!--Generated with pygal 3.1.3 (etree) ©Kozea 2012-2026 on 2026-10-01-->
+<svg xmlns="http://www.w3.org/2000/svg" id="chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536" class="pygal-chart" viewBox="0 0 800 600">
+  <!--Generated with pygal 3.1.3 (etree) ©Kozea 2012-2026 on 2026-11-24-->
   <!--http://pygal.org-->
   <!--http://github.com/Kozea/pygal-->
   <defs>
-    <style type="text/css">#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85{-webkit-user-select:none;-webkit-font-smoothing:antialiased;font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .title{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .legends .legend text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis text.major{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .text-overlay text.value{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .text-overlay text.label{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 text.no_data{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:64px}
-#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85{background-color:rgba(249,249,249,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 path,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 line,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 rect,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 circle{-webkit-transition:150ms;-moz-transition:150ms;transition:150ms}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .graph &gt; .background{fill:rgba(249,249,249,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .plot &gt; .background{fill:rgba(255,255,255,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .graph{fill:rgba(0,0,0,.87)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 text.no_data{fill:rgba(0,0,0,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .title{fill:rgba(0,0,0,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .legends .legend text{fill:rgba(0,0,0,.87)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .legends .legend:hover text{fill:rgba(0,0,0,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis .line{stroke:rgba(0,0,0,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis .guide.line{stroke:rgba(0,0,0,.54)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis .major.line{stroke:rgba(0,0,0,.87)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis text.major{fill:rgba(0,0,0,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.y .guides:hover .guide.line,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .line-graph .axis.x .guides:hover .guide.line,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .stackedline-graph .axis.x .guides:hover .guide.line,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .xy-graph .axis.x .guides:hover .guide.line{stroke:rgba(0,0,0,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis .guides:hover text{fill:rgba(0,0,0,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .reactive{fill-opacity:.7;stroke-opacity:.8;stroke-width:1}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .ci{stroke:rgba(0,0,0,.87)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .reactive.active,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .active .reactive{fill-opacity:.8;stroke-opacity:.9;stroke-width:4}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .ci .reactive.active{stroke-width:1.5}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .series text{fill:rgba(0,0,0,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip rect{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,1);-webkit-transition:opacity 150ms;-moz-transition:opacity 150ms;transition:opacity 150ms}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip .label{fill:rgba(0,0,0,.87)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip .label{fill:rgba(0,0,0,.87)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip .legend{font-size:.8em;fill:rgba(0,0,0,.54)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip .x_label{font-size:.6em;fill:rgba(0,0,0,1)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip .xlink{font-size:.5em;text-decoration:underline}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip .value{font-size:1.5em}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .bound{font-size:.5em}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .max-value{font-size:.75em;fill:rgba(0,0,0,.54)}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .map-element{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,.54) !important}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .map-element .reactive{fill-opacity:inherit;stroke-opacity:inherit}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .color-0,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .color-0 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .text-overlay .color-0 text{fill:black}
-#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 text.no_data{text-anchor:middle}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .guide.line{fill:none}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .centered{text-anchor:middle}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .title{text-anchor:middle}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .legends .legend text{fill-opacity:1}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.x text{text-anchor:middle}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.x:not(.web) text[transform]{text-anchor:start}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.x:not(.web) text[transform].backwards{text-anchor:end}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.y text{text-anchor:end}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.y text[transform].backwards{text-anchor:start}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.y2 text{text-anchor:start}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.y2 text[transform].backwards{text-anchor:end}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis .guide.line{stroke-dasharray:4,4;stroke:black}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis .major.guide.line{stroke-dasharray:6,6;stroke:black}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .horizontal .axis.y .guide.line,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .horizontal .axis.y2 .guide.line,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .vertical .axis.x .guide.line{opacity:0}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .horizontal .axis.always_show .guide.line,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .vertical .axis.always_show .guide.line{opacity:1 !important}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.y .guides:hover .guide.line,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.y2 .guides:hover .guide.line,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis.x .guides:hover .guide.line{opacity:1}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .axis .guides:hover text{opacity:1}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .nofill{fill:none}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .subtle-fill{fill-opacity:.2}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .dot{stroke-width:1px;fill-opacity:1;stroke-opacity:1}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .dot.active{stroke-width:5px}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .dot.negative{fill:transparent}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 text,#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 tspan{stroke:none !important}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .series text.active{opacity:1}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip rect{fill-opacity:.95;stroke-width:.5}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .tooltip text{fill-opacity:1}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .showable{visibility:hidden}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .showable.shown{visibility:visible}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .gauge-background{fill:rgba(229,229,229,1);stroke:none}#chart-b0740017-139c-416c-9e9c-2fa3c21d8f85 .bg-lines{stroke:rgba(249,249,249,1);stroke-width:2px}
+    <style type="text/css">#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536{-webkit-user-select:none;-webkit-font-smoothing:antialiased;font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .title{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .legends .legend text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis text{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis text.major{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .text-overlay text.value{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:16px}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .text-overlay text.label{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:10px}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:14px}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 text.no_data{font-family:Consolas,"Deja Vu Sans Mono","Bitstream Vera Sans Mono","Courier New",monospace;font-size:64px}
+#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536{background-color:rgba(249,249,249,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 path,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 line,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 rect,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 circle{-webkit-transition:150ms;-moz-transition:150ms;transition:150ms}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .graph &gt; .background{fill:rgba(249,249,249,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .plot &gt; .background{fill:rgba(255,255,255,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .graph{fill:rgba(0,0,0,.87)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 text.no_data{fill:rgba(0,0,0,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .title{fill:rgba(0,0,0,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .legends .legend text{fill:rgba(0,0,0,.87)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .legends .legend:hover text{fill:rgba(0,0,0,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis .line{stroke:rgba(0,0,0,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis .guide.line{stroke:rgba(0,0,0,.54)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis .major.line{stroke:rgba(0,0,0,.87)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis text.major{fill:rgba(0,0,0,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.y .guides:hover .guide.line,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .line-graph .axis.x .guides:hover .guide.line,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .stackedline-graph .axis.x .guides:hover .guide.line,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .xy-graph .axis.x .guides:hover .guide.line{stroke:rgba(0,0,0,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis .guides:hover text{fill:rgba(0,0,0,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .reactive{fill-opacity:.7;stroke-opacity:.8;stroke-width:1}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .ci{stroke:rgba(0,0,0,.87)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .reactive.active,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .active .reactive{fill-opacity:.8;stroke-opacity:.9;stroke-width:4}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .ci .reactive.active{stroke-width:1.5}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .series text{fill:rgba(0,0,0,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip rect{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,1);-webkit-transition:opacity 150ms;-moz-transition:opacity 150ms;transition:opacity 150ms}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip .label{fill:rgba(0,0,0,.87)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip .label{fill:rgba(0,0,0,.87)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip .legend{font-size:.8em;fill:rgba(0,0,0,.54)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip .x_label{font-size:.6em;fill:rgba(0,0,0,1)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip .xlink{font-size:.5em;text-decoration:underline}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip .value{font-size:1.5em}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .bound{font-size:.5em}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .max-value{font-size:.75em;fill:rgba(0,0,0,.54)}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .map-element{fill:rgba(255,255,255,1);stroke:rgba(0,0,0,.54) !important}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .map-element .reactive{fill-opacity:inherit;stroke-opacity:inherit}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .color-0,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .color-0 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .color-1,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .color-1 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .color-2,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .color-2 a:visited{stroke:#3F51B5;fill:#3F51B5}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .text-overlay .color-0 text{fill:black}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .text-overlay .color-1 text{fill:black}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .text-overlay .color-2 text{fill:black}
+#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 text.no_data{text-anchor:middle}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .guide.line{fill:none}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .centered{text-anchor:middle}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .title{text-anchor:middle}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .legends .legend text{fill-opacity:1}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.x text{text-anchor:middle}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.x:not(.web) text[transform]{text-anchor:start}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.x:not(.web) text[transform].backwards{text-anchor:end}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.y text{text-anchor:end}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.y text[transform].backwards{text-anchor:start}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.y2 text{text-anchor:start}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.y2 text[transform].backwards{text-anchor:end}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis .guide.line{stroke-dasharray:4,4;stroke:black}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis .major.guide.line{stroke-dasharray:6,6;stroke:black}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .horizontal .axis.y .guide.line,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .horizontal .axis.y2 .guide.line,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .vertical .axis.x .guide.line{opacity:0}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .horizontal .axis.always_show .guide.line,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .vertical .axis.always_show .guide.line{opacity:1 !important}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.y .guides:hover .guide.line,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.y2 .guides:hover .guide.line,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis.x .guides:hover .guide.line{opacity:1}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .axis .guides:hover text{opacity:1}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .nofill{fill:none}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .subtle-fill{fill-opacity:.2}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .dot{stroke-width:1px;fill-opacity:1;stroke-opacity:1}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .dot.active{stroke-width:5px}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .dot.negative{fill:transparent}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 text,#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 tspan{stroke:none !important}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .series text.active{opacity:1}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip rect{fill-opacity:.95;stroke-width:.5}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .tooltip text{fill-opacity:1}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .showable{visibility:hidden}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .showable.shown{visibility:visible}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .gauge-background{fill:rgba(229,229,229,1);stroke:none}#chart-0ade3db4-ba4e-4a6f-a555-1ac0c18af536 .bg-lines{stroke:rgba(249,249,249,1);stroke-width:2px}
 .tooltip .value{font-size:1em !important}.axis text{font-size:9px !important}</style>
-    <script type="text/javascript">window.pygal = window.pygal || {};window.pygal.config = window.pygal.config || {};window.pygal.config['b0740017-139c-416c-9e9c-2fa3c21d8f85'] = {"allow_interruptions": false, "box_mode": "tukey", "classes": ["pygal-chart"], "css": ["file://style.css", "file://graph.css", "inline:\n                .tooltip .value {\n                    font-size: 1em !important;\n                }\n                .axis text {\n                    font-size: 9px !important;\n                }\n            "], "defs": [], "disable_xml_declaration": false, "dots_size": 2.5, "dynamic_print_values": false, "explicit_size": false, "fill": false, "force_uri_protocol": "https", "formatter": null, "half_pie": false, "height": 600, "include_x_axis": false, "inner_radius": 0, "interpolate": null, "interpolation_parameters": {}, "interpolation_precision": 250, "inverse_y_axis": false, "js": ["file:///tmp/ramdisk/lightspeed-stack-LCORE-4/.venv/lib64/python3.14/site-packages/pygaljs/static/2.0.x/pygal-tooltips.js"], "legend_at_bottom": false, "legend_at_bottom_columns": null, "legend_box_size": 12, "logarithmic": false, "margin": 20, "margin_bottom": null, "margin_left": null, "margin_right": null, "margin_top": null, "max_scale": 20, "min_scale": 20, "missing_value_fill_truncation": "x", "no_data_text": "No data", "no_prefix": false, "order_min": null, "pretty_print": false, "print_labels": false, "print_values": false, "print_values_position": "center", "print_zeroes": true, "range": [4, 5], "reverse_direction": false, "rounded_bars": null, "secondary_range": null, "show_dots": true, "show_legend": false, "show_minor_x_labels": true, "show_minor_y_labels": true, "show_only_major_dots": false, "show_x_guides": false, "show_x_labels": true, "show_y_guides": true, "show_y_labels": true, "spacing": 10, "stack_from_top": false, "strict": false, "stroke": true, "stroke_style": null, "style": {"background": "rgba(249, 249, 249, 1)", "ci_colors": [], "colors": ["#3F51B5"], "dot_opacity": "1", "font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "foreground": "rgba(0, 0, 0, .87)", "foreground_strong": "rgba(0, 0, 0, 1)", "foreground_subtle": "rgba(0, 0, 0, .54)", "guide_stroke_color": "black", "guide_stroke_dasharray": "4,4", "label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "label_font_size": 10, "legend_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "legend_font_size": 14, "major_guide_stroke_color": "black", "major_guide_stroke_dasharray": "6,6", "major_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "major_label_font_size": 10, "no_data_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "no_data_font_size": 64, "opacity": ".7", "opacity_hover": ".8", "plot_background": "rgba(255, 255, 255, 1)", "stroke_opacity": ".8", "stroke_opacity_hover": ".9", "stroke_width": "1", "stroke_width_hover": "4", "title_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "title_font_size": 16, "tooltip_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "tooltip_font_size": 14, "transition": "150ms", "value_background": "rgba(229, 229, 229, 1)", "value_colors": [], "value_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_font_size": 16, "value_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_label_font_size": 10}, "title": "Speed in Microseconds (us)", "tooltip_border_radius": 0, "tooltip_fancy_mode": true, "truncate_label": 50, "truncate_legend": null, "width": 800, "x_label_rotation": 270, "x_labels": ["test_noop_cache"], "x_labels_major": null, "x_labels_major_count": null, "x_labels_major_every": null, "x_title": "Trial", "xrange": null, "y_label_rotation": 0, "y_labels": null, "y_labels_major": null, "y_labels_major_count": null, "y_labels_major_every": null, "y_title": "Duration", "zero": 4, "legends": ["tests/benchmarks/test_cache_insert_or_append.py::test_noop_cache - 21766 rounds"]}</script>
+    <script type="text/javascript">window.pygal = window.pygal || {};window.pygal.config = window.pygal.config || {};window.pygal.config['0ade3db4-ba4e-4a6f-a555-1ac0c18af536'] = {"allow_interruptions": false, "box_mode": "tukey", "classes": ["pygal-chart"], "css": ["file://style.css", "file://graph.css", "inline:\n                .tooltip .value {\n                    font-size: 1em !important;\n                }\n                .axis text {\n                    font-size: 9px !important;\n                }\n            "], "defs": [], "disable_xml_declaration": false, "dots_size": 2.5, "dynamic_print_values": false, "explicit_size": false, "fill": false, "force_uri_protocol": "https", "formatter": null, "half_pie": false, "height": 600, "include_x_axis": false, "inner_radius": 0, "interpolate": null, "interpolation_parameters": {}, "interpolation_precision": 250, "inverse_y_axis": false, "js": ["file:///tmp/ramdisk/lightspeed-stack-LCORE-3/.venv/lib64/python3.14/site-packages/pygaljs/static/2.0.x/pygal-tooltips.js"], "legend_at_bottom": false, "legend_at_bottom_columns": null, "legend_box_size": 12, "logarithmic": false, "margin": 20, "margin_bottom": null, "margin_left": null, "margin_right": null, "margin_top": null, "max_scale": 20, "min_scale": 20, "missing_value_fill_truncation": "x", "no_data_text": "No data", "no_prefix": false, "order_min": null, "pretty_print": false, "print_labels": false, "print_values": false, "print_values_position": "center", "print_zeroes": true, "range": [4, 158], "reverse_direction": false, "rounded_bars": null, "secondary_range": null, "show_dots": true, "show_legend": false, "show_minor_x_labels": true, "show_minor_y_labels": true, "show_only_major_dots": false, "show_x_guides": false, "show_x_labels": true, "show_y_guides": true, "show_y_labels": true, "spacing": 10, "stack_from_top": false, "strict": false, "stroke": true, "stroke_style": null, "style": {"background": "rgba(249, 249, 249, 1)", "ci_colors": [], "colors": ["#3F51B5", "#3F51B5", "#3F51B5"], "dot_opacity": "1", "font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "foreground": "rgba(0, 0, 0, .87)", "foreground_strong": "rgba(0, 0, 0, 1)", "foreground_subtle": "rgba(0, 0, 0, .54)", "guide_stroke_color": "black", "guide_stroke_dasharray": "4,4", "label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "label_font_size": 10, "legend_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "legend_font_size": 14, "major_guide_stroke_color": "black", "major_guide_stroke_dasharray": "6,6", "major_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "major_label_font_size": 10, "no_data_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "no_data_font_size": 64, "opacity": ".7", "opacity_hover": ".8", "plot_background": "rgba(255, 255, 255, 1)", "stroke_opacity": ".8", "stroke_opacity_hover": ".9", "stroke_width": "1", "stroke_width_hover": "4", "title_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "title_font_size": 16, "tooltip_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "tooltip_font_size": 14, "transition": "150ms", "value_background": "rgba(229, 229, 229, 1)", "value_colors": [], "value_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_font_size": 16, "value_label_font_family": "Consolas, \"Deja Vu Sans Mono\", \"Bitstream Vera Sans Mono\", \"Courier New\", monospace", "value_label_font_size": 10}, "title": "Speed in Microseconds (us)", "tooltip_border_radius": 0, "tooltip_fancy_mode": true, "truncate_label": 50, "truncate_legend": null, "width": 800, "x_label_rotation": 270, "x_labels": ["test_memory_cache", "test_noop_cache", "test_sqlite_cache"], "x_labels_major": null, "x_labels_major_count": null, "x_labels_major_every": null, "x_title": "Trial", "xrange": null, "y_label_rotation": 0, "y_labels": null, "y_labels_major": null, "y_labels_major_count": null, "y_labels_major_every": null, "y_title": "Duration", "zero": 4, "legends": ["tests/benchmarks/test_memory_cache_insert_or_append.py::test_memory_cache - 28859 rounds", "tests/benchmarks/test_noop_cache_insert_or_append.py::test_noop_cache - 28960 rounds", "tests/benchmarks/test_sqlite_cache_insert_or_append.py::test_sqlite_cache - 3027 rounds"]}</script>
     <script type="text/javascript">(function() {
   var $, get_translation, init, init_svg, matches, padding, r_translation, sibl, svg_ns, tooltip_timeout, xlink_ns;
 
@@ -357,103 +357,189 @@
   <title>Speed in Microseconds (us)</title>
   <g class="graph custombox-graph vertical">
     <rect x="0" y="0" width="800" height="600" class="background"/>
-    <g transform="translate(80, 46)" class="plot">
-      <rect x="0" y="0" width="700.0" height="408.0" class="background"/>
+    <g transform="translate(74, 46)" class="plot">
+      <rect x="0" y="0" width="706.0" height="396.0" class="background"/>
       <g class="axis y always_show">
-        <path d="M0.000000 408.000000 h700.000000" class="line"/>
+        <path d="M0.000000 396.000000 h706.000000" class="line"/>
         <g class="guides">
-          <path d="M0.000000 400.153846 h700.000000" class="major guide line"/>
-          <text x="-5" y="403.65384615384613" class="major">4</text>
-          <title>4</title>
+          <path d="M0.000000 378.494505 h706.000000" class="guide line"/>
+          <text x="-5" y="381.9945054945055" class="">8</text>
+          <title>8</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 368.769231 h700.000000" class="guide line"/>
-          <text x="-5" y="372.2692307692307" class="">4.08</text>
-          <title>4.08</title>
+          <path d="M0.000000 358.714286 h706.000000" class="guide line"/>
+          <text x="-5" y="362.2142857142857" class="">16</text>
+          <title>16</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 337.384615 h700.000000" class="guide line"/>
-          <text x="-5" y="340.8846153846153" class="">4.16</text>
-          <title>4.16</title>
+          <path d="M0.000000 338.934066 h706.000000" class="guide line"/>
+          <text x="-5" y="342.434065934066" class="">24</text>
+          <title>24</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 306.000000 h700.000000" class="guide line"/>
-          <text x="-5" y="309.4999999999999" class="">4.24</text>
-          <title>4.24</title>
+          <path d="M0.000000 319.153846 h706.000000" class="guide line"/>
+          <text x="-5" y="322.6538461538462" class="">32</text>
+          <title>32</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 274.615385 h700.000000" class="guide line"/>
-          <text x="-5" y="278.1153846153844" class="">4.32</text>
-          <title>4.32</title>
+          <path d="M0.000000 299.373626 h706.000000" class="guide line"/>
+          <text x="-5" y="302.8736263736264" class="">40</text>
+          <title>40</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 243.230769 h700.000000" class="guide line"/>
-          <text x="-5" y="246.73076923076903" class="">4.4</text>
-          <title>4.4</title>
+          <path d="M0.000000 279.593407 h706.000000" class="guide line"/>
+          <text x="-5" y="283.0934065934066" class="">48</text>
+          <title>48</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 211.846154 h700.000000" class="guide line"/>
-          <text x="-5" y="215.3461538461536" class="">4.48</text>
-          <title>4.48</title>
+          <path d="M0.000000 259.813187 h706.000000" class="guide line"/>
+          <text x="-5" y="263.3131868131868" class="">56</text>
+          <title>56</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 180.461538 h700.000000" class="guide line"/>
-          <text x="-5" y="183.9615384615385" class="">4.56</text>
-          <title>4.56</title>
+          <path d="M0.000000 240.032967 h706.000000" class="guide line"/>
+          <text x="-5" y="243.53296703296706" class="">64</text>
+          <title>64</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 149.076923 h700.000000" class="guide line"/>
-          <text x="-5" y="152.5769230769231" class="">4.64</text>
-          <title>4.64</title>
+          <path d="M0.000000 220.252747 h706.000000" class="guide line"/>
+          <text x="-5" y="223.75274725274727" class="">72</text>
+          <title>72</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 117.692308 h700.000000" class="guide line"/>
-          <text x="-5" y="121.19230769230768" class="">4.72</text>
-          <title>4.72</title>
+          <path d="M0.000000 200.472527 h706.000000" class="guide line"/>
+          <text x="-5" y="203.9725274725275" class="">80</text>
+          <title>80</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 86.307692 h700.000000" class="guide line"/>
-          <text x="-5" y="89.80769230769221" class="">4.8</text>
-          <title>4.8</title>
+          <path d="M0.000000 180.692308 h706.000000" class="guide line"/>
+          <text x="-5" y="184.19230769230774" class="">88</text>
+          <title>88</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 54.923077 h700.000000" class="guide line"/>
-          <text x="-5" y="58.42307692307679" class="">4.88</text>
-          <title>4.88</title>
+          <path d="M0.000000 160.912088 h706.000000" class="guide line"/>
+          <text x="-5" y="164.41208791208794" class="">96</text>
+          <title>96</title>
         </g>
         <g class="guides">
-          <path d="M0.000000 23.538462 h700.000000" class="guide line"/>
-          <text x="-5" y="27.038461538461434" class="">4.96</text>
-          <title>4.96</title>
+          <path d="M0.000000 141.131868 h706.000000" class="guide line"/>
+          <text x="-5" y="144.63186813186817" class="">104</text>
+          <title>104</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 121.351648 h706.000000" class="guide line"/>
+          <text x="-5" y="124.85164835164841" class="">112</text>
+          <title>112</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 101.571429 h706.000000" class="guide line"/>
+          <text x="-5" y="105.07142857142861" class="">120</text>
+          <title>120</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 81.791209 h706.000000" class="guide line"/>
+          <text x="-5" y="85.29120879120882" class="">128</text>
+          <title>128</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 62.010989 h706.000000" class="guide line"/>
+          <text x="-5" y="65.51098901098902" class="">136</text>
+          <title>136</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 42.230769 h706.000000" class="guide line"/>
+          <text x="-5" y="45.730769230769226" class="">144</text>
+          <title>144</title>
+        </g>
+        <g class="guides">
+          <path d="M0.000000 22.450549 h706.000000" class="guide line"/>
+          <text x="-5" y="25.950549450549488" class="">152</text>
+          <title>152</title>
         </g>
       </g>
       <g class="axis x">
-        <path d="M0.000000 0.000000 v408.000000" class="line"/>
+        <path d="M0.000000 0.000000 v396.000000" class="line"/>
         <g class="guides">
-          <path d="M350.000000 0.000000 v408.000000" class="guide line"/>
-          <text x="350.0" y="423.0" class="backwards" transform="rotate(270 350.000000 423.000000)">test_noop_cache</text>
+          <path d="M126.717949 0.000000 v396.000000" class="guide line"/>
+          <text x="126.71794871794872" y="411.0" class="backwards" transform="rotate(270 126.717949 411.000000)">test_memory_cache</text>
+        </g>
+        <g class="guides">
+          <path d="M353.000000 0.000000 v396.000000" class="guide line"/>
+          <text x="353.0" y="411.0" class="backwards" transform="rotate(270 353.000000 411.000000)">test_noop_cache</text>
+        </g>
+        <g class="guides">
+          <path d="M579.282051 0.000000 v396.000000" class="guide line"/>
+          <text x="579.2820512820513" y="411.0" class="backwards" transform="rotate(270 579.282051 411.000000)">test_sqlite_cache</text>
         </g>
       </g>
       <g class="series serie-0 color-0">
         <g class="boxes">
           <g class="box">
-            <path stroke-width="3" d="M201.923077 207.137831 L498.076923 207.137831" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M53.846154 127.077223 L646.153846 127.077223" class="reactive tooltip-trigger"/>
-            <path stroke-width="3" d="M201.923077 40.029009 L498.076923 40.029009" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M350.000000 207.137831 L350.000000 145.162791" class="reactive tooltip-trigger"/>
-            <path stroke-width="2" d="M350.000000 40.029009 L350.000000 103.191485" class="reactive tooltip-trigger"/>
-            <rect x="53.84615384615385" y="103.19148534536345" height="41.9713055285124" width="592.3076923076924" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="350.00000000000006" cy="212.25294084273844" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <circle cx="350.00000000000006" cy="-10761.393794499914" r="3" class="subtle-fill reactive tooltip-trigger"/>
-            <desc class="value">Min: 4.4790
-Q1-1.5IQR: 4.4920
-Q1: 4.6500
-Median: 4.6961
-Q3: 4.7570
-Q3+1.5IQR: 4.9180
-Max: 32.4510</desc>
-            <desc class="x centered">350.00000000000006</desc>
-            <desc class="y centered">124.5196678065335</desc>
+            <path stroke-width="3" d="M76.935897 387.153304 L176.500000 387.153304" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M27.153846 386.730467 L226.282051 386.730467" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M76.935897 386.277982 L176.500000 386.277982" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M126.717949 387.153304 L126.717949 386.826893" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M126.717949 386.277982 L126.717949 386.606984" class="reactive tooltip-trigger"/>
+            <rect x="27.153846153846153" y="386.6069836535051" height="0.21990982222035882" width="199.1282051282051" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="126.7179487179487" cy="387.2151897455883" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="126.7179487179487" cy="297.39066257102644" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.4730
+Q1-1.5IQR: 4.4980
+Q1: 4.6300
+Median: 4.6690
+Q3: 4.7190
+Q3+1.5IQR: 4.8520
+Max: 40.8020</desc>
+            <desc class="x centered">126.7179487179487</desc>
+            <desc class="y centered">386.7191261492342</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-1 color-1">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M303.217949 387.153304 L402.782051 387.153304" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M253.435897 386.668725 L452.564103 386.668725" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M303.217949 386.149318 L402.782051 386.149318" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M353.000000 387.153304 L353.000000 386.779976" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M353.000000 386.149318 L353.000000 386.527684" class="reactive tooltip-trigger"/>
+            <rect x="253.4358974358974" y="386.52768371106833" height="0.2522918313823652" width="199.1282051282051" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="352.99999999999994" cy="387.1904354985844" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="352.99999999999994" cy="358.9095718169196" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 4.4830
+Q1-1.5IQR: 4.4980
+Q1: 4.6490
+Median: 4.6940
+Q3: 4.7510
+Q3+1.5IQR: 4.9041
+Max: 15.9210</desc>
+            <desc class="x centered">352.99999999999994</desc>
+            <desc class="y centered">386.6558013313174</desc>
+            <desc class="x_label"/>
+          </g>
+        </g>
+      </g>
+      <g class="series serie-2 color-2">
+        <g class="boxes">
+          <g class="box">
+            <path stroke-width="3" d="M529.500000 114.141736 L629.064103 114.141736" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M479.717949 69.791912 L678.846154 69.791912" class="reactive tooltip-trigger"/>
+            <path stroke-width="3" d="M529.500000 7.996101 L629.064103 7.996101" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M579.282051 114.141736 L579.282051 74.366699" class="reactive tooltip-trigger"/>
+            <path stroke-width="2" d="M579.282051 7.996101 L579.282051 47.775960" class="reactive tooltip-trigger"/>
+            <rect x="479.71794871794873" y="47.7759598261257" height="26.590738683468203" width="199.1282051282051" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="579.2820512820513" cy="123.01814867482415" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <circle cx="579.2820512820513" cy="-675.2473099829401" r="3" class="subtle-fill reactive tooltip-trigger"/>
+            <desc class="value">Min: 111.3260
+Q1-1.5IQR: 114.9160
+Q1: 131.0028
+Median: 132.8530
+Q3: 141.7573
+Q3+1.5IQR: 157.8460
+Max: 434.1800</desc>
+            <desc class="x centered">579.2820512820513</desc>
+            <desc class="y centered">62.8144815050598</desc>
             <desc class="x_label"/>
           </g>
         </g>
@@ -461,16 +547,20 @@ Max: 32.4510</desc>
     </g>
     <g class="titles">
       <text x="400.0" y="26" class="title plot_title">Speed in Microseconds (us)</text>
-      <text x="430.0" y="580.0" class="title">Trial</text>
-      <text x="0" y="276.0" class="title" transform="rotate(-90 0.000000 250.000000)">Duration</text>
+      <text x="427.0" y="580.0" class="title">Trial</text>
+      <text x="0" y="270.0" class="title" transform="rotate(-90 0.000000 244.000000)">Duration</text>
     </g>
-    <g transform="translate(80, 46)" class="plot overlay">
+    <g transform="translate(74, 46)" class="plot overlay">
       <g class="series serie-0 color-0"/>
+      <g class="series serie-1 color-1"/>
+      <g class="series serie-2 color-2"/>
     </g>
-    <g transform="translate(80, 46)" class="plot text-overlay">
+    <g transform="translate(74, 46)" class="plot text-overlay">
       <g class="series serie-0 color-0"/>
+      <g class="series serie-1 color-1"/>
+      <g class="series serie-2 color-2"/>
     </g>
-    <g transform="translate(80, 46)" class="plot tooltip-overlay">
+    <g transform="translate(74, 46)" class="plot tooltip-overlay">
       <g transform="translate(0 0)" style="opacity: 0" class="tooltip">
         <rect rx="0" ry="0" width="0" height="0" class="tooltip-box"/>
         <g class="text"/>

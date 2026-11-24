@@ -1,23 +1,27 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-4/.venv/bin/python3
+platform linux -- Python 3.14.7, pytest-9.2.0, pluggy-1.7.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-3/.venv/bin/python3
 cachedir: .pytest_cache
-benchmark: 5.3.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
-rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-4
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-3
 configfile: pyproject.toml
-plugins: platformdirs-4.12.2, logfire-5.1.1, mock-3.16.0, anyio-4.15.1, benchmark-5.3.0, cov-7.1.0, order-1.5.0, asyncio-1.4.0
+plugins: logfire-sdk-5.6.0, platformdirs-4.14.7, anyio-4.16.0, order-1.5.0, mock-3.17.0, cov-7.1.0, benchmark-5.3.1, asyncio-1.5.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collecting ... collected 1 item
+collecting ... collected 3 items
 
-tests/benchmarks/test_cache_insert_or_append_existing_key.py::test_noop_cache PASSED [100%]
+tests/benchmarks/test_noop_cache_insert_or_append_existing_key.py::test_noop_cache PASSED [ 33%]
+tests/benchmarks/test_memory_cache_insert_or_append_existing_key.py::test_memory_cache PASSED [ 66%]
+tests/benchmarks/test_sqlite_cache_insert_or_append_existing_key.py::test_sqlite_cache PASSED [100%]
 
 
------------------------------------------------ benchmark: 1 tests ----------------------------------------------
-Name (time in us)        Min      Max    Mean  StdDev  Median     IQR  Outliers  OPS (Kops/s)  Rounds  Iterations
------------------------------------------------------------------------------------------------------------------
-test_noop_cache       4.4671  77.3030  4.7442  0.5518  4.7010  0.1100  436;3064      210.7825   62540           1
------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------- benchmark: 3 tests --------------------------------------------------------------------------------------
+Name (time in us)          Min                 Max                Mean             StdDev              Median               IQR              Outliers  OPS (Kops/s)            Rounds  Iterations
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_memory_cache       4.4810 (1.0)       82.5270 (1.0)        4.8198 (1.0)       0.7866 (1.0)        4.7020 (1.0)      0.1405 (1.0)       1440;8839      207.4766 (1.0)       86980           1
+test_noop_cache         4.4910 (1.00)     101.9510 (1.24)       5.0057 (1.04)      1.0239 (1.30)       4.7340 (1.01)     0.2710 (1.93)     3377;10160      199.7736 (0.96)      65198           1
+test_sqlite_cache     110.6210 (24.69)    757.4420 (9.18)     122.1662 (25.35)    28.2166 (35.87)    113.7990 (24.20)    8.3070 (59.12)       248;760        8.1856 (0.04)       6342           1
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Legend:
   Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
   OPS: Operations Per Second, computed as 1 / Mean
-============================== 1 passed in 0.55s ===============================
+============================== 3 passed in 2.62s ===============================

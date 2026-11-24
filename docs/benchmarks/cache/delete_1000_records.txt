@@ -1,0 +1,45 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.2.0, pluggy-1.7.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-3/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-3
+configfile: pyproject.toml
+plugins: logfire-sdk-5.6.0, platformdirs-4.14.7, anyio-4.16.0, order-1.5.0, mock-3.17.0, cov-7.1.0, benchmark-5.3.1, asyncio-1.5.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 45 items / 33 deselected / 12 selected
+
+tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_1000_short_conversations PASSED [  8%]
+tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_1000_medium_conversations PASSED [ 16%]
+tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_1000_long_conversations PASSED [ 25%]
+tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_1000_extra_long_conversations PASSED [ 33%]
+tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_1000_short_conversations PASSED [ 41%]
+tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_1000_medium_conversations PASSED [ 50%]
+tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_1000_long_conversations PASSED [ 58%]
+tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_1000_extra_long_conversations PASSED [ 66%]
+tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_1000_short_conversations PASSED [ 75%]
+tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_1000_medium_conversations PASSED [ 83%]
+tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_1000_long_conversations PASSED [ 91%]
+tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_1000_extra_long_conversations PASSED [100%]
+
+
+-------------------------------------------------------------------------------------------------- benchmark: 12 tests ---------------------------------------------------------------------------------------------------
+Name (time in us)                                       Min                 Max               Mean             StdDev             Median               IQR            Outliers  OPS (Kops/s)            Rounds  Iterations
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_noop_cache_1000_extra_long_conversations        4.4460 (1.0)      599.1880 (24.23)     4.7052 (1.00)      1.9390 (5.86)      4.6620 (1.00)     0.0960 (1.09)     459;4253      212.5328 (1.00)      96975           1
+test_memory_cache_1000_long_conversations            4.4490 (1.00)      27.5260 (1.11)      4.7153 (1.00)      0.3538 (1.07)      4.6720 (1.00)     0.1020 (1.16)    1676;5472      212.0777 (1.00)      98825           1
+test_memory_cache_1000_medium_conversations          4.4500 (1.00)      24.7310 (1.0)       4.7048 (1.00)      0.3309 (1.0)       4.6650 (1.00)     0.0970 (1.10)    2027;5961      212.5482 (1.00)     118344           1
+test_memory_cache_1000_short_conversations           4.4550 (1.00)      62.8770 (2.54)      4.7079 (1.00)      0.4481 (1.35)      4.6680 (1.00)     0.1010 (1.15)     776;4030      212.4070 (1.00)      90433           1
+test_noop_cache_1000_short_conversations             4.4580 (1.00)     244.9530 (9.90)      4.8250 (1.03)      1.4921 (4.51)      4.6840 (1.00)     0.1020 (1.16)    1294;4299      207.2522 (0.97)      72401           1
+test_noop_cache_1000_medium_conversations            4.4610 (1.00)     611.7680 (24.74)     4.7027 (1.0)       1.9176 (5.80)      4.6610 (1.0)      0.0880 (1.0)      497;4593      212.6456 (1.0)      104559           1
+test_noop_cache_1000_long_conversations              4.4630 (1.00)      97.5090 (3.94)      4.7236 (1.00)      0.5653 (1.71)      4.6780 (1.00)     0.0970 (1.10)     709;5711      211.7029 (1.00)     104308           1
+test_memory_cache_1000_extra_long_conversations      4.4830 (1.01)      28.0060 (1.13)      4.7342 (1.01)      0.3827 (1.16)      4.6860 (1.01)     0.1040 (1.18)    1791;6167      211.2298 (0.99)     113585           1
+test_sqlite_cache_1000_short_conversations          43.1940 (9.72)     214.1250 (8.66)     46.9827 (9.99)     12.0463 (36.41)    44.0870 (9.46)     0.5982 (6.80)      122;676       21.2844 (0.10)       3713           1
+test_sqlite_cache_1000_medium_conversations         43.4300 (9.77)     312.2850 (12.63)    47.7684 (10.16)    15.1303 (45.73)    44.4790 (9.54)     0.6035 (6.86)      157;568       20.9343 (0.10)       3824           1
+test_sqlite_cache_1000_long_conversations           43.6259 (9.81)     209.4330 (8.47)     45.5061 (9.68)      8.7387 (26.41)    44.3630 (9.52)     0.4318 (4.91)       43;404       21.9751 (0.10)       3767           1
+test_sqlite_cache_1000_extra_long_conversations     43.9310 (9.88)     417.5910 (16.89)    58.3500 (12.41)    25.3360 (76.57)    50.9950 (10.94)    9.6795 (109.98)    366;456       17.1380 (0.08)       3493           1
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+================ 12 passed, 33 deselected in 2427.80s (0:40:27) ================
