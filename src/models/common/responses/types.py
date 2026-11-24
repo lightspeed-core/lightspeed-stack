@@ -63,6 +63,7 @@ type IncludeParameter = Literal[
     "file_search_call.results",
     "message.input_image.image_url",
     "message.output_text.logprobs",
+    "reasoning.encrypted_content",
 ]
 
 type ResponseItem = (

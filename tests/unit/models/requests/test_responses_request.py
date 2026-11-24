@@ -141,6 +141,39 @@ class TestResponsesRequestBodySize:
 
         assert req.prompt_cache_key == "example-cache-key"
 
+    @pytest.mark.parametrize(
+        "include_value",
+        [
+            "web_search_call.action.sources",
+            "code_interpreter_call.outputs",
+            "computer_call_output.output.image_url",
+            "file_search_call.results",
+            "message.input_image.image_url",
+            "message.output_text.logprobs",
+            "reasoning.encrypted_content",
+        ],
+    )
+    def test_include_parameter_accepted(self, include_value: str) -> None:
+        """All valid IncludeParameter values must be accepted."""
+        req = ResponsesRequest.model_validate(
+            {
+                "input": "hello",
+                "include": [include_value],
+            }
+        )
+
+        assert req.include == [include_value]
+
+    def test_invalid_include_parameter_rejected(self) -> None:
+        """Unknown include values must be rejected with ValidationError."""
+        with pytest.raises(ValidationError):
+            ResponsesRequest.model_validate(
+                {
+                    "input": "hello",
+                    "include": ["unknown.include.value"],
+                }
+            )
+
 
 class TestResponsesRequestInputValidation:
     """Validation of empty input values (RSPEED-3909)."""
