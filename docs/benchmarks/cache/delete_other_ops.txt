@@ -1,0 +1,39 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.2.0, pluggy-1.7.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-3/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-3
+configfile: pyproject.toml
+plugins: logfire-sdk-5.6.0, platformdirs-4.14.7, anyio-4.16.0, order-1.5.0, mock-3.17.0, cov-7.1.0, benchmark-5.3.1, asyncio-1.5.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 45 items / 36 deselected / 9 selected
+
+tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_existing_conversation PASSED [ 11%]
+tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_nonexistent_conversation PASSED [ 22%]
+tests/benchmarks/test_noop_cache_delete.py::test_noop_cache_skip_user_id_check PASSED [ 33%]
+tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_existing_conversation PASSED [ 44%]
+tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_nonexistent_conversation PASSED [ 55%]
+tests/benchmarks/test_memory_cache_delete.py::test_memory_cache_skip_user_id_check PASSED [ 66%]
+tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_existing_conversation PASSED [ 77%]
+tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_nonexistent_conversation PASSED [ 88%]
+tests/benchmarks/test_sqlite_cache_delete.py::test_sqlite_cache_skip_user_id_check PASSED [100%]
+
+
+------------------------------------------------------------------------------------------------- benchmark: 9 tests ------------------------------------------------------------------------------------------------
+Name (time in us)                                  Min                 Max               Mean             StdDev             Median               IQR            Outliers  OPS (Kops/s)            Rounds  Iterations
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_noop_cache_skip_user_id_check              2.7190 (1.0)      585.9340 (15.95)     2.9065 (1.0)       1.6987 (4.21)      2.8670 (1.0)      0.0890 (1.0)      410;5874      344.0555 (1.0)      124317           1
+test_memory_cache_skip_user_id_check            2.7250 (1.00)      46.8430 (1.28)      2.9903 (1.03)      0.4288 (1.06)      2.8840 (1.01)     0.1300 (1.46)   13029;18441      334.4161 (0.97)     125110           1
+test_memory_cache_existing_conversation         4.4620 (1.64)      46.0140 (1.25)      4.7184 (1.62)      0.4066 (1.01)      4.6760 (1.63)     0.1040 (1.17)     962;4568      211.9367 (0.62)      91853           1
+test_noop_cache_nonexistent_conversation        4.4660 (1.64)      36.7340 (1.0)       4.7253 (1.63)      0.4030 (1.0)       4.6830 (1.63)     0.1040 (1.17)     447;1983      211.6276 (0.62)      42053           1
+test_memory_cache_nonexistent_conversation      4.4720 (1.64)      60.2640 (1.64)      4.7522 (1.64)      0.5080 (1.26)      4.7000 (1.64)     0.1110 (1.25)     505;3884      210.4272 (0.61)      57684           1
+test_noop_cache_existing_conversation           4.4790 (1.65)     106.4030 (2.90)      4.7340 (1.63)      0.5599 (1.39)      4.6870 (1.63)     0.0990 (1.11)     709;3307      211.2357 (0.61)      66239           1
+test_sqlite_cache_nonexistent_conversation     42.1900 (15.52)    647.2510 (17.62)    45.9200 (15.80)    16.4265 (40.76)    42.9400 (14.98)    0.4723 (5.31)      144;500       21.7770 (0.06)       3601           1
+test_sqlite_cache_skip_user_id_check           42.2300 (15.53)    281.3520 (7.66)     45.9746 (15.82)    13.8369 (34.33)    43.0570 (15.02)    0.5850 (6.57)      176;713       21.7511 (0.06)       4778           1
+test_sqlite_cache_existing_conversation        42.3570 (15.58)    385.1980 (10.49)    46.8786 (16.13)    15.7131 (38.99)    43.1139 (15.04)    0.6102 (6.86)      201;720       21.3317 (0.06)       4233           1
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+======================= 9 passed, 36 deselected in 4.00s =======================

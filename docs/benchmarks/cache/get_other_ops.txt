@@ -1,0 +1,33 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.2.0, pluggy-1.7.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-3/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-3
+configfile: pyproject.toml
+plugins: logfire-sdk-5.6.0, platformdirs-4.14.7, anyio-4.16.0, order-1.5.0, mock-3.17.0, cov-7.1.0, benchmark-5.3.1, asyncio-1.5.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 78 items / 72 deselected / 6 selected
+
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_empty_cache PASSED [ 16%]
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_existing_user PASSED [ 33%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_empty_cache PASSED [ 50%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_existing_user PASSED [ 66%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_empty_cache PASSED [ 83%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_existing_user PASSED [100%]
+
+
+------------------------------------------------------------------------------------------- benchmark: 6 tests ------------------------------------------------------------------------------------------
+Name (time in us)                       Min                 Max               Mean            StdDev             Median               IQR            Outliers  OPS (Kops/s)            Rounds  Iterations
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_noop_cache_existing_user        4.4620 (1.0)       83.3450 (1.73)      4.7252 (1.0)      0.4321 (1.0)       4.6830 (1.0)      0.1070 (1.0)     1162;5124      211.6331 (1.0)      107136           1
+test_memory_cache_existing_user      4.4790 (1.00)     586.3100 (12.14)     4.7743 (1.01)     1.6701 (3.86)      4.7160 (1.01)     0.1271 (1.19)     711;8152      209.4540 (0.99)     128950           1
+test_memory_cache_empty_cache        4.4980 (1.01)      48.2790 (1.0)       4.7826 (1.01)     0.4341 (1.00)      4.7390 (1.01)     0.1180 (1.10)     497;2091      209.0893 (0.99)      45494           1
+test_noop_cache_empty_cache          4.5170 (1.01)      53.3190 (1.10)      4.8023 (1.02)     0.4990 (1.15)      4.7470 (1.01)     0.1200 (1.12)     466;1610      208.2347 (0.98)      28843           1
+test_sqlite_cache_empty_cache       14.2690 (3.20)     154.3500 (3.20)     15.2164 (3.22)     4.9494 (11.45)    14.7480 (3.15)     0.2647 (2.47)      129;645       65.7187 (0.31)       8679           1
+test_sqlite_cache_existing_user     21.5450 (4.83)     291.2720 (6.03)     23.1266 (4.89)     6.1386 (14.21)    22.4260 (4.79)     0.4150 (3.88)      141;562       43.2403 (0.20)       8358           1
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+======================= 6 passed, 72 deselected in 2.84s =======================

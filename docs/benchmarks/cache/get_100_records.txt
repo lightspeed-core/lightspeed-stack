@@ -1,0 +1,69 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.2.0, pluggy-1.7.0 -- /tmp/ramdisk/lightspeed-stack-LCORE-3/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /tmp/ramdisk/lightspeed-stack-LCORE-3
+configfile: pyproject.toml
+plugins: logfire-sdk-5.6.0, platformdirs-4.14.7, anyio-4.16.0, order-1.5.0, mock-3.17.0, cov-7.1.0, benchmark-5.3.1, asyncio-1.5.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 78 items / 54 deselected / 24 selected
+
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_100_short_conversations_key_at_end PASSED [  4%]
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_100_medium_conversations_key_at_end PASSED [  8%]
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_100_long_conversations_key_at_end PASSED [ 12%]
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_100_extra_long_conversations_key_at_end PASSED [ 16%]
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_100_short_conversations_key_at_beginning PASSED [ 20%]
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_100_medium_conversations_key_at_beginning PASSED [ 25%]
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_100_long_conversations_key_at_beginning PASSED [ 29%]
+tests/benchmarks/test_noop_cache_get.py::test_noop_cache_100_extra_long_conversations_key_at_beginning PASSED [ 33%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_100_short_conversations_key_at_end PASSED [ 37%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_100_medium_conversations_key_at_end PASSED [ 41%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_100_long_conversations_key_at_end PASSED [ 45%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_100_extra_long_conversations_key_at_end PASSED [ 50%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_100_short_conversations_key_at_beginning PASSED [ 54%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_100_medium_conversations_key_at_beginning PASSED [ 58%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_100_long_conversations_key_at_beginning PASSED [ 62%]
+tests/benchmarks/test_memory_cache_get.py::test_memory_cache_100_extra_long_conversations_key_at_beginning PASSED [ 66%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_100_short_conversations_key_at_end PASSED [ 70%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_100_medium_conversations_key_at_end PASSED [ 75%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_100_long_conversations_key_at_end PASSED [ 79%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_100_extra_long_conversations_key_at_end PASSED [ 83%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_100_short_conversations_key_at_beginning PASSED [ 87%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_100_medium_conversations_key_at_beginning PASSED [ 91%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_100_long_conversations_key_at_beginning PASSED [ 95%]
+tests/benchmarks/test_sqlite_cache_get.py::test_sqlite_cache_100_extra_long_conversations_key_at_beginning PASSED [100%]
+
+
+---------------------------------------------------------------------------------------------------------- benchmark: 24 tests -----------------------------------------------------------------------------------------------------------
+Name (time in us)                                                       Min                 Max               Mean             StdDev             Median               IQR            Outliers  OPS (Kops/s)            Rounds  Iterations
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_memory_cache_100_medium_conversations_key_at_beginning          4.4440 (1.0)       82.3450 (2.59)      4.7187 (1.0)       0.4726 (1.17)      4.6700 (1.0)      0.1010 (1.0)     1262;5581      211.9250 (1.0)      119346           1
+test_memory_cache_100_long_conversations_key_at_beginning            4.4560 (1.00)     197.1140 (6.20)      4.8744 (1.03)      1.3068 (3.23)      4.6870 (1.00)     0.1630 (1.61)    913;12722      205.1518 (0.97)      86341           1
+test_memory_cache_100_extra_long_conversations_key_at_beginning      4.4710 (1.01)      31.7870 (1.0)       4.8285 (1.02)      0.5136 (1.27)      4.6910 (1.00)     0.1310 (1.30)   9172;12759      207.1054 (0.98)      99138           1
+test_noop_cache_100_medium_conversations_key_at_beginning            4.4749 (1.01)      60.8140 (1.91)      4.7553 (1.01)      0.4051 (1.0)       4.7110 (1.01)     0.1159 (1.15)    1416;5075      210.2905 (0.99)     106384           1
+test_noop_cache_100_medium_conversations_key_at_end                  4.4800 (1.01)     154.5070 (4.86)      4.8165 (1.02)      1.0587 (2.61)      4.7140 (1.01)     0.1080 (1.07)    1545;6027      207.6188 (0.98)     114077           1
+test_memory_cache_100_short_conversations_key_at_beginning           4.4870 (1.01)      60.3730 (1.90)      4.8085 (1.02)      0.5171 (1.28)      4.7170 (1.01)     0.1230 (1.22)    4708;8389      207.9660 (0.98)      91837           1
+test_noop_cache_100_short_conversations_key_at_end                   4.4890 (1.01)      42.8800 (1.35)      4.7755 (1.01)      0.5552 (1.37)      4.7010 (1.01)     0.1100 (1.09)    1549;4943      209.4001 (0.99)      83279           1
+test_noop_cache_100_long_conversations_key_at_end                    4.4950 (1.01)      63.6340 (2.00)      4.8087 (1.02)      0.4508 (1.11)      4.7410 (1.02)     0.1170 (1.16)    3424;6870      207.9543 (0.98)     105821           1
+test_noop_cache_100_long_conversations_key_at_beginning              4.4960 (1.01)     141.5080 (4.45)      4.8883 (1.04)      0.7714 (1.90)      4.7440 (1.02)     0.1540 (1.53)   7463;13565      204.5688 (0.97)     101813           1
+test_noop_cache_100_extra_long_conversations_key_at_beginning        4.4990 (1.01)      50.7580 (1.60)      4.7792 (1.01)      0.4141 (1.02)      4.7330 (1.01)     0.1150 (1.14)    1120;4296      209.2396 (0.99)      83292           1
+test_memory_cache_100_short_conversations_key_at_end                 4.5010 (1.01)     162.0700 (5.10)      4.9721 (1.05)      1.3133 (3.24)      4.7249 (1.01)     0.1270 (1.26)   3165;11426      201.1221 (0.95)     110266           1
+test_noop_cache_100_extra_long_conversations_key_at_end              4.5020 (1.01)     100.7650 (3.17)      4.7676 (1.01)      0.5283 (1.30)      4.7210 (1.01)     0.1060 (1.05)     848;5177      209.7486 (0.99)     100302           1
+test_memory_cache_100_medium_conversations_key_at_end                4.5020 (1.01)     180.0120 (5.66)      4.7810 (1.01)      0.8628 (2.13)      4.7180 (1.01)     0.1090 (1.08)     842;6521      209.1629 (0.99)     112842           1
+test_memory_cache_100_extra_long_conversations_key_at_end            4.5030 (1.01)     562.7910 (17.71)     4.7787 (1.01)      1.8970 (4.68)      4.7100 (1.01)     0.1060 (1.05)     469;6220      209.2619 (0.99)      91760           1
+test_noop_cache_100_short_conversations_key_at_beginning             4.5110 (1.02)      50.8050 (1.60)      4.8901 (1.04)      0.5676 (1.40)      4.7480 (1.02)     0.1500 (1.49)   10036;13834      204.4964 (0.96)     110315           1
+test_memory_cache_100_long_conversations_key_at_end                  4.5180 (1.02)     121.9080 (3.84)      4.9333 (1.05)      1.0784 (2.66)      4.7410 (1.02)     0.1260 (1.25)   2789;13400      202.7048 (0.96)     116415           1
+test_sqlite_cache_100_short_conversations_key_at_beginning          21.7140 (4.89)     217.3660 (6.84)     23.3767 (4.95)      5.4894 (13.55)    22.8025 (4.88)     0.5240 (5.19)      101;846       42.7776 (0.20)       8018           1
+test_sqlite_cache_100_medium_conversations_key_at_beginning         22.1010 (4.97)     264.3080 (8.31)     28.1783 (5.97)     13.7296 (33.89)    23.1910 (4.97)     2.4498 (24.26)     609;831       35.4883 (0.17)       6221           1
+test_sqlite_cache_100_short_conversations_key_at_end                22.2820 (5.01)     190.9280 (6.01)     23.8106 (5.05)      4.9463 (12.21)    23.2860 (4.99)     0.4780 (4.73)      120;575       41.9981 (0.20)       6742           1
+test_sqlite_cache_100_extra_long_conversations_key_at_end           22.3130 (5.02)     137.3870 (4.32)     23.7350 (5.03)      3.7012 (9.14)     23.2990 (4.99)     0.4630 (4.58)      255;444       42.1318 (0.20)       7459           1
+test_sqlite_cache_100_long_conversations_key_at_beginning           22.3440 (5.03)     222.7710 (7.01)     23.7430 (5.03)      5.0194 (12.39)    23.2410 (4.98)     0.4340 (4.30)      140;451       42.1176 (0.20)       7353           1
+test_sqlite_cache_100_medium_conversations_key_at_end               22.5300 (5.07)     183.6600 (5.78)     24.1530 (5.12)      4.2891 (10.59)    23.4780 (5.03)     0.5430 (5.38)     194;1153       41.4028 (0.20)       7953           1
+test_sqlite_cache_100_long_conversations_key_at_end                 22.6650 (5.10)     234.9730 (7.39)     24.3040 (5.15)      5.2226 (12.89)    23.7820 (5.09)     0.4360 (4.32)       98;465       41.1454 (0.19)       7438           1
+test_sqlite_cache_100_extra_long_conversations_key_at_beginning     23.1490 (5.21)     258.6750 (8.14)     31.2938 (6.63)     13.3159 (32.87)    27.3830 (5.86)     6.7950 (67.28)     382;449       31.9552 (0.15)       6388           1
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+================ 24 passed, 54 deselected in 444.76s (0:07:24) =================
