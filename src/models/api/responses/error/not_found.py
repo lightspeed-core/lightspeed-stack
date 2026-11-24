@@ -26,6 +26,13 @@ class NotFoundResponse(AbstractErrorResponse):
                     },
                 },
                 {
+                    "label": "response",
+                    "detail": {
+                        "response": "Response not found",
+                        "cause": "Response with ID resp_abc123 does not exist",
+                    },
+                },
+                {
                     "label": "provider",
                     "detail": {
                         "response": "Provider not found",

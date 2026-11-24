@@ -190,6 +190,24 @@ class InternalServerErrorResponse(AbstractErrorResponse):
         )
 
     @classmethod
+    def database_error_for_operation(cls, operation: str) -> Self:
+        """
+        Create an InternalServerErrorResponse for a failed database operation.
+
+        Args:
+            operation: Short label for the persistence action that failed.
+
+        Returns:
+            Instance with response "Database query failed" and a cause that names the
+            operation.
+
+        """
+        return cls(
+            response="Database query failed",
+            cause=f"Failed to {operation} due to a database error.",
+        )
+
+    @classmethod
     def mcp_server_registration_failed(cls) -> Self:
         """
         Create an InternalServerErrorResponse representing a failed MCP server registration.
