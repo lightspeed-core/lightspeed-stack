@@ -1,7 +1,11 @@
-"""Unit tests for knowledge source settings built from a query."""
+"""Unit tests for knowledge source settings built from a query or Responses request."""
 
+from collections.abc import Sequence
 from types import SimpleNamespace
 
+from ogx_api.openai_responses import (
+    OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
+)
 from pytest_mock import MockerFixture
 
 from agent.types.settings.knowledge import (
@@ -11,7 +15,8 @@ from agent.types.settings.knowledge import (
 )
 from constants import OKP_RAG_ID
 from knowledge.sources.okp import OkpProductFilter
-from models.api.requests import QueryRequest
+from models.api.requests import QueryRequest, ResponsesRequest
+from models.common.responses.types import InputTool, InputToolFileSearch, InputToolMCP
 from models.config import (
     ByokConfiguration,
     RagConfiguration,
@@ -59,6 +64,19 @@ def _query(
         query="What is Kubernetes?",
         vector_store_ids=vector_store_ids,
         okp_products=okp_products,
+    )
+
+
+def _responses(
+    tools: Sequence[InputTool] | None = None,
+    *,
+    tool_choice: ToolChoiceMode | None = None,
+) -> ResponsesRequest:
+    """Build a Responses request. Omitted tools stay omitted."""
+    return ResponsesRequest(
+        input="What is Kubernetes?",
+        tools=None if tools is None else list(tools),
+        tool_choice=tool_choice,
     )
 
 
@@ -129,3 +147,78 @@ def test_okp_products_are_kept_on_the_okp_source(mocker: MockerFixture) -> None:
         not isinstance(source, OKPKnowledgeSourceSettings)
         for source in settings.sources[:-1]
     )
+
+
+def test_omitted_responses_tools_leave_every_source_enabled(
+    mocker: MockerFixture,
+) -> None:
+    """Omitted tools leave every configured source enabled."""
+    _install(mocker, _rag())
+
+    settings = KnowledgeSettings.from_responses_request(_responses())
+
+    assert [source.enabled for source in settings.sources] == [True, True, True]
+    assert settings.tool_max_matches is None
+
+
+def test_file_search_ids_enable_only_the_named_sources(mocker: MockerFixture) -> None:
+    """The file search tool selects knowledge sources by vector store id."""
+    _install(mocker, _rag())
+    responses = _responses(
+        [
+            InputToolFileSearch(vector_store_ids=["beta", OKP_RAG_ID, "unknown"]),
+            InputToolMCP(server_label="docs", server_url="https://mcp.example/docs"),
+        ]
+    )
+
+    settings = KnowledgeSettings.from_responses_request(responses)
+
+    assert settings.sources == [
+        KnowledgeSourceSettings(id="alpha", enabled=False),
+        KnowledgeSourceSettings(id="beta", enabled=True),
+        OKPKnowledgeSourceSettings(id=OKP_RAG_ID, enabled=True),
+    ]
+    assert settings.tool_max_matches is None
+
+
+def test_tools_without_file_search_disable_every_source(mocker: MockerFixture) -> None:
+    """A tools list with no file search tool disables every source."""
+    _install(mocker, _rag())
+    responses = _responses(
+        [InputToolMCP(server_label="docs", server_url="https://mcp.example/docs")]
+    )
+
+    settings = KnowledgeSettings.from_responses_request(responses)
+
+    assert [source.enabled for source in settings.sources] == [False, False, False]
+    assert settings.tool_max_matches is None
+
+
+def test_file_search_max_num_results_sets_tool_max_matches(
+    mocker: MockerFixture,
+) -> None:
+    """An explicit file search result limit becomes the tool match cap."""
+    _install(mocker, _rag())
+    responses = _responses(
+        [
+            InputToolFileSearch(vector_store_ids=["alpha"], max_num_results=7),
+            InputToolMCP(server_label="docs", server_url="https://mcp.example/docs"),
+        ]
+    )
+
+    settings = KnowledgeSettings.from_responses_request(responses)
+
+    assert settings.tool_max_matches == 7
+
+
+def test_tool_choice_none_does_not_change_source_selection(
+    mocker: MockerFixture,
+) -> None:
+    """Tool choice none leaves omitted tools selecting every source."""
+    _install(mocker, _rag())
+
+    settings = KnowledgeSettings.from_responses_request(
+        _responses(tool_choice=ToolChoiceMode.none)
+    )
+
+    assert [source.enabled for source in settings.sources] == [True, True, True]

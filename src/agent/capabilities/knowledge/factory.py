@@ -56,7 +56,7 @@ class KnowledgeFactory:  # pylint: disable=too-few-public-methods
                 sources=sources,
                 reranker=_get_reranker(),
                 auto_max_matches=configuration.rag.retrieval.inline.max_chunks,
-                tool_max_matches=configuration.rag.retrieval.tool.max_chunks,
+                tool_max_matches=settings.tool_max_matches or configuration.rag.retrieval.tool.max_chunks,
             )
         return None
 

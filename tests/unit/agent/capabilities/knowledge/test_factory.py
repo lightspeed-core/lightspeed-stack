@@ -51,9 +51,11 @@ def _install(
     return registry, provider_registry
 
 
-def _settings(*sources: KnowledgeSourceSettings) -> KnowledgeSettings:
+def _settings(
+    *sources: KnowledgeSourceSettings, tool_max_matches: int | None = None
+) -> KnowledgeSettings:
     """Wrap source settings in the object the factory accepts."""
-    return KnowledgeSettings(sources=list(sources))
+    return KnowledgeSettings(sources=list(sources), tool_max_matches=tool_max_matches)
 
 
 def test_no_enabled_sources_build_nothing(mocker: MockerFixture) -> None:
@@ -120,6 +122,44 @@ def test_enabled_sources_keep_settings_order(mocker: MockerFixture) -> None:
         "alpha",
     ]
     providers.resolve_model_instance.assert_not_called()
+
+
+def test_omitted_tool_max_matches_uses_the_configured_limit(
+    mocker: MockerFixture,
+) -> None:
+    """An unset tool match cap leaves the configured tool chunk limit in place."""
+    source = mocker.Mock()
+    registry, _providers = _install(
+        mocker, reranker=None, inline_chunks=3, tool_chunks=9
+    )
+    registry.find_source.return_value = source
+
+    capability = KnowledgeFactory.build_capabilities(
+        _settings(KnowledgeSourceSettings(id="alpha"))
+    )
+
+    assert isinstance(capability, Knowledge)
+    assert capability.tool_max_matches == 9
+    assert capability.auto_max_matches == 3
+
+
+def test_tool_max_matches_overrides_the_configured_limit(
+    mocker: MockerFixture,
+) -> None:
+    """A tool match cap on the settings replaces the configured tool chunk limit."""
+    source = mocker.Mock()
+    registry, _providers = _install(
+        mocker, reranker=None, inline_chunks=3, tool_chunks=9
+    )
+    registry.find_source.return_value = source
+
+    capability = KnowledgeFactory.build_capabilities(
+        _settings(KnowledgeSourceSettings(id="alpha"), tool_max_matches=2)
+    )
+
+    assert isinstance(capability, Knowledge)
+    assert capability.tool_max_matches == 2
+    assert capability.auto_max_matches == 3
 
 
 def test_disabled_reranker_is_not_loaded(mocker: MockerFixture) -> None:
