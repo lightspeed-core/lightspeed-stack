@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from configuration import configuration
-from models.api.requests import QueryRequest
+from models.api.requests import QueryRequest, ResponsesRequest
 
 
 def _enabled_for_request(requested: list[str] | None, item_id: str) -> bool:
@@ -42,6 +42,28 @@ class ShieldSettings:
             request: Incoming query. ``shield_ids`` of ``None`` leaves every
                 shield enabled. An empty list disables every shield. Otherwise
                 only the named shields stay enabled.
+
+        Returns:
+            One shield setting per configured shield, with ``enabled`` set
+            from the request.
+
+        """
+        return [
+            cls(
+                id=shield.name,
+                enabled=_enabled_for_request(request.shield_ids, shield.name),
+            )
+            for shield in configuration.shields
+        ]
+
+    @classmethod
+    def from_responses_request(cls, request: ResponsesRequest) -> list[ShieldSettings]:
+        """Build shield settings for every configured shield.
+
+        Parameters:
+            request: Incoming Responses request. ``shield_ids`` of ``None``
+                leaves every shield enabled. An empty list disables every
+                shield. Otherwise only the named shields stay enabled.
 
         Returns:
             One shield setting per configured shield, with ``enabled`` set
