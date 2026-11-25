@@ -4,8 +4,13 @@ from types import SimpleNamespace
 
 from pytest_mock import MockerFixture
 
-from agent.types.settings.knowledge import KnowledgeSourceSettings
+from agent.types.settings.knowledge import (
+    KnowledgeSettings,
+    KnowledgeSourceSettings,
+    OKPKnowledgeSourceSettings,
+)
 from constants import OKP_RAG_ID
+from knowledge.sources.okp import OkpProductFilter
 from models.api.requests import QueryRequest
 from models.config import (
     ByokConfiguration,
@@ -45,9 +50,16 @@ def _rag() -> RagConfiguration:
     )
 
 
-def _query(vector_store_ids: list[str] | None) -> QueryRequest:
+def _query(
+    vector_store_ids: list[str] | None,
+    okp_products: list[OkpProductFilter] | None = None,
+) -> QueryRequest:
     """Build a query that selects the given knowledge sources."""
-    return QueryRequest(query="What is Kubernetes?", vector_store_ids=vector_store_ids)
+    return QueryRequest(
+        query="What is Kubernetes?",
+        vector_store_ids=vector_store_ids,
+        okp_products=okp_products,
+    )
 
 
 def test_configured_sources_stay_enabled_when_the_query_omits_ids(
@@ -56,12 +68,12 @@ def test_configured_sources_stay_enabled_when_the_query_omits_ids(
     """Omitted vector store ids leave every configured source enabled."""
     _install(mocker, _rag())
 
-    settings = KnowledgeSourceSettings.from_query_request(_query(None))
+    settings = KnowledgeSettings.from_query_request(_query(None))
 
-    assert settings == [
+    assert settings.sources == [
         KnowledgeSourceSettings(id="alpha", enabled=True),
         KnowledgeSourceSettings(id="beta", enabled=True),
-        KnowledgeSourceSettings(id=OKP_RAG_ID, enabled=True),
+        OKPKnowledgeSourceSettings(id=OKP_RAG_ID, enabled=True),
     ]
 
 
@@ -69,12 +81,12 @@ def test_query_ids_enable_only_the_named_sources(mocker: MockerFixture) -> None:
     """A provided id list disables every configured source that is absent."""
     _install(mocker, _rag())
 
-    settings = KnowledgeSourceSettings.from_query_request(_query(["beta", "unknown"]))
+    settings = KnowledgeSettings.from_query_request(_query(["beta", "unknown"]))
 
-    assert settings == [
+    assert settings.sources == [
         KnowledgeSourceSettings(id="alpha", enabled=False),
         KnowledgeSourceSettings(id="beta", enabled=True),
-        KnowledgeSourceSettings(id=OKP_RAG_ID, enabled=False),
+        OKPKnowledgeSourceSettings(id=OKP_RAG_ID, enabled=False),
     ]
 
 
@@ -82,12 +94,12 @@ def test_empty_id_list_disables_every_source(mocker: MockerFixture) -> None:
     """An empty vector store id list disables every configured source."""
     _install(mocker, _rag())
 
-    settings = KnowledgeSourceSettings.from_query_request(_query([]))
+    settings = KnowledgeSettings.from_query_request(_query([]))
 
-    assert settings == [
+    assert settings.sources == [
         KnowledgeSourceSettings(id="alpha", enabled=False),
         KnowledgeSourceSettings(id="beta", enabled=False),
-        KnowledgeSourceSettings(id=OKP_RAG_ID, enabled=False),
+        OKPKnowledgeSourceSettings(id=OKP_RAG_ID, enabled=False),
     ]
 
 
@@ -95,4 +107,25 @@ def test_no_configured_sources_produce_no_settings(mocker: MockerFixture) -> Non
     """An empty RAG configuration yields no knowledge source settings."""
     _install(mocker, RagConfiguration())
 
-    assert KnowledgeSourceSettings.from_query_request(_query(None)) == []
+    assert KnowledgeSettings.from_query_request(_query(None)).sources == []
+
+
+def test_okp_products_are_kept_on_the_okp_source(mocker: MockerFixture) -> None:
+    """Product filters from the query are stored only on the OKP setting."""
+    _install(mocker, _rag())
+    products = [
+        OkpProductFilter("openshift_container_platform", ("4.19", "4.20")),
+        OkpProductFilter("rhel"),
+    ]
+
+    settings = KnowledgeSettings.from_query_request(_query(None, products))
+
+    assert settings.sources[-1] == OKPKnowledgeSourceSettings(
+        id=OKP_RAG_ID,
+        enabled=True,
+        products=products,
+    )
+    assert all(
+        not isinstance(source, OKPKnowledgeSourceSettings)
+        for source in settings.sources[:-1]
+    )

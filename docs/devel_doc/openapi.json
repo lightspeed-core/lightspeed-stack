@@ -16281,6 +16281,29 @@
                 "title": "OkpConfiguration",
                 "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.retrieval.inline.sources``\nor ``rag.retrieval.tool.sources``."
             },
+            "OkpProductFilter": {
+                "properties": {
+                    "product": {
+                        "type": "string",
+                        "title": "Product"
+                    },
+                    "versions": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Versions",
+                        "default": []
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "product"
+                ],
+                "title": "OkpProductFilter",
+                "description": "One product restriction for the OKP MCP ``search`` tool.\n\nThe server matches ``product`` exactly and OR-combines ``versions``.\nAn empty ``versions`` tuple matches that product at any version.\nSeveral filters on one source are OR-combined.\n\nAttributes:\n    product: Product slug, for example ``openshift_container_platform``.\n    versions: Versions to include, for example ``(\"4.19\", \"4.20\")``."
+            },
             "OpenAIInferenceProviderConfig": {
                 "properties": {
                     "api_key": {
@@ -19008,6 +19031,37 @@
                                 }
                             }
                         ]
+                    },
+                    "okp_products": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/OkpProductFilter"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Okp Products",
+                        "description": "Optional list of product restrictions for the OKP knowledge source. Each entry names one product. Versions are OR-combined, and an empty versions list matches every version of that product. Several entries are OR-combined. When omitted, OKP is not restricted by product.",
+                        "examples": [
+                            [
+                                {
+                                    "product": "openshift_container_platform",
+                                    "versions": [
+                                        "4.19",
+                                        "4.20"
+                                    ]
+                                }
+                            ],
+                            [
+                                {
+                                    "product": "rhel"
+                                }
+                            ]
+                        ]
                     }
                 },
                 "additionalProperties": false,
@@ -19016,7 +19070,7 @@
                     "query"
                 ],
                 "title": "QueryRequest",
-                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of configured shield names to apply.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
+                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of configured shield names to apply.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.\n    okp_products: The optional list of product restrictions for the OKP knowledge source.",
                 "examples": [
                     {
                         "attachments": [

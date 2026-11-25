@@ -71,7 +71,7 @@ class AgentFactory:  # pylint: disable=too-few-public-methods
             *(await MCPFactory.build_capabilities(settings.mcp_servers)),
             *ShieldFactory.build_capabilities(settings.shields),
             SkillFactory.build_capabilities(settings.skills),
-            KnowledgeFactory.build_capabilities(settings.knowledge_sources),
+            KnowledgeFactory.build_capabilities(settings.knowledge),
             CompactionFactory.build_capability(settings.compaction),
             StepPersistenceFactory.build_capability(settings.step_persistence),
         )

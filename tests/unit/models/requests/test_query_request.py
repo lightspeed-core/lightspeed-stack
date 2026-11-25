@@ -2,6 +2,7 @@
 
 import pytest
 
+from knowledge.sources.okp import OkpProductFilter
 from models.api.requests import QueryRequest, StreamingInterruptRequest
 from models.common.query import Attachment, SolrVectorSearchRequest
 
@@ -28,6 +29,7 @@ class TestQueryRequest:
         assert qr.model is None
         assert qr.system_prompt is None
         assert qr.attachments is None
+        assert qr.okp_products is None
 
     def test_constructor_wrong_conversation_id(self) -> None:
         """Test the QueryRequest constructor with wrong conversation_id."""
@@ -186,6 +188,25 @@ class TestQueryRequest:
         solr_request = SolrVectorSearchRequest.model_validate(qr.solr)
         assert solr_request.mode == "hybrid"
         assert solr_request.filters == {"fq": ["x:y"]}
+
+    def test_okp_products_parse_into_filters(self) -> None:
+        """JSON product entries become a list of OKP product filters."""
+        qr = QueryRequest.model_validate(
+            {
+                "query": "What is Kubernetes?",
+                "okp_products": [
+                    {
+                        "product": "openshift_container_platform",
+                        "versions": ["4.19", "4.20"],
+                    },
+                    {"product": "rhel"},
+                ],
+            }
+        )
+        assert qr.okp_products == [
+            OkpProductFilter("openshift_container_platform", ("4.19", "4.20")),
+            OkpProductFilter("rhel"),
+        ]
 
 
 class TestQueryRequestEmptyQuery:

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 from configuration import configuration
+from constants import OKP_RAG_ID
+from knowledge.sources.okp import OkpProductFilter
 from models.api.requests import QueryRequest
 
 
@@ -54,8 +57,28 @@ class KnowledgeSourceSettings:
     id: str
     enabled: bool = True
 
+
+@dataclass
+class OKPKnowledgeSourceSettings(KnowledgeSourceSettings):
+    """Settings for an OKP knowledge source.
+
+    Attributes:
+        products: Product restrictions from the query. ``None`` leaves the
+            registered source unrestricted.
+
+    """
+
+    products: Optional[list[OkpProductFilter]] = None
+
+
+@dataclass
+class KnowledgeSettings:
+    """Settings for a knowledge source."""
+
+    sources: list[KnowledgeSourceSettings] = field(default_factory=list)
+
     @classmethod
-    def from_query_request(cls, request: QueryRequest) -> list[KnowledgeSourceSettings]:
+    def from_query_request(cls, request: QueryRequest) -> KnowledgeSettings:
         """Build knowledge source settings for every configured source.
 
         Parameters:
@@ -65,13 +88,21 @@ class KnowledgeSourceSettings:
 
         Returns:
             One knowledge source setting per configured source, with
-            ``enabled`` set from the request.
+            ``enabled`` set from the request. The OKP setting also carries
+            ``request.okp_products``.
 
         """
-        return [
-            cls(
-                id=source_id,
-                enabled=_enabled_for_request(request.vector_store_ids, source_id),
-            )
-            for source_id in _configured_knowledge_ids()
-        ]
+        sources: list[KnowledgeSourceSettings] = []
+        for source_id in _configured_knowledge_ids():
+            enabled = _enabled_for_request(request.vector_store_ids, source_id)
+            if source_id == OKP_RAG_ID:
+                sources.append(
+                    OKPKnowledgeSourceSettings(
+                        id=source_id,
+                        enabled=enabled,
+                        products=request.okp_products,
+                    )
+                )
+            else:
+                sources.append(KnowledgeSourceSettings(id=source_id, enabled=enabled))
+        return cls(sources=sources)

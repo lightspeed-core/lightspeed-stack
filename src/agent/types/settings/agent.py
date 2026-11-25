@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import Request
 
 from agent.types.settings.compaction import CompactionSettings
-from agent.types.settings.knowledge import KnowledgeSourceSettings
+from agent.types.settings.knowledge import KnowledgeSettings
 from agent.types.settings.mcp import MCPSettings
 from agent.types.settings.shield import ShieldSettings
 from agent.types.settings.skill import SkillSettings
@@ -33,7 +33,7 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
 
     skills: list[SkillSettings] = field(default_factory=list)
     shields: list[ShieldSettings] = field(default_factory=list)
-    knowledge_sources: list[KnowledgeSourceSettings] = field(default_factory=list)
+    knowledge: KnowledgeSettings = field(default_factory=KnowledgeSettings)
     mcp_servers: list[MCPSettings] = field(default_factory=list)
 
     @classmethod
@@ -71,6 +71,6 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
             step_persistence=StepPersistenceSettings.from_query_request(query_request),
             skills=SkillSettings.from_query_request(query_request),
             shields=ShieldSettings.from_query_request(query_request),
-            knowledge_sources=KnowledgeSourceSettings.from_query_request(query_request),
+            knowledge=KnowledgeSettings.from_query_request(query_request),
             mcp_servers=MCPSettings.from_query_request(request, query_request, token),
         )
