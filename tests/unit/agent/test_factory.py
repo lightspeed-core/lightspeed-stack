@@ -90,7 +90,7 @@ async def test_create_agent_assembles_resolved_capabilities(
     factories["mcp"].assert_awaited_once_with(settings.mcp_servers)
     factories["shields"].assert_called_once_with(settings.shields)
     factories["skills"].assert_called_once_with(settings.skills)
-    factories["knowledge"].assert_called_once_with(settings.knowledge_sources)
+    factories["knowledge"].assert_called_once_with(settings.knowledge)
     factories["compaction"].assert_called_once_with(settings.compaction)
     factories["persistence"].assert_called_once_with()
     agent_cls.assert_called_once_with(
