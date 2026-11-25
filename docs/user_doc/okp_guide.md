@@ -19,8 +19,11 @@ configuration, see the [RAG Configuration Guide](rag_guide.md).
 * [Prerequisites](#prerequisites)
 * [Step 1: Launch OKP](#step-1-launch-okp)
 * [Step 2: Install Dependencies and Set Environment Variables](#step-2-install-dependencies-and-set-environment-variables)
+  * [EnMaaS (OpenAI-compatible remote LLM)](#enmaas-openai-compatible-remote-llm)
 * [Step 3: Configure Lightspeed Stack](#step-3-configure-lightspeed-stack)
 * [Step 4: Launch Lightspeed Stack](#step-4-launch-lightspeed-stack)
+  * [Library mode (embedded OGX)](#library-mode-embedded-ogx)
+  * [Server mode (separate OGX process)](#server-mode-separate-ogx-process)
 * [Step 5: Verify the Stack](#step-5-verify-the-stack)
 
 ---
@@ -45,7 +48,8 @@ validating that queries return referenced chunks.
   If you already cloned without `--recursive`, run: `git submodule update --init`
 * [Podman](https://podman.io/) (or Docker) to run the OKP image
 * [uv](https://docs.astral.sh/uv/) for Python dependency management
-* An OpenAI API key (for inference when using OpenAI in your run config)
+* An API key for your LLM backend (OpenAI or an OpenAI-compatible gateway such as
+  EnMaaS)
 
 ---
 
@@ -104,6 +108,35 @@ export RH_SERVER_OKP=http://host.containers.internal:8081
 # Docker:
 # export RH_SERVER_OKP=http://host.docker.internal:8081
 ```
+
+### EnMaaS (OpenAI-compatible remote LLM)
+
+Use EnMaaS (or similar) by exporting your token as `OPENAI_API_KEY`, the
+gateway as `OPENAI_BASE_URL`, and the model as `E2E_OPENAI_MODEL`, and add
+`inference.providers[].config` (on the provider entry, not at file root):
+
+```bash
+export OPENAI_API_KEY=<your-enmaas-api-key>
+export OPENAI_BASE_URL=https://api.enmaas.devshift.net/v1
+export E2E_OPENAI_MODEL=rits/zai-org/glm-5-3
+```
+
+```yaml
+inference:
+  default_provider: openai
+  default_model: ${env.E2E_OPENAI_MODEL:=rits/zai-org/glm-5-3}
+  providers:
+    - type: openai
+      config:
+        api_key: ${env.OPENAI_API_KEY} #EnMaaS token
+        base_url: ${env.OPENAI_BASE_URL:=} #EnMaaS base url (https://api.enmaas.devshift.net/v1 )
+      allowed_models:
+        - ${env.E2E_OPENAI_MODEL:=rits/zai-org/glm-5-3}
+```
+
+In **library mode**, add `api_key_env: OPENAI_API_KEY` and
+`extra.base_url` on the same provider so OGX synthesis picks up the EnMaaS
+URL and key (synthesis does not read `config` today).
 
 ---
 
@@ -294,16 +327,34 @@ curl -sX POST http://localhost:8080/v1/query \
 
 ## Step 4: Launch Lightspeed Stack
 
-Then launch Lightspeed Stack using your Lightspeed Stack
-config(`lightspeed-stack.yaml`) which references the provided default
-Effective OGX config (the synthesized `run.yaml` — in legacy mode, your external `run.yaml`):
+Use either **library mode** (one process, OGX embedded) or **server mode**
+(Lightspeed Stack on port 8080 plus a separate OGX process, often on 8321).
+OKP enrichment (Solr vector store, `external_providers_dir`) is applied
+automatically when `okp` is listed under `rag.retrieval.inline.sources`
+and/or `rag.retrieval.tool.sources`.
+
+### Library mode (embedded OGX)
+
+One process on port **8080**; OGX config is synthesized at startup (no separate
+`ogx run`). In `lightspeed-stack.yaml`, set `ogx.use_as_library_client: true`,
+`ogx.config.baseline: byo-llm`, OKP `rag` (Step 3), and `inference` (Step 2).
 
 ```bash
-make run
+git submodule update --init providers
+export PYTHONPATH="$(pwd)/providers${PYTHONPATH:+:$PYTHONPATH}"
+export EXTERNAL_PROVIDERS_DIR="$(pwd)/providers/resources/external_providers"
+export RH_SERVER_OKP=http://localhost:8081/solr
+# Plus OPENAI_* / EnMaaS vars from Step 2
+
+make run-ogx CONFIG=lightspeed-stack.yaml
 ```
 
-Lightspeed Stack has launched successfully and is available when you see this
-log output:
+### Server mode (separate OGX process)
+
+Use `make run` (compose), or follow
+[Running OKP RAG tests locally — server mode](../testing/e2e_testing.md#running-okp-rag-tests-locally-server-mode).
+
+Lightspeed Stack has launched successfully when you see this log output:
 
 ```log
 INFO     2026-03-17 11:20:31,347 uvicorn.error:62 uncategorized: Application startup complete.
@@ -349,8 +400,8 @@ Example response excerpt:
 If you see no RAG context, verify:
 
 1. OKP is up at http://localhost:8081
-2. `lightspeed-stack.yaml` has `okp` under `rag.inline` and/or `rag.tool` as in Step 4
+2. `lightspeed-stack.yaml` lists `okp` under `rag.retrieval.inline.sources` and/or `rag.retrieval.tool.sources` as in Step 3
 
-The Behave suite `okp_rag.feature` (`@cfg_okp`) runs in Konflux in CI. To stand up OKP + OGX + LCS on a laptop and run a matching scenario, see [Running OKP RAG tests locally](../testing/e2e_testing.md#running-okp-rag-tests-locally).
+Local Behave: [Running OKP RAG tests locally](../testing/e2e_testing.md#running-okp-rag-tests-locally).
 
 ---

@@ -218,9 +218,17 @@ Run that file only with the mock config, not with the real-model override.
 
 ## Running OKP RAG tests locally
 
-`okp_rag.feature` is `@konflux-only`. CI deploys OKP as a pod; `make test-e2e` skips the feature. Do not set `E2E_KONFLUX_E2E=1` locally (that path is Kubernetes). On a laptop, start OKP in Docker, enrich and run OGX and LCS as host processes, then run **one scenario that matches the YAML you started**.
+`okp_rag.feature` is `@konflux-only`. CI deploys OKP as a pod; `make test-e2e` skips the feature. Do not set `E2E_KONFLUX_E2E=1` locally (that path is Kubernetes). On a laptop, start OKP in Docker, then run Lightspeed Stack with a matching OKP YAML.
 
 Needs `registry.redhat.io` login, `OPENAI_API_KEY`, `uv sync --locked --group ogxlibdev`, and an initialized `providers` submodule (`git submodule update --init providers`).
+
+Setup: [OKP guide — library mode](../user_doc/okp_guide.md#library-mode-embedded-ogx) or
+[EnMaaS](../user_doc/okp_guide.md#enmaas-openai-compatible-remote-llm). For EnMaaS,
+set `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `E2E_OPENAI_MODEL`, and put
+`extra.base_url` (and matching `default_model` / `allowed_models`) on the OpenAI
+provider in the Lightspeed YAML you pass to synthesis or `make run-ogx`. Exporting
+`OPENAI_BASE_URL` alone does not route OGX; synthesis reads `inference.providers[]`
+fields such as `extra` and `api_key_env`, not bare environment variables by themselves.
 
 ### Prerequisite: OKP in Docker
 
@@ -236,18 +244,86 @@ curl -sS -m 15 -o /dev/null -w "%{http_code}\n" \
   'http://localhost:8081/solr/portal-rag/select?q=*:*&rows=0'
 ```
 
+### Running OKP RAG tests locally (library mode)
+
+Use embedded OGX (one process on port 8080). Product setup—OKP under `rag`,
+`ogx.use_as_library_client: true`, `run.yaml` profile, provider env vars—is in
+[OKP guide — library mode](../user_doc/okp_guide.md#library-mode-embedded-ogx). The
+repo does **not** yet ship committed `tests/e2e/configuration/library-mode/*okp*.yaml`
+fixtures; OKP Behave coverage in CI is still server-oriented until library-mode e2e
+configs land.
+
+**Start the stack** with a Lightspeed YAML you maintain locally (for example a copy of
+`lightspeed-stack.yaml` edited per the OKP guide). Materialize a synthesis profile if
+you do not already have `run.yaml` at the repo root:
+
+```bash
+git submodule update --init providers
+export PYTHONPATH="$(pwd)/providers${PYTHONPATH:+:$PYTHONPATH}"
+export EXTERNAL_PROVIDERS_DIR="$(pwd)/providers/resources/external_providers"
+export RH_SERVER_OKP=http://localhost:8081/solr
+export OPENAI_API_KEY=<your-key>
+
+cp tests/e2e/configs/run-ci.yaml run.yaml
+make run-ogx CONFIG=lightspeed-stack.yaml   # or your local OKP-enabled YAML path
+```
+
+**Run Behave in library mode.** Set `E2E_DEPLOYMENT_MODE=library` so
+`The service uses the … configuration` resolves paths under
+`tests/e2e/configuration/library-mode/` (see [Deployment Modes](#deployment-modes-server-vs-library)).
+`okp_rag` scenarios still name files such as `lightspeed-stack-okp-offline.yaml`. Until
+matching library-mode fixtures are added to the tree, either create that file locally
+(adapt the server-mode OKP YAML: library `ogx` block with `profile: run.yaml`, same OKP
+`rag` shape) or temporarily comment out the `Given The service uses the … configuration`
+step while you iterate on a single startup `CONFIG`. Comment `@konflux-only` on the
+Feature, `OKP(Solr) server is running` in Background, and `OGX is restarted` /
+`The service is restarted` on the scenario (no separate OGX process in library mode). Do
+not commit those edits or local-only YAML paths.
+
+```bash
+E2E_DEPLOYMENT_MODE=library uv run behave tests/e2e/features/okp_rag.feature:24
+```
+
+For the supported path with committed e2e fixtures today, use [server mode](#running-okp-rag-tests-locally-server-mode) below.
+
+### Running OKP RAG tests locally (server mode)
+
 ### 1. Create the enriched run file
 
 Use the same Lightspeed YAML the scenario will load (`-c`). Example: offline inline RAG.
+
+For **EnMaaS**, export `OPENAI_BASE_URL` and `E2E_OPENAI_MODEL` as in the
+[EnMaaS section](../user_doc/okp_guide.md#enmaas-openai-compatible-remote-llm), and
+ensure the `-c` file's OpenAI provider includes `extra.base_url` and the EnMaaS model
+in `default_model` / `allowed_models` before synthesis—for example:
+
+```yaml
+inference:
+  default_provider: openai
+  default_model: ${env.E2E_OPENAI_MODEL:=rits/zai-org/glm-5-3}
+  providers:
+    - type: openai
+      id: openai
+      api_key_env: OPENAI_API_KEY
+      extra:
+        base_url: ${env.OPENAI_BASE_URL:=https://api.enmaas.devshift.net/v1}
+      allowed_models:
+        - ${env.E2E_OPENAI_MODEL:=rits/zai-org/glm-5-3}
+```
+
+You can patch `tests/e2e/configuration/server-mode/lightspeed-stack-okp-offline.yaml`
+locally for that run; do not commit EnMaaS-specific values.
 
 ```bash
 export PYTHONPATH="$(pwd)/providers${PYTHONPATH:+:$PYTHONPATH}"
 export EXTERNAL_PROVIDERS_DIR="$(pwd)/providers/resources/external_providers"
 export RH_SERVER_OKP=http://localhost:8081/solr
 
+# The OKP e2e YAML includes inference.providers, so the CLI synthesizes
+# (the -i run.yaml argument is ignored). Output is a full run.yaml, not a
+# patched examples/run.yaml.
 uv run python src/ogx_configuration.py \
   -c tests/e2e/configuration/server-mode/lightspeed-stack-okp-offline.yaml \
-  -i run.yaml \
   -o run_enriched.yaml
 ```
 
@@ -256,6 +332,7 @@ uv run python src/ogx_configuration.py \
 ```bash
 export PYTHONPATH="$(pwd)/providers${PYTHONPATH:+:$PYTHONPATH}"
 export EXTERNAL_PROVIDERS_DIR="$(pwd)/providers/resources/external_providers"
+export OPENAI_API_KEY=<your-key>
 
 uv run ogx stack run run_enriched.yaml --port 8321
 ```
@@ -266,7 +343,8 @@ Same `CONFIG` as `-c` in step 1. `make run-ogx` starts LCS only (`CONFIG=`, not 
 
 ```bash
 export RH_SERVER_OKP=http://localhost:8081/solr
-export E2E_LLAMA_HOSTNAME=localhost
+export E2E_OGX_HOSTNAME=localhost
+export OPENAI_API_KEY=<your-key>
 LIGHTSPEED_STACK_LOG_LEVEL=DEBUG make run-ogx \
   CONFIG=tests/e2e/configuration/server-mode/lightspeed-stack-okp-offline.yaml
 ```
