@@ -408,16 +408,18 @@ class TestExtractSolrDocumentMetadata:
             "title": "Test Document",
             "reference_url": "https://example.com/doc",
             "source_path": "/docs/page.html#section",
+            "parent_id": "/documentation/en-us/p/1/topic",
         }
 
-        doc_id, title, reference_url, source_path = _extract_solr_document_metadata(
-            chunk
+        doc_id, title, reference_url, source_path, parent_id = (
+            _extract_solr_document_metadata(chunk)
         )
 
         assert doc_id == "doc_123"
         assert title == "Test Document"
         assert reference_url == "https://example.com/doc"
         assert source_path == "/docs/page.html#section"
+        assert parent_id == "/documentation/en-us/p/1/topic"
 
     def test_extract_from_chunk_metadata_object(self, mocker: MockerFixture) -> None:
         """Test extraction from typed chunk_metadata object."""
@@ -426,33 +428,37 @@ class TestExtractSolrDocumentMetadata:
         chunk_meta.title = "Another Document"
         chunk_meta.reference_url = "https://example.com/another"
         chunk_meta.source_path = "/docs/another.html"
+        chunk_meta.parent_id = "/documentation/en-us/p/1/another"
+        chunk_meta.document_id = "/documentation/en-us/p/1/another"
 
         chunk = mocker.Mock()
         chunk.metadata = {}
         chunk.chunk_metadata = chunk_meta
 
-        doc_id, title, reference_url, source_path = _extract_solr_document_metadata(
-            chunk
+        doc_id, title, reference_url, source_path, parent_id = (
+            _extract_solr_document_metadata(chunk)
         )
 
         assert doc_id == "doc_456"
         assert title == "Another Document"
         assert reference_url == "https://example.com/another"
         assert source_path == "/docs/another.html"
+        assert parent_id == "/documentation/en-us/p/1/another"
 
     def test_extract_with_missing_fields(self, mocker: MockerFixture) -> None:
         """Test extraction when some fields are missing."""
         chunk = mocker.Mock()
         chunk.metadata = {"doc_id": "doc_789"}
 
-        doc_id, title, reference_url, source_path = _extract_solr_document_metadata(
-            chunk
+        doc_id, title, reference_url, source_path, parent_id = (
+            _extract_solr_document_metadata(chunk)
         )
 
         assert doc_id == "doc_789"
         assert title is None
         assert reference_url is None
         assert source_path is None
+        assert parent_id is None
 
 
 class TestGetOkpBaseUrl:
@@ -480,22 +486,25 @@ class TestGetOkpBaseUrl:
 class TestBuildDocumentUrl:
     """Tests for _build_document_url function."""
 
-    def test_offline_mode_with_source_path(self, mocker: MockerFixture) -> None:
-        """Test URL building in offline mode with source_path."""
+    def test_offline_mode_uses_parent_id_with_anchor(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test offline mode builds from parent_id and grafts the source_path anchor."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = "https://mimir.test"
         mocker.patch("utils.rag.vector_search.configuration", config_mock)
         doc_url, reference_doc = _build_document_url(
             offline=True,
-            doc_id="doc_123",
+            doc_id="/documentation/en-us/p/1/install_chunk_2",
             reference_url=None,
-            source_path="/docs/install.html#step-3",
+            source_path="/en/documentation/p/1/install#step-3",
+            parent_id="/documentation/en-us/p/1/install",
         )
-        assert doc_url == "https://mimir.test/docs/install.html#step-3"
-        assert reference_doc == "/docs/install.html#step-3"
+        assert doc_url == "https://mimir.test/documentation/en-us/p/1/install#step-3"
+        assert reference_doc == "/documentation/en-us/p/1/install#step-3"
 
     def test_offline_mode_falls_back_to_doc_id(self, mocker: MockerFixture) -> None:
-        """Test offline mode falls back to doc_id when source_path is None."""
+        """Test offline mode falls back to doc_id when parent_id/source_path absent."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = "https://mimir.test"
         mocker.patch("utils.rag.vector_search.configuration", config_mock)
@@ -541,10 +550,16 @@ class TestConvertSolrChunksToRagFormat:
     """Tests for _convert_solr_chunks_to_rag_format function."""
 
     def test_convert_with_metadata_offline(self, mocker: MockerFixture) -> None:
-        """Test conversion with metadata in offline mode uses source_path."""
+        """Test offline conversion builds doc_url from parent_id with grafted anchor."""
+        config_mock = mocker.Mock()
+        config_mock.okp.rhokp_url = "https://mimir.test"
+        mocker.patch("utils.rag.vector_search.configuration", config_mock)
         chunk = mocker.Mock()
         chunk.content = "Test content"
-        chunk.metadata = {"source_path": "/docs/install.html#step-3"}
+        chunk.metadata = {
+            "parent_id": "/documentation/en-us/p/1/install",
+            "source_path": "/en/documentation/p/1/install#step-3",
+        }
         chunk.chunk_metadata = None
 
         result = _convert_solr_chunks_to_rag_format([chunk], [0.85], offline=True)
@@ -555,7 +570,10 @@ class TestConvertSolrChunksToRagFormat:
         assert result[0].score == 0.85
         assert result[0].attributes is not None
         assert "doc_url" in result[0].attributes
-        assert "/docs/install.html#step-3" in result[0].attributes["doc_url"]
+        assert (
+            result[0].attributes["doc_url"]
+            == "https://mimir.test/documentation/en-us/p/1/install#step-3"
+        )
 
     def test_convert_with_metadata_online(self, mocker: MockerFixture) -> None:
         """Test conversion with metadata in online mode."""

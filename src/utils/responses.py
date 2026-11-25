@@ -135,6 +135,7 @@ from utils.query import (
     normalize_vertex_ai_model_id,
     prepare_input,
 )
+from utils.referenced_documents import graft_url_fragment
 from utils.suid import is_moderation_id, to_ogx_conversation_id
 from utils.token_counter import TokenCounter
 
@@ -917,8 +918,16 @@ def apply_mcp_headers_to_explicit_tools(
 def _build_okp_doc_url(attributes: dict[str, Any]) -> Optional[str]:
     """Build a full OKP document URL from file_search result attributes.
 
-    Uses the ``offline`` flag from OKP configuration to choose between
-    ``source_path`` (disconnected clusters) and ``reference_url`` (online).
+    Uses the ``offline`` flag from OKP configuration to choose the relative path:
+
+    * offline (disconnected / RHOKP portal): the ``parent_id`` / ``document_id``
+      path, i.e. the portal's own ``/documentation/en-us/...`` layout. The chunk's
+      section anchor is preserved by grafting the ``#fragment`` from
+      ``source_path`` so deep links keep working. ``source_path`` itself is the
+      docs.redhat.com path (``/en/documentation/...``) and is **not** served by the
+      offline portal, so it must not be used as the path.
+    * online: ``reference_url`` (the docs.redhat.com URL).
+
     The chosen relative path is joined with the OKP base URL.
 
     Parameters:
@@ -930,7 +939,12 @@ def _build_okp_doc_url(attributes: dict[str, Any]) -> Optional[str]:
     """
     offline = configuration.okp.offline
     if offline:
-        reference = attributes.get("source_path") or attributes.get("doc_id")
+        reference = (
+            attributes.get("parent_id")
+            or attributes.get("document_id")
+            or attributes.get("doc_id")
+        )
+        reference = graft_url_fragment(reference, attributes.get("source_path"))
     else:
         reference = attributes.get("reference_url") or attributes.get("doc_id")
 

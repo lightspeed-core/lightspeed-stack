@@ -404,18 +404,20 @@ class TestBuildReferencedDocument:
         assert str(doc.doc_url) == "https://docs.example.com/en/docs/guide/index"
         assert doc.source == "okp"
 
-    def test_okp_offline_builds_url_from_source_path(
+    def test_okp_offline_builds_url_from_portal_path(
         self, mocker: MockerFixture
     ) -> None:
-        """Test OKP offline mode uses source_path with OKP base URL."""
+        """Test OKP offline mode uses the portal path and grafts the source anchor."""
         mock_config = mocker.patch("utils.responses.configuration")
         mock_config.okp.offline = True
-        mock_config.okp.rhokp_url = AnyUrl("http://localhost:8081/")
+        mock_config.okp.rhokp_url = AnyUrl("http://localhost:8080/")
 
         result = _file_search_result(
             attributes={
-                "reference_url": "https://docs.redhat.com/en/docs/guide/index",
-                "source_path": "/en/docs/guide/index",
+                "reference_url": "https://docs.redhat.com/en/docs/guide/index#frag",
+                "source_path": "/en/docs/guide/index#frag",
+                "parent_id": "/documentation/en-us/p/1/guide",
+                "document_id": "/documentation/en-us/p/1/guide",
                 "title": "OKP Guide",
                 "source": "okp",
             }
@@ -424,7 +426,10 @@ class TestBuildReferencedDocument:
         doc = build_referenced_document(result, ["portal-rag"], {"portal-rag": "okp"})
 
         assert doc is not None
-        assert str(doc.doc_url) == "http://localhost:8081/en/docs/guide/index"
+        assert (
+            str(doc.doc_url)
+            == "http://localhost:8080/documentation/en-us/p/1/guide#frag"
+        )
         assert doc.source == "okp"
 
     def test_non_okp_source_uses_reference_url_directly(self) -> None:
