@@ -31,8 +31,8 @@ from models.api.responses.successful import (
 )
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
 from models.common import (
-    ConversationData,
     ConversationDetails,
+    ConversationListItemV2,
     HealthStatus,
     MCPServerAuthInfo,
     ProviderHealthStatus,
@@ -854,14 +854,14 @@ class TestConversationsListResponseV2:
         """Test ConversationsListResponseV2 with conversation data.
 
         Validate that ConversationsListResponseV2 stores provided
-        ConversationData entries correctly.
+        ConversationListItemV2 entries correctly.
 
-        Constructs a ConversationsListResponseV2 with a single ConversationData
-        entry and asserts the response is an AbstractSuccessfulResponse,
+        Constructs a ConversationsListResponseV2 with a single list item
+        and asserts the response is an AbstractSuccessfulResponse,
         contains one conversation, and preserves the conversation_id.
         """
         conversations = [
-            ConversationData(
+            ConversationListItemV2.model_construct(
                 conversation_id="123e4567-e89b-12d3-a456-426614174000",
                 topic_summary="Test topic",
                 last_message_timestamp=1704067200.0,
@@ -878,7 +878,7 @@ class TestConversationsListResponseV2:
     def test_conversation_with_none_topic(self) -> None:
         """Test ConversationsListResponseV2 with conversation having None topic_summary."""
         conversations = [
-            ConversationData(
+            ConversationListItemV2.model_construct(
                 conversation_id="conv-123",
                 topic_summary=None,
                 last_message_timestamp=1704067200.0,

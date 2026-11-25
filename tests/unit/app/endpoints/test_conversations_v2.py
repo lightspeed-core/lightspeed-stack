@@ -25,6 +25,9 @@ from app.endpoints.conversations_v2 import (
 )
 from cache.cache_entry import CacheEntry
 from configuration import AppConfig
+from conversations.display_history.agentic.models.conversation import (
+    ConversationMetadata,
+)
 from models.api.requests import ConversationUpdateRequest
 from models.api.responses.successful import ConversationUpdateResponse
 from models.common import ConversationData
@@ -38,6 +41,28 @@ from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
 VALID_CONVERSATION_ID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_CONVERSATION_ID = "invalid-id"
+
+
+def _list_request(mocker: MockerFixture) -> MockType:
+    """Request mock with empty authorized_actions for list handler tests."""
+    request = mocker.Mock()
+    request.state.authorized_actions = set()
+    return request
+
+
+def _envelope_metadata(
+    conversation_id: str = VALID_CONVERSATION_ID,
+) -> ConversationMetadata:
+    """Minimal ConversationMetadata for v2 list merge tests."""
+    return ConversationMetadata(
+        conversation_id=conversation_id,
+        created_at=datetime(2024, 1, 1, tzinfo=UTC),
+        last_turn_at=datetime(2024, 1, 1, 0, 5, tzinfo=UTC),
+        turn_count=2,
+        last_used_model="gpt-5.6-luna",
+        last_used_provider="openai",
+        topic_summary="summary",
+    )
 
 
 class TestBuildConversationTurnFromCacheEntry:
@@ -333,7 +358,7 @@ class TestGetConversationsListEndpoint:
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversations_list_endpoint_handler(
-                request=mocker.Mock(),
+                request=_list_request(mocker),
                 auth=MOCK_AUTH,
             )
 
@@ -343,7 +368,7 @@ class TestGetConversationsListEndpoint:
     async def test_conversation_cache_not_configured(
         self, mocker: MockerFixture
     ) -> None:
-        """Test the endpoint when conversation cache is not configured."""
+        """Test the list endpoint when conversation cache is not configured."""
         mock_authorization_resolvers(mocker)
         mock_config = mocker.Mock()
         mock_config.conversation_cache_configuration = mocker.Mock()
@@ -352,7 +377,7 @@ class TestGetConversationsListEndpoint:
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversations_list_endpoint_handler(
-                request=mocker.Mock(),
+                request=_list_request(mocker),
                 auth=MOCK_AUTH,
             )
 
@@ -370,11 +395,12 @@ class TestGetConversationsListEndpoint:
         """Test successful retrieval of conversation list."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v2.list_user_conversations",
+            return_value=[_envelope_metadata()],
+        )
 
-        timestamp_str = "2024-01-01T00:00:00Z"
-        timestamp_dt = datetime.fromisoformat(timestamp_str).replace(tzinfo=UTC)
-        timestamp = timestamp_dt.timestamp()
-
+        timestamp = 1704067200.0
         mock_configuration.conversation_cache.list.return_value = [
             ConversationData(
                 conversation_id=VALID_CONVERSATION_ID,
@@ -384,13 +410,14 @@ class TestGetConversationsListEndpoint:
         ]
 
         response = await get_conversations_list_endpoint_handler(
-            request=mocker.Mock(),
+            request=_list_request(mocker),
             auth=MOCK_AUTH,
         )
 
         assert response is not None
         assert len(response.conversations) == 1
         assert response.conversations[0].conversation_id == VALID_CONVERSATION_ID
+        assert response.conversations[0].last_message_timestamp == timestamp
 
     @pytest.mark.asyncio
     async def test_successful_retrieval_empty_list(
@@ -399,10 +426,14 @@ class TestGetConversationsListEndpoint:
         """Test successful retrieval of an empty conversation list."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v2.list_user_conversations",
+            return_value=[],
+        )
         mock_configuration.conversation_cache.list.return_value = []
 
         response = await get_conversations_list_endpoint_handler(
-            request=mocker.Mock(),
+            request=_list_request(mocker),
             auth=MOCK_AUTH,
         )
 
@@ -424,11 +455,15 @@ class TestGetConversationsListEndpoint:
         """
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v2.list_user_conversations",
+            return_value=[],
+        )
         mock_configuration.conversation_cache.list.return_value = []
         mock_auth_with_skip = ("mock_user_id", "mock_username", True, "mock_token")
 
         await get_conversations_list_endpoint_handler(
-            request=mocker.Mock(),
+            request=_list_request(mocker),
             auth=mock_auth_with_skip,
         )
 
@@ -997,6 +1032,14 @@ class TestConversationsV2Otel:
         mocker.patch("app.endpoints.conversations_v2.tracer", tracer)
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        other_id = "456e7890-e12b-34d5-a678-901234567890"
+        mocker.patch(
+            "app.endpoints.conversations_v2.list_user_conversations",
+            return_value=[
+                _envelope_metadata(),
+                _envelope_metadata(other_id),
+            ],
+        )
         mock_configuration.conversation_cache.list.return_value = [
             ConversationData(
                 conversation_id=VALID_CONVERSATION_ID,
@@ -1004,14 +1047,14 @@ class TestConversationsV2Otel:
                 last_message_timestamp=1704067200.0,
             ),
             ConversationData(
-                conversation_id="456e7890-e12b-34d5-a678-901234567890",
+                conversation_id=other_id,
                 topic_summary="summary2",
                 last_message_timestamp=1704067201.0,
             ),
         ]
 
         await get_conversations_list_endpoint_handler(
-            request=mocker.Mock(), auth=MOCK_AUTH
+            request=_list_request(mocker), auth=MOCK_AUTH
         )
 
         spans = exporter.get_finished_spans()

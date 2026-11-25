@@ -110,6 +110,7 @@ common_models: list[type[BaseModel]] = [
     c.CatalogShield,
     c.ConversationData,
     c.ConversationDetails,
+    c.ConversationListItemV2,
     c.ConversationTurn,
     c.MCPListToolsSummary,
     c.MCPServerAuthInfo,

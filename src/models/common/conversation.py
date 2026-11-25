@@ -96,6 +96,16 @@ class ConversationDetails(BaseModel):
     )
 
 
+class ConversationListItemV2(ConversationDetails):
+    """v2 conversations list item: envelope metadata plus cache activity timestamp."""
+
+    last_message_timestamp: Optional[float] = Field(
+        None,
+        description="Unix epoch of the last cached message when cache is configured",
+        examples=[1704067200.0],
+    )
+
+
 class Message(BaseModel):
     """Model representing a message in a conversation turn.
 
