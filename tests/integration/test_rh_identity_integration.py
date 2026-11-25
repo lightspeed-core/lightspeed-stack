@@ -150,19 +150,17 @@ class TestRHIdentityIntegration:
     ) -> None:
         """Test successful request with valid User identity.
 
-        Verify that a GET to /api/v1/conversations with a valid User RH
+        Verify that a GET to /v2/conversations with a valid User RH
         Identity is accepted.
 
         Sends the provided User identity encoded in the `x-rh-identity` header
-        and asserts the response status code is `200` (success) or `404` (no
-        conversations).
+        and asserts the response status code is `200`.
         """
         headers = {"x-rh-identity": encode_identity(user_identity_json)}
 
-        response = client.get("/api/v1/conversations", headers=headers)
+        response = client.get("/v2/conversations", headers=headers)
 
-        # Should succeed (200) or return empty conversations list
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200
 
     def test_valid_system_identity(
         self, client: TestClient, system_identity_json: dict
@@ -170,10 +168,9 @@ class TestRHIdentityIntegration:
         """Test successful request with valid System identity."""
         headers = {"x-rh-identity": encode_identity(system_identity_json)}
 
-        response = client.get("/api/v1/conversations", headers=headers)
+        response = client.get("/v2/conversations", headers=headers)
 
-        # Should succeed (200) or return empty conversations list
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200
 
     def test_valid_service_account_identity(
         self, client: TestClient, service_account_identity_json: dict
@@ -181,7 +178,6 @@ class TestRHIdentityIntegration:
         """Test successful request with valid ServiceAccount identity."""
         headers = {"x-rh-identity": encode_identity(service_account_identity_json)}
 
-        response = client.get("/api/v1/conversations", headers=headers)
+        response = client.get("/v2/conversations", headers=headers)
 
-        # Should succeed (200) or return empty conversations list
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200

@@ -1,16 +1,9 @@
-"""Integration tests for compaction markers and the conversations API (LCORE-3909).
-
-Compaction stores each summary in the conversation as a synthetic user message
-(a *marker*). The marker has to stay in storage, because it is the fallback
-source of truth when no conversation cache is configured, but it is not
-something the user said, so the conversations API must not return it.
-"""
+"""Integration tests for compaction and the v2 conversations API."""
 
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
 
 from collections.abc import Generator
-from datetime import UTC, datetime
 
 import pytest
 from fastapi import Request
@@ -18,9 +11,6 @@ from ogx_api.openai_responses import OpenAIResponseMessage
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
-from app.endpoints.conversations_v1 import (
-    get_conversation_endpoint_handler as get_conversation_v1,
-)
 from app.endpoints.conversations_v2 import (
     get_conversation_endpoint_handler as get_conversation_v2,
 )
@@ -32,7 +22,6 @@ from models.api.requests import QueryRequest
 from models.api.responses.successful import ConversationResponse
 from models.compaction import ConversationSummary
 from models.config import SQLiteDatabaseConfiguration
-from models.database.conversations import UserTurn
 from tests.integration.conftest import InMemoryConversationStore
 from tests.integration.endpoints._compaction_helpers import (
     CONV_ID_LLAMA,
@@ -43,11 +32,8 @@ from tests.integration.endpoints._compaction_helpers import (
     assert_marker_count,
     create_existing_conversation,
     enable_compaction,
-    marker,
     msg,
 )
-from utils.blocked_turns import new_blocked_item_id
-from utils.conversation_compaction import MARKER_SENTINEL
 
 NEW_QUERY = "What else can you help with?"
 
@@ -57,11 +43,7 @@ def conversation_cache_fixture(
     test_config: AppConfig,
     mocker: MockerFixture,
 ) -> Generator[SQLiteCache, None, None]:
-    """Configure an in-memory SQLite conversation cache.
-
-    The v2 conversations endpoints read this cache, and compaction keeps its
-    summaries in it when one is configured.
-    """
+    """Configure an in-memory SQLite conversation cache."""
     test_config.conversation_cache_configuration.type = "sqlite"
     cache = SQLiteCache(SQLiteDatabaseConfiguration(db_path=":memory:"))
     cache.connect()
@@ -82,24 +64,6 @@ def _returned_messages(response: ConversationResponse) -> list[tuple[str, str]]:
         for turn in response.chat_history
         for message in turn.messages
     ]
-
-
-def _add_turn_metadata(
-    db_session: Session, turn_number: int, provider: str, model: str
-) -> None:
-    """Store the metadata row the service keeps for one completed turn."""
-    now = datetime.now(UTC)
-    db_session.add(
-        UserTurn(
-            conversation_id=EXISTING_CONV_ID,
-            turn_number=turn_number,
-            started_at=now,
-            completed_at=now,
-            provider=provider,
-            model=model,
-        )
-    )
-    db_session.commit()
 
 
 def _stored_turns() -> list[OpenAIResponseMessage]:
@@ -132,178 +96,8 @@ def _fake_summarization(
     )
 
 
-class TestConversationsApiCompactionMarkers:
-    """Compaction markers stay in storage and out of the conversation history."""
-
-    @pytest.mark.asyncio
-    async def test_marker_written_by_a_compaction_is_not_returned(
-        self,
-        test_config: AppConfig,
-        mock_ogx_client: AsyncMockType,
-        mock_query_agent: AsyncMockType,
-        mock_conversation_store: InMemoryConversationStore,
-        test_request: Request,
-        test_auth: AuthTuple,
-        patch_db_session: Session,
-        mocker: MockerFixture,
-    ) -> None:
-        """A request that compacts, then a read of the same conversation.
-
-        The marker is whatever the running compaction writes, not one built by
-        the test, so the check holds for the shape the service produces.
-
-        Verifies:
-        - the compacting request stored a marker
-        - the conversation read returns the three real turns and no marker
-        - the marker is still in storage after the read
-        """
-        _ = mock_ogx_client
-
-        enable_compaction(test_config)
-        user_id, _, _, _ = test_auth
-        create_existing_conversation(patch_db_session, user_id)
-
-        stored_turns = _stored_turns()
-        await mock_conversation_store.create(
-            conversation_id=CONV_ID_LLAMA, items=stored_turns
-        )
-        _fake_summarization(mocker, mock_query_agent, len(stored_turns))
-
-        await query_endpoint_handler(
-            request=test_request,
-            query_request=QueryRequest(
-                query=NEW_QUERY, conversation_id=EXISTING_CONV_ID
-            ),
-            auth=test_auth,
-            mcp_headers={},
-        )
-        assert_marker_count(mock_conversation_store, CONV_ID_LLAMA, 1)
-
-        response = await get_conversation_v1(
-            request=test_request,
-            conversation_id=EXISTING_CONV_ID,
-            auth=test_auth,
-        )
-
-        assert _returned_messages(response) == [
-            ("user", "question one " * 20),
-            ("assistant", "answer one " * 20),
-            ("user", "question two " * 20),
-            ("assistant", "answer two " * 20),
-            ("user", NEW_QUERY),
-            ("assistant", DEFAULT_MODEL_RESPONSE),
-        ]
-        assert len(response.chat_history) == 3
-        assert_marker_count(mock_conversation_store, CONV_ID_LLAMA, 1)
-
-    @pytest.mark.asyncio
-    async def test_stored_markers_of_both_shapes_are_not_returned(
-        self,
-        test_config: AppConfig,
-        mock_ogx_client: AsyncMockType,
-        mock_conversation_store: InMemoryConversationStore,
-        non_admin_test_request: Request,
-        test_auth: AuthTuple,
-        patch_db_session: Session,
-    ) -> None:
-        """Conversations that already hold markers need no migration.
-
-        The stored conversation has a marker without a covered-item count and
-        one with it, the shape LCORE-4219 introduces. Both are left out on
-        read, and every turn keeps its own metadata: a marker counted as a turn
-        would hand each turn the metadata of its neighbour.
-        """
-        _ = test_config
-        _ = mock_ogx_client
-
-        user_id, _, _, _ = test_auth
-        create_existing_conversation(patch_db_session, user_id)
-        for turn_number in (1, 2, 3):
-            _add_turn_metadata(
-                patch_db_session,
-                turn_number,
-                provider=f"provider-{turn_number}",
-                model=f"model-{turn_number}",
-            )
-
-        await mock_conversation_store.create(
-            conversation_id=CONV_ID_LLAMA,
-            items=[
-                msg("user", "question one"),
-                msg("assistant", "answer one"),
-                marker("summary of turn one"),
-                msg("user", "question two"),
-                msg("assistant", "answer two"),
-                msg("user", f"{MARKER_SENTINEL} [covers:5] summary of turns one, two"),
-                msg("user", "question three"),
-                msg("assistant", "answer three"),
-            ],
-        )
-
-        response = await get_conversation_v1(
-            request=non_admin_test_request,
-            conversation_id=EXISTING_CONV_ID,
-            auth=test_auth,
-        )
-
-        assert _returned_messages(response) == [
-            ("user", "question one"),
-            ("assistant", "answer one"),
-            ("user", "question two"),
-            ("assistant", "answer two"),
-            ("user", "question three"),
-            ("assistant", "answer three"),
-        ]
-        assert [(turn.provider, turn.model) for turn in response.chat_history] == [
-            ("provider-1", "model-1"),
-            ("provider-2", "model-2"),
-            ("provider-3", "model-3"),
-        ]
-        assert_marker_count(mock_conversation_store, CONV_ID_LLAMA, 2)
-
-    @pytest.mark.asyncio
-    async def test_blocked_turn_is_returned(
-        self,
-        test_config: AppConfig,
-        mock_ogx_client: AsyncMockType,
-        mock_conversation_store: InMemoryConversationStore,
-        non_admin_test_request: Request,
-        test_auth: AuthTuple,
-        patch_db_session: Session,
-    ) -> None:
-        """A turn a shield blocked is part of the history a client reads (LCORE-3788).
-
-        Unlike a marker, the user did send it. Only what the model reads
-        leaves blocked turns out.
-        """
-        _ = test_config
-        _ = mock_ogx_client
-
-        create_existing_conversation(patch_db_session, test_auth[0])
-        await mock_conversation_store.create(
-            conversation_id=CONV_ID_LLAMA,
-            items=[
-                OpenAIResponseMessage(
-                    role="user",
-                    content="the blocked question",
-                    id=new_blocked_item_id(),
-                ),
-                OpenAIResponseMessage(
-                    role="assistant", content="the refusal", id=new_blocked_item_id()
-                ),
-            ],
-        )
-
-        response = await get_conversation_v1(
-            request=non_admin_test_request,
-            conversation_id=EXISTING_CONV_ID,
-            auth=test_auth,
-        )
-
-        assert _returned_messages(response) == [
-            ("user", "the blocked question"),
-            ("assistant", "the refusal"),
-        ]
+class TestConversationsApiCompaction:  # pylint: disable=too-few-public-methods
+    """Compaction summaries stay in cache storage, not in the v2 chat history."""
 
     @pytest.mark.asyncio
     async def test_v2_history_holds_no_marker_after_a_compaction(

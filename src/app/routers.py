@@ -7,7 +7,6 @@ from app.endpoints import (
     a2a,
     authorized,
     config,
-    conversations_v1,
     conversations_v2,
     feedback,
     health,
@@ -67,7 +66,6 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(config.router, prefix="/v1")
     app.include_router(saved_prompts.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")
-    app.include_router(conversations_v1.router, prefix="/v1")
     app.include_router(conversations_v2.router, prefix="/v2")
     app.include_router(responses.router, prefix="/v1")
     # RHEL Lightspeed rlsapi v1 compatibility - stateless CLA (Command Line Assistant) endpoint
