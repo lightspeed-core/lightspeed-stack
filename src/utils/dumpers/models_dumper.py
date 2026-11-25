@@ -46,6 +46,8 @@ successful_responses_models: list[type[BaseModel]] = [
     s.SavedPromptsConfigResponse,
     s.AuthorizedResponse,
     s.ConfigurationResponse,
+    s.AgenticConversationGetResponse,
+    s.AgenticConversationListResponse,
     s.ConversationDeleteResponse,
     s.ConversationResponse,
     s.ConversationUpdateResponse,

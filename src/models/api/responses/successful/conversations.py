@@ -4,6 +4,10 @@ from typing import ClassVar
 
 from pydantic import Field, computed_field
 
+from conversations.display_history.agentic.models.conversation import (
+    Conversation,
+    ConversationMetadata,
+)
 from log import get_logger
 from models.api.responses.successful.bases import (
     AbstractDeleteResponse,
@@ -181,6 +185,100 @@ class ConversationsListResponseV2(AbstractSuccessfulResponse):
                             "last_used_provider": "gemini",
                             "topic_summary": "Openshift Microservices Deployment Strategies",
                             "last_message_timestamp": 1704067200.0,
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+class AgenticConversationGetResponse(Conversation, AbstractSuccessfulResponse):
+    """Response for one agentic conversation.
+
+    Attributes:
+        conversation_id: Conversation identifier.
+        created_at: When the conversation was created.
+        last_turn_at: When the most recent agent run completed or paused.
+        turn_count: Number of agent runs in the conversation.
+        last_used_model: Model used on the last agent run.
+        last_used_provider: Provider used on the last agent run.
+        topic_summary: Topic summary when available.
+        chat_history: Ordered agent turns shown to the client.
+
+    """
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "last_turn_at": "2024-01-01T00:01:05Z",
+                    "turn_count": 1,
+                    "last_used_model": "gpt-5.6-luna",
+                    "last_used_provider": "openai",
+                    "topic_summary": "OpenShift deployment strategies",
+                    "chat_history": [
+                        {
+                            "id": "resp_1",
+                            "status": "completed",
+                            "agent": None,
+                            "provider": "openai",
+                            "model": "gpt-5.6-luna",
+                            "started_at": "2024-01-01T00:01:00Z",
+                            "completed_at": "2024-01-01T00:01:05Z",
+                            "context_status": "full",
+                            "usage": {"input_tokens": 4, "output_tokens": 6},
+                            "referenced_documents": [],
+                            "input": [
+                                {
+                                    "id": "msg_user_1",
+                                    "kind": "message",
+                                    "role": "user",
+                                    "content": [{"type": "text", "text": "Hello"}],
+                                }
+                            ],
+                            "output": [
+                                {
+                                    "id": "msg_assistant_1",
+                                    "kind": "message",
+                                    "role": "assistant",
+                                    "content": [{"type": "text", "text": "Hi there!"}],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        },
+    }
+
+
+class AgenticConversationListResponse(AbstractSuccessfulResponse):
+    """Response listing agentic conversations for the user.
+
+    Attributes:
+        conversations: Conversation metadata only; turn history is omitted.
+
+    """
+
+    conversations: list[ConversationMetadata]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "conversations": [
+                        {
+                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                            "created_at": "2024-01-01T00:00:00Z",
+                            "last_turn_at": "2024-01-01T00:01:05Z",
+                            "turn_count": 1,
+                            "last_used_model": "gpt-5.6-luna",
+                            "last_used_provider": "openai",
+                            "topic_summary": "OpenShift deployment strategies",
                         }
                     ],
                 }
