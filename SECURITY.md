@@ -13,9 +13,9 @@ versions of this project:
 | 0.6.0rc1          | No        | 2026-09-30  |
 | 0.6.0rc2          | No        | 2026-10-30  |
 | 0.6.0             | Yes       | 2026-11-30  |
-| 0.7.0rc1          | Yes       | TBD         |
-| 0.7.0rc2          | Yes       | TBD         |
-| 0.7.0rc3          | Yes       | TBD         |
+| 0.7.0rc1          | No        | 2026-09-30  |
+| 0.7.0rc2          | No        | 2026-09-30  |
+| 0.7.0rc3          | No        | 2026-09-30  |
 | 0.7.0             | Yes       | 2027-01-31  |
 
 The supported versions table is summarized here for security reporting. The
