@@ -15,22 +15,23 @@ PREFIX = "[report-json]"
 
 
 def main() -> int:
-    """Print component check counts and violation messages from an EC log.
+    """Print component check counts and violation messages from a UTF-8 EC log.
 
-    Read the file named by the first command-line argument, joining the
-    stripped text after ``[report-json]`` on lines starting with that prefix
-    into a JSON report. Write the parsed report to ``logs.json`` in the current
-    directory, overwriting it even when the report has no components key.
+    Join the stripped text after ``[report-json]`` on matching lines and parse
+    it as a JSON object with a components list. With ``--json``, print the
+    summary first and then create ``logs.json`` exclusively in the current
+    directory. A failed write may leave a partial export.
 
-    When --json command line flag is given, write the parsed report to
-    logs.json using exclusive creation (the file must not already exist). The
-    file is only written after successful component extraction.'
+    Returns:
+        0 on success, even if violations are present. 1 for no arguments, a
+        missing or permission-denied input file, missing report data, invalid
+        JSON, a missing or invalid components list, or an export I/O error.
 
-    Return 0 after printing the summary, including when violations exist.
-    Return 1 for a missing argument, missing or inaccessible input file, absent
-    report data, invalid JSON, or a missing components key. Other file I/O
-    errors and input text decoding errors propagate, as can errors from
-    unexpected report structures.
+    Raises:
+        SystemExit: If argparse handles invalid arguments or a help request.
+        OSError: If another input I/O error occurs.
+        UnicodeDecodeError: If the input is not valid UTF-8.
+
     """
     json_raw_data = ""
 

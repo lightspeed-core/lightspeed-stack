@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Script to retrieve latest tag defined on GitHub."""
+"""Compare GIT_TAG with the highest stable tag available in the local Git checkout."""
 
 import os
 import subprocess
