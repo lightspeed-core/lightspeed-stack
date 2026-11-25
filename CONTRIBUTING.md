@@ -302,7 +302,7 @@ To abort a backport in progress:
 cherry_picker --abort
 ```
 
-See the [branching documentation](docs/branching.md) for more details on the
+See the [branching documentation](docs/maintenance/branching.md) for more details on the
 branching strategy and release workflow.
 
 ## Definition of Done

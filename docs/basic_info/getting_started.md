@@ -1,123 +1,67 @@
 # Getting Started
 
-### OGX used as a library
+This guide starts Lightspeed Core Stack (LCS) locally with OGX embedded as a
+Python library. In this mode a single LCS process listens on one port, usually
+`8080`.
 
-It is possible to run Lightspeed Core Stack service with OGX "embedded" as a Python library. This means that just one process will be running and only one port (for example 8080) will be accessible.
+For containerized OGX service mode, see the
+[deployment guide](../user_doc/deployment_guide.md) and
+[container orchestration guide](../devel_doc/container_orchestration.md).
 
+## Prerequisites
 
+1. Python 3.12, 3.13, or 3.14, as defined by `pyproject.toml`
+1. `pip`
+1. `uv`
+1. `jq` and `curl`
+1. An API key for the provider in your OGX profile, for example
+   `OPENAI_API_KEY`
 
+Install the command-line tools if needed:
 
-#### Prerequisites
+```bash
+pip install --user uv
+sudo dnf install curl jq
+```
 
-1. Python 3.12 or 3.13
-1. `pip` tool installed
-1. `jq` and `curl` tools installed
+On macOS, use Homebrew for the system tools:
 
-#### Installation of all required tools
+```bash
+brew install uv jq
+```
 
-1. `pip install --user uv`
-1. `sudo dnf install curl jq`
+## Install Dependencies
 
-#### Installing dependencies for OGX
+Clone the repository with submodules, then install the development and OGX
+library dependencies from the project root:
 
-1. Clone LCS repository
-1. Add and install all required dependencies
-    ```bash
-    uv add \
-    "ogx==1.2.5" \
-    "ogx-api==1.2.5" \
-    "ogx-client==1.2.5" \
-    "fastapi>=0.115.12" \
-    "opentelemetry-sdk>=1.34.0" \
-    "opentelemetry-exporter-otlp>=1.34.0" \
-    "opentelemetry-instrumentation>=0.55b0" \
-    "aiosqlite>=0.21.0" \
-    "litellm>=1.72.1" \
-    "uvicorn>=0.34.3" \
-    "blobfile>=3.0.0" \
-    "datasets>=3.6.0" \
-    "sqlalchemy>=2.0.41" \
-    "faiss-cpu>=1.11.0" \
-    "mcp>=1.9.4" \
-    "autoevals>=0.0.129" \
-    "psutil>=7.0.0" \
-    "torch>=2.7.1" \
-    "peft>=0.15.2" \
-    "trl>=0.18.2"
-    ```
-1. Check if all dependencies are really installed
-    ```text
-    Resolved 195 packages in 1.19s
-          Built lightspeed-stack @ file:///tmp/ramdisk/lightspeed-stack
-    Prepared 12 packages in 1.72s
-    Installed 60 packages in 4.47s
-     + accelerate==1.9.0
-     + autoevals==0.0.129
-     + blobfile==3.0.0
-     + braintrust-core==0.0.59
-     + chevron==0.14.0
-     + datasets==4.0.0
-     + dill==0.3.8
-     + faiss-cpu==1.11.0.post1
-     + fsspec==2025.3.0
-     + greenlet==3.2.3
-     + grpcio==1.74.0
-     + httpx-sse==0.4.1
-     ~ lightspeed-stack==0.2.0 (from file:///tmp/ramdisk/lightspeed-stack)
-     + litellm==1.74.9.post1
-     + lxml==6.0.0
-     + mcp==1.12.2
-     + mpmath==1.3.0
-     + multiprocess==0.70.16
-     + networkx==3.5
-     + nvidia-cublas-cu12==12.6.4.1
-     + nvidia-cuda-cupti-cu12==12.6.80
-     + nvidia-cuda-nvrtc-cu12==12.6.77
-     + nvidia-cuda-runtime-cu12==12.6.77
-     + nvidia-cudnn-cu12==9.5.1.17
-     + nvidia-cufft-cu12==11.3.0.4
-     + nvidia-cufile-cu12==1.11.1.6
-     + nvidia-curand-cu12==10.3.7.77
-     + nvidia-cusolver-cu12==11.7.1.2
-     + nvidia-cusparse-cu12==12.5.4.2
-     + nvidia-cusparselt-cu12==0.6.3
-     + nvidia-nccl-cu12==2.26.2
-     + nvidia-nvjitlink-cu12==12.6.85
-     + nvidia-nvtx-cu12==12.6.77
-     + opentelemetry-api==1.36.0
-     + opentelemetry-exporter-otlp==1.36.0
-     + opentelemetry-exporter-otlp-proto-common==1.36.0
-     + opentelemetry-exporter-otlp-proto-grpc==1.36.0
-     + opentelemetry-exporter-otlp-proto-http==1.36.0
-     + opentelemetry-instrumentation==0.57b0
-     + opentelemetry-proto==1.36.0
-     + opentelemetry-sdk==1.36.0
-     + opentelemetry-semantic-conventions==0.57b0
-     + peft==0.16.0
-     + polyleven==0.9.0
-     + psutil==7.0.0
-     + pyarrow==21.0.0
-     + pycryptodomex==3.23.0
-     + pydantic-settings==2.10.1
-     + safetensors==0.5.3
-     + setuptools==80.9.0
-     + sqlalchemy==2.0.42
-     + sse-starlette==3.0.2
-     + sympy==1.14.0
-     + tokenizers==0.21.4
-     + torch==2.7.1
-     + transformers==4.54.1
-     + triton==3.3.1
-     + trl==0.20.0
-     + wrapt==1.17.2
-     + xxhash==3.5.0
-    ```
+```bash
+git clone --recursive https://github.com/lightspeed-core/lightspeed-stack.git
+cd lightspeed-stack
+uv sync --group dev --group ogxlibdev
+```
 
-#### OGX configuration
+If you already cloned without submodules, initialize them before running
+examples that depend on provider submodules:
 
-OGX needs to be configured properly. For using the default runnable OGX a file named `run.yaml` needs to be created. Use the example configuration from [examples/run.yaml](../examples/run.yaml).
+```bash
+git submodule update --init
+```
 
-#### LCS configuration to use OGX in library mode
+If you plan to use OpenTelemetry tracing with in-process PII redaction, also
+download the spaCy model:
+
+```bash
+uv run python -m spacy download en_core_web_lg
+```
+
+## OGX Configuration
+
+OGX needs a runnable profile. The repository includes a default example at
+[examples/run.yaml](../../examples/run.yaml). Copy or reference this file when
+you create the LCS configuration below.
+
+## LCS Configuration For Library Mode
 
 Create a file named lightspeed-stack.yaml with this content.
 
@@ -135,7 +79,7 @@ ogx:
   # Unified mode (recommended): the run.yaml created above is consumed as
   # the synthesis profile. The legacy library_client_config_path setup is
   # deprecated and removed in 0.8 — see the migration guide:
-  # ../user_doc/deployment_guide.md#migrating-from-the-legacy-two-file-configuration
+  # docs/user_doc/deployment_guide.md#migrating-from-the-legacy-two-file-configuration
   config:
     profile: run.yaml
 user_data_collection:
@@ -148,7 +92,7 @@ authentication:
   module: "noop"
 ```
 
-#### Start LCS
+## Start LCS
 
 1. Export OpenAI key by using the following command:
     ```bash
@@ -156,48 +100,11 @@ authentication:
     ```
 1. Run the following command
     ```bash
-    make run
+    uv run src/lightspeed_stack.py -c lightspeed-stack.yaml
     ```
-1. Check the output
-    ```text
-    uv run src/lightspeed_stack.py
-    Using config run.yaml:
-    apis:
-    - agents
-    - datasetio
-    - eval
-    - inference
-    - post_training
-    - safety
-    - scoring
-    - telemetry
-    - tool_runtime
-    - vector_io
-    [07/30/25 20:01:53] INFO     Initializing app                                                                                 main.py:19
-    [07/30/25 20:01:54] INFO     Including routers                                                                                main.py:68
-                        INFO     Registering MCP servers                                                                          main.py:81
-                        DEBUG    No MCP servers configured, skipping registration                                               common.py:36
-                        INFO     Setting up model metrics                                                                         main.py:84
-    [07/30/25 20:01:54] DEBUG    Set provider/model configuration for openai/openai/chatgpt-4o-latest to 0                       utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-3.5-turbo to 0                           utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-3.5-turbo-0125 to 0                      utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-3.5-turbo-instruct to 0                  utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-4 to 0                                   utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-4-turbo to 0                             utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-5.6-luna to 0                                  utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-4o-2024-08-06 to 0                       utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-4o-audio-preview to 0                    utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/gpt-5.6-luna to 0                             utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/o1 to 0                                      utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/o1-mini to 0                                 utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/o3-mini to 0                                 utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/o4-mini to 0                                 utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/text-embedding-3-large to 0                  utils.py:45
-                        DEBUG    Set provider/model configuration for openai/openai/text-embedding-3-small to 0                  utils.py:45
-                        INFO     App startup complete                                                                             main.py:86
-    ```
+1. Wait for the startup log line that says the application is ready.
 
-#### Check if service runs
+## Check If The Service Runs
 
 ```bash
 curl localhost:8080/v1/models | jq .
@@ -219,7 +126,7 @@ curl localhost:8080/v1/models | jq .
 }
 ```
 
-### Configuring MCP Servers
+## Configuring MCP Servers
 
 Lightspeed developers can quickly enable external tool calling using MCP servers in LCS. MCP (Model Context Protocol) is a standard for exposing external tools in a structured way so AI agents can call them reliably. An MCP server hosts one or more tools and exposes them over a network endpoint. In LCS, the AI agent can leverage these servers to execute tools: LCS routes tool calls to the appropriate MCP server and uses the tool output to generate more accurate responses.
 

@@ -1,6 +1,6 @@
 # Templates
 
-Templates for the [feature design process](../../contributing_guide.md#feature-design-process).
+Templates for the [feature design process](../howto-run-a-spike.md).
 
 - [Spike doc template](spike-template.md)
 - [Spec doc template](spec-doc-template.md)
