@@ -15,19 +15,8 @@ Feature: Unified mode configuration synthesis
   # is the one thing only a deployed stack can show: the synthesized path is
   # logged at startup (R10).
 
-  # --- library mode (@skip-in-server-mode) ---
-
-  @skip-in-server-mode @openai-only
+  @openai-only
   Scenario: Synthesized run.yaml path is logged at startup in library mode
     Given The service uses the lightspeed-stack-unified-providers.yaml configuration
       And The service is restarted
-     Then the lightspeed-stack container logs contain synthesized run.yaml
-
-
-  # --- server mode (@skip-in-library-mode) ---
-
-  @skip-in-library-mode @openai-only
-  Scenario: Synthesized run.yaml path is logged at startup in server mode
-    Given The service uses the lightspeed-stack-unified-providers.yaml configuration
-      And Lightspeed Stack is restarted
      Then the lightspeed-stack container logs contain synthesized run.yaml

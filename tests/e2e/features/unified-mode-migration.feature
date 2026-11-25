@@ -17,27 +17,11 @@ Feature: Legacy to unified configuration migration
   # tests/e2e/configs/run-ci.yaml) and guarded against CLI drift by that same
   # integration module. It inlines the openai run-ci.yaml, hence @openai-only.
 
-  # --- library mode (@skip-in-server-mode) ---
 
-  @skip-in-server-mode @openai-only
+  @openai-only
   Scenario: Migrated unified configuration boots and serves queries in library mode
     Given The service uses the lightspeed-stack-unified-migrated.yaml configuration
       And The service is restarted
-     When I access endpoint "readiness" using HTTP GET method
-     Then The status code of the response is 200
-     When I use "query" to ask question
-     """
-     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
-     """
-     Then The status code of the response is 200
-
-
-  # --- server mode (@skip-in-library-mode) ---
-
-  @skip-in-library-mode @openai-only
-  Scenario: Migrated unified configuration boots and serves queries in server mode
-    Given The service uses the lightspeed-stack-unified-migrated.yaml configuration
-      And Lightspeed Stack is restarted
      When I access endpoint "readiness" using HTTP GET method
      Then The status code of the response is 200
      When I use "query" to ask question
