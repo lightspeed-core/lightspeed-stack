@@ -63,7 +63,7 @@ Red Hat providers:
 | Name           | Version Tested                 | Type   | Pip Dependencies | Supported in LCS |
 |----------------|--------------------------------|--------|------------------|:----------------:|
 | RHOAI (vllm)   | latest operator                | remote | `openai`         | ✅               |
-| RHEL AI (RHAIIS/vllm) | 3.4.0 GA (vLLM 0.18.0)  | remote | `openai`         | ✅               |
+| RHEL AI (RHAIIS/vllm) | 3.5.0 GA (vLLM 0.24.0)  | remote | `openai`         | ✅               |
 
 ### Azure Provider - Entra ID Authentication Guide
 
