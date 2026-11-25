@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from models.api.requests import QueryRequest
+from models.api.requests import QueryRequest, ResponsesRequest
 
 
 @dataclass
@@ -31,3 +31,21 @@ class StepPersistenceSettings:
 
         """
         return cls()
+
+    @classmethod
+    def from_responses_request(
+        cls, request: ResponsesRequest
+    ) -> StepPersistenceSettings:
+        """Build step persistence settings for a Responses request.
+
+        The Responses request sets the store flag. ``request`` is accepted so
+        every setting is built the same way. The store flag is used to enable or disable step persistence.
+
+        Parameters:
+            request: Incoming Responses request. The store flag is read from the request.
+
+        Returns:
+            Step persistence settings with ``enabled`` set to the store flag.
+
+        """
+        return cls(enabled=request.store)
