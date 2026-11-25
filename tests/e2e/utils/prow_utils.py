@@ -17,17 +17,20 @@ def get_namespace() -> str:
     return os.getenv("NAMESPACE", "e2e-rhoai-dsc")
 
 
-# Mapping from container names (used in tests) to pod names (used in OpenShift)
+# Mapping from logical container names (used in tests) to OpenShift pod names.
 _POD_NAME_MAP = {
     "lightspeed-stack": "lightspeed-stack-service",
-    "ogx": "llama-stack-service",
-    "llama-stack": "llama-stack-service",  # legacy alias
+    "ogx": "lightspeed-stack-service",
+    "llama-stack": "lightspeed-stack-service",
     "okp-solr": "okp-solr-service",
 }
+_LEGACY_SERVICE_ALIASES = frozenset({"ogx", "llama-stack", "llama-stack-service"})
 
 
 def get_pod_name(container_name: str) -> str:
-    """Map container name to OpenShift pod name."""
+    """Map container name to OpenShift pod name (OGX aliases → lightspeed-stack-service)."""
+    if container_name in _LEGACY_SERVICE_ALIASES:
+        return "lightspeed-stack-service"
     return _POD_NAME_MAP.get(container_name, container_name)
 
 
@@ -90,61 +93,51 @@ def wait_for_pod_health(pod_name: str, max_attempts: int = 60) -> None:
         raise
 
 
-_OGX_RESTART_NAMES = frozenset({"ogx", "llama-stack", "llama-stack-service"})
-_LIGHTSPEED_RESTART_NAMES = frozenset({"lightspeed-stack", "lightspeed-stack-service"})
+_LIGHTSPEED_RESTART_NAMES = frozenset(
+    {
+        "lightspeed-stack",
+        "lightspeed-stack-service",
+        "ogx",
+        "llama-stack",
+        "llama-stack-service",
+    }
+)
+_RESTART_POD_TIMEOUT_SECONDS = 420
 
-# e2e-ops Konflux ``restart-ogx``: up to 360×3s pod wait, then health, port-forward, vLLM poll.
-_KONFLUX_RESTART_OGX_E2E_OPS_TIMEOUT = 2700
 
-
-def _restart_ogx_e2e_ops_timeout_seconds() -> int:
-    """Subprocess cap for ``restart-ogx``; must cover e2e-ops internal poll budgets."""
-    if os.environ.get("E2E_COPY_MOCK_TLS_CERTS_TO_OGX") == "1":
-        return _KONFLUX_RESTART_OGX_E2E_OPS_TIMEOUT
-    if os.environ.get("E2E_KONFLUX_E2E") == "1":
-        return _KONFLUX_RESTART_OGX_E2E_OPS_TIMEOUT
-    return 420
+def assert_prow_cluster_sidecars_supported() -> None:
+    """Raise when proxy/TLS tests expect removed in-cluster e2e-ops deploy commands."""
+    raise AssertionError(
+        "In-cluster proxy/TLS sidecars are not deployed via e2e-ops "
+        "(Konflux library mode). Run those suites with Docker Compose (@skip-in-prow)."
+    )
 
 
 def restart_pod(container_name: str) -> None:
-    """Restart OGX or Lightspeed pod in OpenShift/Prow (not Docker).
+    """Restart lightspeed-stack-service in OpenShift/Prow (not Docker).
 
-    Maps ``container_name`` to the correct e2e-ops command: ``restart-ogx``
-    vs ``restart-lightspeed``. Unknown names default to Lightspeed with a warning.
-
-    For Lightspeed restarts, e2e-ops ensures OGX is running first. OGX pod logs
-    may look unchanged after apply (no-op when healthy); that is expected.
+    Legacy names ``ogx`` / ``llama-stack`` map to the same pod (OGX in-process).
+    Unknown names default to ``restart-lightspeed`` with a warning.
 
     CI failures with healthy pod logs are often **localhost port-forward** contention
     (pipeline forward vs hook restart), not application crashes—see e2e-ops.sh header.
     """
-    if container_name in _OGX_RESTART_NAMES:
-        op = "restart-ogx"
-        timeout = _restart_ogx_e2e_ops_timeout_seconds()
-    elif container_name in _LIGHTSPEED_RESTART_NAMES:
+    if container_name in _LIGHTSPEED_RESTART_NAMES:
         op = "restart-lightspeed"
-        # e2e-ops may restore OGX first when unhealthy (same shell waits as restart-ogx).
-        if (
-            os.environ.get("E2E_KONFLUX_E2E") == "1"
-            or os.environ.get("E2E_COPY_MOCK_TLS_CERTS_TO_OGX") == "1"
-        ):
-            timeout = _restart_ogx_e2e_ops_timeout_seconds()
-        else:
-            timeout = 320
+        timeout = _RESTART_POD_TIMEOUT_SECONDS
     else:
         print(
             f"Warning: restart_pod({container_name!r}) unknown; "
             "using restart-lightspeed"
         )
         op = "restart-lightspeed"
-        timeout = 200
+        timeout = 320
     try:
         result = run_e2e_ops(op, timeout=timeout)
         print(result.stdout, end="")
         if result.returncode != 0:
             print(result.stderr, end="")
             combined = f"{result.stdout or ''}\n{result.stderr or ''}".strip()
-            # Prefer full e2e-ops output when diagnostics were printed (TLS/Llama failures).
             if "========== failure logs:" in combined:
                 detail = combined
             else:
@@ -161,47 +154,70 @@ def restart_pod(container_name: str) -> None:
 
 
 def restore_ogx_pod() -> None:
-    """Restore OGX pod in Prow/OpenShift environment.
+    """Recreate lightspeed-stack-service after disruption (legacy name: restore OGX).
 
     Raises:
         subprocess.CalledProcessError: If oc/e2e-ops restore fails.
         subprocess.TimeoutExpired: If the operation times out.
 
     """
-    timeout = _restart_ogx_e2e_ops_timeout_seconds()
-    result = run_e2e_ops("restart-ogx", timeout=timeout)
+    result = run_e2e_ops("restart-lightspeed", timeout=_RESTART_POD_TIMEOUT_SECONDS)
     print(result.stdout, end="")
     if result.returncode != 0:
         print(result.stderr, end="")
         raise subprocess.CalledProcessError(
-            result.returncode, "restart-ogx", result.stderr
+            result.returncode, "restart-lightspeed", result.stderr
         )
-    print("✓ OGX pod restored successfully")
+    print("✓ lightspeed-stack-service restored")
 
 
 def disrupt_ogx_pod() -> bool:
-    """Disrupt OGX connection in Prow/OpenShift environment.
+    """Disrupt the stack by deleting lightspeed-stack-service in Prow/OpenShift.
 
     Returns:
         True if the pod was running and has been disrupted, False otherwise.
 
     """
+    pod_name = "lightspeed-stack-service"
+    namespace = get_namespace()
     try:
-        result = run_e2e_ops("disrupt-ogx", timeout=90)
-        print(result.stdout, end="")
+        phase_result = subprocess.run(
+            [
+                "oc",
+                "get",
+                "pod",
+                pod_name,
+                "-n",
+                namespace,
+                "-o",
+                "jsonpath={.status.phase}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        phase = (phase_result.stdout or "").strip() or "NotFound"
+        if phase != "Running":
+            print(f"lightspeed-stack-service was not running (phase: {phase})")
+            return False
 
-        # Exit code 0 = disrupted (was running), exit code 2 = was not running
-        match result.returncode:
-            case 0:
-                return True
-            case 2:
-                return False
-            case _:
-                print(result.stderr, end="")
-                return False
+        delete_result = subprocess.run(
+            ["oc", "delete", "pod", pod_name, "-n", namespace, "--wait=true"],
+            capture_output=True,
+            text=True,
+            timeout=90,
+            check=False,
+        )
+        print(delete_result.stdout, end="")
+        if delete_result.returncode != 0:
+            print(delete_result.stderr, end="")
+            return False
+        print("Connection disrupted successfully (lightspeed-stack-service deleted)")
+        return True
 
     except subprocess.TimeoutExpired:
-        print("Warning: Timeout while disrupting OGX connection")
+        print("Warning: Timeout while disrupting connection")
         return False
 
 
@@ -314,12 +330,10 @@ def update_config_configmap(
     """
     temp_path: Optional[str] = None
 
-    # Check if source is a backup key (restore from memory)
     if source in _configmap_backups:
         config_content = _apply_inference_overrides(_configmap_backups[source])
         print(f"Restoring ConfigMap {configmap_name} from memory backup...")
 
-        # Write content to temp file (oc create configmap requires a file)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(config_content)
             temp_path = f.name
@@ -335,7 +349,6 @@ def update_config_configmap(
                 os.remove(temp_path)
         return
 
-    # Otherwise, source is a file path — apply inference overrides if needed
     print(f"Updating ConfigMap {configmap_name} with config from {source}...")
 
     source_to_apply = source
@@ -363,10 +376,9 @@ def update_config_configmap(
 
 
 def assert_okp_reachable_from_ogx() -> None:
-    """Fail unless the OGX pod can HTTP GET in-cluster OKP Solr.
+    """Fail unless lightspeed-stack-service can HTTP GET in-cluster OKP Solr.
 
-    This is the Konflux health check: Solr is reached in-cluster from the
-    OGX pod. Behave does not port-forward Solr to the runner.
+    Konflux library mode: Solr is reached from the LCS pod, not a separate OGX pod.
 
     Raises:
         subprocess.CalledProcessError: If the in-cluster GET fails.
@@ -393,11 +405,8 @@ def ensure_okp_solr_ready() -> None:
         subprocess.TimeoutExpired: If the operation times out.
 
     """
-    # 300 wait_for_pod attempts × 3s = 900s, plus oc apply. 1080s leaves margin.
     try:
         result = run_e2e_ops("deploy-okp-solr", timeout=1080)
-        # Print to the real stdout: before_feature's hook output is captured and
-        # dropped on success, which would otherwise hide this every run.
         print(result.stdout, end="", file=sys.__stdout__, flush=True)
         if result.returncode != 0:
             print(result.stderr, end="")
@@ -405,7 +414,6 @@ def ensure_okp_solr_ready() -> None:
                 result.returncode, "deploy-okp-solr", result.stderr
             )
     except subprocess.TimeoutExpired as exc:
-        # Forward captured output before re-raising
         print(exc.stdout or "", end="", file=sys.__stdout__, flush=True)
         print(exc.stderr or "", end="", file=sys.__stdout__, flush=True)
         raise
@@ -423,7 +431,6 @@ def disrupt_okp_solr_pod() -> bool:
         print(result.stdout, end="")
         print(f"disrupt-okp-solr exit code: {result.returncode}")
 
-        # Exit code 0 = disrupted (was running), exit code 2 = was not running
         if result.returncode == 0:
             return True
         if result.returncode == 2:
@@ -446,8 +453,6 @@ def restore_okp_solr_pod() -> None:
         subprocess.TimeoutExpired: If the operation times out.
 
     """
-    # restore-okp-solr can spend 180 seconds in wait_for_pod, plus oc apply time.
-    # Use a timeout with margin (240s) so we fail instead of hanging forever.
     result = run_e2e_ops("restore-okp-solr", timeout=240)
     print(result.stdout, end="")
     if result.returncode != 0:

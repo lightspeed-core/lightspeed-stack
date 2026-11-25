@@ -9,6 +9,7 @@ from behave.runner import Context
 from tests.e2e.utils.utils import (
     absolute_repo_path,
     create_config_backup,
+    is_e2e_library_cluster,
     is_prow_environment,
     restart_container,
     switch_config,
@@ -65,10 +66,16 @@ def service_is_started_locally(context: Context) -> None:
     context.hostname = os.getenv("E2E_LSC_HOSTNAME", "localhost")
     context.port = os.getenv("E2E_LSC_PORT", "8080")
     if is_prow_environment():
-        context.hostname_ogx = os.getenv("E2E_OGX_HOSTNAME", "localhost")
+        if is_e2e_library_cluster():
+            # Library/Konflux: OGX is in-process; hooks target LCS on :8080 only.
+            context.hostname_ogx = context.hostname
+            context.port_ogx = context.port
+        else:
+            context.hostname_ogx = os.getenv("E2E_OGX_HOSTNAME", "localhost")
+            context.port_ogx = os.getenv("E2E_OGX_PORT", "8321")
     else:
         context.hostname_ogx = "localhost"
-    context.port_ogx = os.getenv("E2E_OGX_PORT", "8321")
+        context.port_ogx = "8321"
     _ogx_endpoint["hostname"] = context.hostname_ogx
     _ogx_endpoint["port"] = context.port_ogx
 

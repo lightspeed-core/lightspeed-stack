@@ -1,3 +1,6 @@
+# DEPRECATED for Konflux E2E (library mode uses lightspeed-stack.yaml only).
+# Retained for reference / historical server-mode experiments — not applied by pipeline-konflux.sh.
+#
 # OGX from source on UBI: init clones repo + seeds FAISS, main restores seed then uses
 # scripts/ogx-entrypoint.sh (same enrich/start path as GitHub Actions docker-compose).
 # Needs ConfigMaps: llama-stack-config (run.yaml), rag-data (kv_store.db.gz), lightspeed-stack-config;

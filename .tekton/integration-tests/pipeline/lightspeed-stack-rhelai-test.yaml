@@ -526,7 +526,7 @@ spec:
               cd tests/e2e-prow/rhoai && chmod +x pipeline-konflux.sh
               echo "[e2e] 7/8 Running pipeline-konflux.sh with RHEL AI configs..."
               export LLAMA_STACK_CONFIG="$(cd ../../.. && pwd)/tests/e2e/configs/run-rhelai.yaml"
-              export LCS_CONFIG="$(cd ../../.. && pwd)/tests/e2e/configuration/server-mode/lightspeed-stack-rhelai.yaml"
+              export LCS_CONFIG="$(cd ../../.. && pwd)/tests/e2e/configuration/library-mode/lightspeed-stack-rhelai.yaml"
               ./pipeline-konflux.sh
               PIPELINE_EXIT=$?
               echo "[e2e] 8/8 pipeline-konflux.sh exited with code $PIPELINE_EXIT"

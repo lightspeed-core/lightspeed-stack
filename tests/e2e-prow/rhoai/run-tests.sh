@@ -7,6 +7,12 @@ cd "$(dirname "$0")/../../.."
 # Timestamps to pinpoint where time is spent (e.g. if Prow 2h timeout is hit)
 ts() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
 
+# Konflux library mode: behave + ConfigMap updates use library-mode YAMLs.
+if [[ "${E2E_KONFLUX_E2E:-0}" == "1" ]]; then
+  export E2E_DEPLOYMENT_MODE="${E2E_DEPLOYMENT_MODE:-library}"
+  export E2E_LIGHTSPEED_CONFIG_DIR="${E2E_LIGHTSPEED_CONFIG_DIR:-tests/e2e/configuration/library-mode}"
+fi
+
 # FAISS_VECTOR_STORE_ID should be exported by pipeline.sh or pipeline-konflux.sh
 if [ -z "$FAISS_VECTOR_STORE_ID" ]; then
     echo "❌ FAISS_VECTOR_STORE_ID is not set - should be exported by the OpenShift E2E pipeline"
@@ -16,6 +22,7 @@ fi
 ts "Start run-tests.sh"
 echo "Running tests from: $(pwd)"
 echo "E2E_LSC_HOSTNAME: $E2E_LSC_HOSTNAME"
+echo "E2E_DEPLOYMENT_MODE: ${E2E_DEPLOYMENT_MODE:-server}"
 echo "FAISS_VECTOR_STORE_ID: $FAISS_VECTOR_STORE_ID"
 
 # Wait for service to be ready (retry up to 60 seconds)
