@@ -74,7 +74,9 @@ spec:
         capabilities:
           drop: ["ALL"]
         runAsNonRoot: true
-        runAsUser: 1000
+        # Match Konflux/Containerfile USER 1001 so library-mode synthesis can write
+        # ./.generated under /app-root (DEFAULT_SYNTHESIZED_CONFIG_PATH).
+        runAsUser: 1001
         seccompProfile:
           type: RuntimeDefault
       env:
