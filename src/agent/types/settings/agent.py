@@ -10,6 +10,7 @@ from fastapi import Request
 from agent.types.settings.compaction import CompactionSettings
 from agent.types.settings.knowledge import KnowledgeSettings
 from agent.types.settings.mcp import MCPSettings
+from agent.types.settings.model import AgentModelSettings
 from agent.types.settings.shield import ShieldSettings
 from agent.types.settings.skill import SkillSettings
 from agent.types.settings.step_persistence import StepPersistenceSettings
@@ -24,6 +25,7 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
 
     provider: Optional[str] = None
     model: Optional[str] = None
+    model_settings: AgentModelSettings = field(default_factory=AgentModelSettings)
     instructions: Optional[str] = None
 
     compaction: CompactionSettings = field(default_factory=CompactionSettings)
@@ -44,8 +46,9 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
 
         Query values select the provider, model, and instructions. Omitted
         provider and model fall back to the configured inference defaults.
-        Shields, knowledge sources, and MCP servers always include every
-        configured entry. Omitted shield and knowledge-source ids leave them
+        Model settings stay empty because a query does not set generation or
+        loop limits. Shields, knowledge sources, and MCP servers always include
+        every configured entry. Omitted shield and knowledge-source ids leave them
         enabled; a provided list disables the rest. ``no_tools`` disables
         every MCP server. Skills, compaction, and step persistence come from
         configuration. The query does not select step persistence, so it stays
@@ -66,6 +69,7 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
         return cls(
             provider=provider,
             model=model,
+            model_settings=AgentModelSettings.from_query_request(query_request),
             instructions=get_system_prompt(query_request.system_prompt),
             compaction=CompactionSettings.from_query_request(query_request),
             step_persistence=StepPersistenceSettings.from_query_request(query_request),

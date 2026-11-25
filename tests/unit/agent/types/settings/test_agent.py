@@ -121,6 +121,7 @@ def test_query_fields_select_the_agent(mocker: MockerFixture) -> None:
     assert settings.provider == "watsonx"
     assert settings.model == "granite"
     assert settings.instructions == "resolved prompt"
+    assert settings.model_settings == AgentModelSettings()
     assert settings.compaction == CompactionSettings(
         provider="watsonx",
         model="granite",
@@ -177,7 +178,7 @@ def test_empty_selections_disable_optional_capabilities(
     settings = AgentSettings.from_query_request(_request(mocker), query, "token")
 
     assert settings.compaction.enabled is False
-    assert settings.skills == []
+    assert not settings.skills
     assert [shield.enabled for shield in settings.shields] == [False, False]
     assert [source.enabled for source in settings.knowledge.sources] == [False, False]
     assert settings.mcp_servers == [MCPSettings(id="docs", headers={}, enabled=False)]

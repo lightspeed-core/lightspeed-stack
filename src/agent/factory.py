@@ -79,6 +79,11 @@ class AgentFactory:  # pylint: disable=too-few-public-methods
             capability for capability in raw_capabilities if capability is not None
         ]
 
-        return Agent(
-            model=model, instructions=settings.instructions, capabilities=capabilities
+        model_settings = settings.model_settings.to_model_settings()
+
+        return Agent[object, str](
+            model=model,
+            model_settings=model_settings,
+            instructions=settings.instructions,
+            capabilities=capabilities,
         )

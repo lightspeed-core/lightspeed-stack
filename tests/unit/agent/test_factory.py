@@ -4,12 +4,19 @@ import pytest
 from pytest_mock import MockerFixture, MockType
 
 from agent.factory import AgentFactory
-from agent.types.settings import AgentSettings
+from agent.types.settings import AgentModelSettings, AgentSettings
 from providers.inference.errors import (
     ModelNotAvailableError,
     ModelTypeNotSupportedError,
     ProviderNotFoundError,
 )
+
+
+def _patch_agent(mocker: MockerFixture) -> MockType:
+    """Replace ``Agent`` so ``Agent[object, str](...)`` records the constructor call."""
+    agent_cls = mocker.patch("agent.factory.Agent")
+    agent_cls.__getitem__.return_value = agent_cls
+    return agent_cls
 
 
 def _patch_factories(  # pylint: disable=too-many-arguments
@@ -61,7 +68,7 @@ async def test_create_agent_assembles_resolved_capabilities(
     registry = mocker.Mock()
     registry.resolve_model_instance.return_value = model
     mocker.patch("agent.factory.ProviderRegistry", return_value=registry)
-    agent_cls = mocker.patch("agent.factory.Agent")
+    agent_cls = _patch_agent(mocker)
     mcp_capability = mocker.Mock()
     shield_capability = mocker.Mock()
     skill_capability = mocker.Mock()
@@ -93,8 +100,10 @@ async def test_create_agent_assembles_resolved_capabilities(
     factories["knowledge"].assert_called_once_with(settings.knowledge)
     factories["compaction"].assert_called_once_with(settings.compaction)
     factories["persistence"].assert_called_once_with(settings.step_persistence)
+    agent_cls.__getitem__.assert_called_once_with((object, str))
     agent_cls.assert_called_once_with(
         model=model,
+        model_settings=None,
         instructions="Be helpful",
         capabilities=[
             mcp_capability,
@@ -114,7 +123,7 @@ async def test_create_agent_omits_capabilities_that_were_not_built(
     """Empty factory lists and ``None`` results are not passed to the agent."""
     registry = mocker.Mock()
     mocker.patch("agent.factory.ProviderRegistry", return_value=registry)
-    agent_cls = mocker.patch("agent.factory.Agent")
+    agent_cls = _patch_agent(mocker)
     _patch_factories(mocker)
 
     result = await AgentFactory.create_agent(AgentSettings())
@@ -123,6 +132,50 @@ async def test_create_agent_omits_capabilities_that_were_not_built(
     registry.resolve_model_instance.assert_called_once_with("llm", None, None)
     agent_cls.assert_called_once_with(
         model=registry.resolve_model_instance.return_value,
+        model_settings=None,
+        instructions=None,
+        capabilities=[],
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_agent_passes_converted_model_settings(
+    mocker: MockerFixture,
+) -> None:
+    """Generation settings are mapped and passed through; loop limits are not."""
+    registry = mocker.Mock()
+    mocker.patch("agent.factory.ProviderRegistry", return_value=registry)
+    agent_cls = _patch_agent(mocker)
+    _patch_factories(mocker)
+    settings = AgentSettings(
+        model_settings=AgentModelSettings(
+            max_output_tokens=64,
+            temperature=0.2,
+            parallel_tool_calls=False,
+            prompt_cache_key="ck",
+            safety_identifier="sid",
+            thinking=False,
+            reasoning_summary="concise",
+            text_verbosity="low",
+            max_tool_calls=3,
+            max_infer_iters=4,
+        ),
+    )
+
+    await AgentFactory.create_agent(settings)
+
+    agent_cls.assert_called_once_with(
+        model=registry.resolve_model_instance.return_value,
+        model_settings={
+            "max_tokens": 64,
+            "temperature": 0.2,
+            "parallel_tool_calls": False,
+            "openai_prompt_cache_key": "ck",
+            "openai_user": "sid",
+            "thinking": False,
+            "openai_reasoning_summary": "concise",
+            "openai_text_verbosity": "low",
+        },
         instructions=None,
         capabilities=[],
     )
