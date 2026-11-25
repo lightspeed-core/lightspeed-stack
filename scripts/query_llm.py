@@ -26,7 +26,7 @@ def main() -> int:
             `0` indicates success,
             `1` indicates an HTTP/request failure,
             `2` indicates the server response was not valid JSON,
-            `3` indicates the JSON response did not contain a `"response"` field.
+            `3` indicates the JSON was not an object with a `"response"` field.
 
     Raises:
         SystemExit: If command-line arguments are invalid or help is requested.
