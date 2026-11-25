@@ -12,10 +12,6 @@ Helper functions for mocking authorization in tests.
 
 Unit tests for the mark of a turn a shield blocked (LCORE-3788).
 
-## [test_builtin_tools.py](test_builtin_tools.py)
-
-Unit tests for builtin file-search tool discovery.
-
 ## [test_checks.py](test_checks.py)
 
 Unit tests for functions defined in utils/checks module.
