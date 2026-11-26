@@ -18,7 +18,7 @@ spec:
       default: 'lightspeed-stack-0-8-rhelai-tests'
     - name: rhelai-version
       description: 'RHEL AI version to provision.'
-      default: '3.4.0'
+      default: '3.5.0'
       type: string
     - name: instance-type
       description: 'Comma-separated list of EC2 instance types for MAPT.'
