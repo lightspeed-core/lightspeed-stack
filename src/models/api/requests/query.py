@@ -5,6 +5,7 @@ from typing import Optional, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from constants import IMAGE_CONTENT_TYPES, MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
+from knowledge.sources.okp import OkpProductFilter
 from models.common.query import Attachment, SolrVectorSearchRequest
 from utils import suid
 
@@ -25,6 +26,7 @@ class QueryRequest(BaseModel):
         vector_store_ids: The optional list of specific vector store IDs to query for RAG.
         shield_ids: The optional list of configured shield names to apply.
         solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
+        okp_products: The optional list of product restrictions for the OKP knowledge source.
 
     """
 
@@ -120,6 +122,25 @@ class QueryRequest(BaseModel):
         examples=[
             {"mode": "hybrid", "filters": {"fq": ["product:*openshift*"]}},
             {"filters": {"fq": ["product:*openshift*", "product_version:*4.16*"]}},
+        ],
+    )
+
+    okp_products: Optional[list[OkpProductFilter]] = Field(
+        None,
+        description=(
+            "Optional list of product restrictions for the OKP knowledge source. "
+            "Each entry names one product. Versions are OR-combined, and an empty "
+            "versions list matches every version of that product. Several entries "
+            "are OR-combined. When omitted, OKP is not restricted by product."
+        ),
+        examples=[
+            [
+                {
+                    "product": "openshift_container_platform",
+                    "versions": ["4.19", "4.20"],
+                }
+            ],
+            [{"product": "rhel"}],
         ],
     )
 
