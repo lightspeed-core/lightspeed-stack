@@ -92,7 +92,7 @@ async def test_create_agent_assembles_resolved_capabilities(
     factories["skills"].assert_called_once_with(settings.skills)
     factories["knowledge"].assert_called_once_with(settings.knowledge_sources)
     factories["compaction"].assert_called_once_with(settings.compaction)
-    factories["persistence"].assert_called_once_with()
+    factories["persistence"].assert_called_once_with(settings.step_persistence)
     agent_cls.assert_called_once_with(
         model=model,
         instructions="Be helpful",
