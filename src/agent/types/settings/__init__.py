@@ -4,6 +4,7 @@ from agent.types.settings.agent import AgentSettings
 from agent.types.settings.compaction import CompactionSettings
 from agent.types.settings.knowledge import KnowledgeSourceSettings
 from agent.types.settings.mcp import MCPSettings
+from agent.types.settings.output import OutputSettings
 from agent.types.settings.shield import ShieldSettings
 from agent.types.settings.skill import SkillSettings
 from agent.types.settings.step_persistence import StepPersistenceSettings
@@ -13,6 +14,7 @@ __all__ = [
     "CompactionSettings",
     "KnowledgeSourceSettings",
     "MCPSettings",
+    "OutputSettings",
     "ShieldSettings",
     "SkillSettings",
     "StepPersistenceSettings",

@@ -8,6 +8,11 @@ structured output mode the selected model's profile can honor. Design:
 ``docs/design/inference-backend-migration/pai-responses-lcore-rewrite.md``
 section 4.8.
 
+When the request carries client function tools, ``DeferredToolRequests``
+joins the output type so a function call can end the run and be projected
+as a ``function_call`` item; server-side tools (MCP, file search) run inside
+the loop and do not.
+
 An invalid or incomplete client schema is a request error raised when the
 settings are built, before the run starts. ``text.verbosity`` is not part
 of the output type.
@@ -19,7 +24,14 @@ from dataclasses import dataclass
 from typing import Any, Final, Literal, Optional
 
 from fastapi import HTTPException
-from pydantic_ai import NativeOutput, PromptedOutput, StructuredDict, ToolOutput
+from ogx_api.openai_responses import OpenAIResponseInputToolFunction
+from pydantic_ai import (
+    DeferredToolRequests,
+    NativeOutput,
+    PromptedOutput,
+    StructuredDict,
+    ToolOutput,
+)
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.profiles import ModelProfile
 
@@ -59,6 +71,8 @@ class OutputSettings:
         name: Name of the structured type, for ``json_schema``.
         description: Description of the structured type, for ``json_schema``.
         strict: Whether the provider must enforce the schema strictly.
+        client_function_tools: Whether the request declares function tools
+            the client executes itself, which can end the run.
 
     """
 
@@ -67,6 +81,7 @@ class OutputSettings:
     name: Optional[str] = None
     description: Optional[str] = None
     strict: Optional[bool] = None
+    client_function_tools: bool = False
 
     @classmethod
     def from_responses_request(cls, params: ResponsesApiParams) -> OutputSettings:
@@ -103,6 +118,10 @@ class OutputSettings:
             name=fmt.get("name"),
             description=fmt.get("description"),
             strict=fmt.get("strict"),
+            client_function_tools=any(
+                isinstance(tool, OpenAIResponseInputToolFunction)
+                for tool in params.tools or []
+            ),
         )
 
     def _structured_type(self) -> type[dict[str, Any]]:
@@ -124,9 +143,17 @@ class OutputSettings:
 
         Returns:
             ``str`` for plain text; otherwise the structured type wrapped in
-            the output mode chosen for the profile.
+            the output mode chosen for the profile. With client function
+            tools on the request, a list of that and ``DeferredToolRequests``.
 
         """
+        contract = self._contract(profile)
+        if self.client_function_tools:
+            return [contract, DeferredToolRequests]
+        return contract
+
+    def _contract(self, profile: ModelProfile) -> OutputSpec[Any]:
+        """Return the output contract without deferred tool requests."""
         if self.format_type == FORMAT_TEXT:
             return str
         structured = self._structured_type()

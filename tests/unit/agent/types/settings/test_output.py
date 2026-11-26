@@ -5,9 +5,17 @@ from typing import Any, Optional, cast
 import pytest
 from fastapi import HTTPException
 from pydantic import TypeAdapter
-from pydantic_ai import NativeOutput, PromptedOutput, ToolOutput
+from pydantic_ai import (
+    Agent,
+    DeferredToolRequests,
+    NativeOutput,
+    PromptedOutput,
+    ToolOutput,
+)
+from pydantic_ai.models.test import TestModel
 from pydantic_ai.profiles import ModelProfile
 
+from agent.types.settings import AgentSettings
 from agent.types.settings.output import OutputSettings
 from models.common.responses.responses_api_params import ResponsesApiParams
 
@@ -159,3 +167,58 @@ def test_incomplete_or_invalid_schema_fails_before_the_run(
     assert exc_info.value.status_code == 422
     detail = cast(dict[str, str], exc_info.value.detail)
     assert cause in detail["cause"]
+
+
+FUNCTION_TOOL = {
+    "type": "function",
+    "name": "lookup",
+    "description": "Look something up",
+    "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+}
+
+
+class TestDeferredToolRequests:
+    """Client function tools can end the run, so they join the output type."""
+
+    def test_text_with_function_tools(self) -> None:
+        """Plain text plus client functions is a union of str and deferred requests."""
+        settings = OutputSettings.from_responses_request(
+            _params(None, tools=[FUNCTION_TOOL])
+        )
+        assert settings.client_function_tools is True
+        assert settings.output_type_for(NATIVE) == [str, DeferredToolRequests]
+
+    def test_structured_with_function_tools(self) -> None:
+        """A structured contract plus client functions keeps the wrapped type first."""
+        output = OutputSettings.from_responses_request(
+            _params({"format": {"type": "json_object"}}, tools=[FUNCTION_TOOL])
+        ).output_type_for(NATIVE)
+        assert isinstance(output, list)
+        assert isinstance(output[0], NativeOutput)
+        assert output[1] is DeferredToolRequests
+
+    def test_server_tools_do_not_add_deferred_requests(self) -> None:
+        """MCP and file search run inside the loop; only client functions defer."""
+        tools: list[dict[str, Any]] = [
+            {"type": "mcp", "server_label": "docs", "server_url": "http://mcp.local"},
+            {"type": "file_search", "vector_store_ids": ["vs_1"]},
+        ]
+        settings = OutputSettings.from_responses_request(_params(None, tools=tools))
+        assert settings.client_function_tools is False
+        assert settings.output_type_for(NATIVE) is str
+
+    def test_agent_accepts_the_union(self) -> None:
+        """pydantic-ai takes the produced union as an agent output type."""
+        output = OutputSettings.from_responses_request(
+            _params(
+                {"format": {"type": "json_schema", "name": "p", "schema": PERSON}},
+                tools=[FUNCTION_TOOL],
+            )
+        ).output_type_for(TOOL_ONLY)
+        Agent(TestModel(), output_type=output)
+
+
+def test_agent_settings_default_to_plain_text() -> None:
+    """A query answers in plain text with no deferred client tools."""
+    assert AgentSettings().output == OutputSettings()
+    assert AgentSettings().output.output_type_for(NATIVE) is str
