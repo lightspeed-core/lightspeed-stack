@@ -9,7 +9,10 @@ from pytest_mock import MockerFixture, MockType
 
 from agent.types.settings.agent import AgentSettings
 from agent.types.settings.compaction import CompactionSettings
-from agent.types.settings.knowledge import KnowledgeSourceSettings
+from agent.types.settings.knowledge import (
+    KnowledgeSourceSettings,
+    OKPKnowledgeSourceSettings,
+)
 from agent.types.settings.mcp import MCPSettings
 from agent.types.settings.shield import ShieldSettings
 from agent.types.settings.skill import SkillSettings
@@ -118,6 +121,7 @@ def test_query_fields_select_the_agent(mocker: MockerFixture) -> None:
     assert settings.provider == "watsonx"
     assert settings.model == "granite"
     assert settings.instructions == "resolved prompt"
+    assert settings.model_settings == AgentModelSettings()
     assert settings.compaction == CompactionSettings(
         provider="watsonx",
         model="granite",
@@ -129,9 +133,9 @@ def test_query_fields_select_the_agent(mocker: MockerFixture) -> None:
         ShieldSettings(id="topic", enabled=False),
         ShieldSettings(id="pii", enabled=True),
     ]
-    assert settings.knowledge_sources == [
+    assert settings.knowledge.sources == [
         KnowledgeSourceSettings(id="alpha", enabled=False),
-        KnowledgeSourceSettings(id=OKP_RAG_ID, enabled=True),
+        OKPKnowledgeSourceSettings(id=OKP_RAG_ID, enabled=True),
     ]
     assert settings.mcp_servers == [MCPSettings(id="docs", headers={}, enabled=True)]
 
@@ -156,7 +160,7 @@ def test_omitted_query_fields_use_configuration_defaults(
     assert settings.step_persistence == StepPersistenceSettings(enabled=True)
     assert settings.skills == []
     assert [shield.enabled for shield in settings.shields] == [True, True]
-    assert [source.enabled for source in settings.knowledge_sources] == [True, True]
+    assert [source.enabled for source in settings.knowledge.sources] == [True, True]
 
 
 def test_empty_selections_disable_optional_capabilities(
@@ -174,7 +178,7 @@ def test_empty_selections_disable_optional_capabilities(
     settings = AgentSettings.from_query_request(_request(mocker), query, "token")
 
     assert settings.compaction.enabled is False
-    assert settings.skills == []
+    assert not settings.skills
     assert [shield.enabled for shield in settings.shields] == [False, False]
-    assert [source.enabled for source in settings.knowledge_sources] == [False, False]
+    assert [source.enabled for source in settings.knowledge.sources] == [False, False]
     assert settings.mcp_servers == [MCPSettings(id="docs", headers={}, enabled=False)]

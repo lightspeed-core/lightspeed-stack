@@ -71,7 +71,7 @@ class AgentFactory:  # pylint: disable=too-few-public-methods
             *(await MCPFactory.build_capabilities(settings.mcp_servers)),
             *ShieldFactory.build_capabilities(settings.shields),
             SkillFactory.build_capabilities(settings.skills),
-            KnowledgeFactory.build_capabilities(settings.knowledge_sources),
+            KnowledgeFactory.build_capabilities(settings.knowledge),
             CompactionFactory.build_capability(settings.compaction),
             StepPersistenceFactory.build_capability(settings.step_persistence),
         )
@@ -79,6 +79,11 @@ class AgentFactory:  # pylint: disable=too-few-public-methods
             capability for capability in raw_capabilities if capability is not None
         ]
 
-        return Agent(
-            model=model, instructions=settings.instructions, capabilities=capabilities
+        model_settings = settings.model_settings.to_model_settings()
+
+        return Agent[object, str](
+            model=model,
+            model_settings=model_settings,
+            instructions=settings.instructions,
+            capabilities=capabilities,
         )

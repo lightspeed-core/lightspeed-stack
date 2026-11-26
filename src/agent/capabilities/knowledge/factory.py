@@ -1,14 +1,17 @@
 """Factory for building knowledge capabilities from knowledge source settings."""
 
+from dataclasses import replace
 from typing import Optional
 
 from sentence_transformers import CrossEncoder
 
 from agent.types.settings import KnowledgeSourceSettings
+from agent.types.settings.knowledge import KnowledgeSettings, OKPKnowledgeSourceSettings
 from configuration import configuration
 from knowledge.capability import Knowledge
 from knowledge.registry import KnowledgeSourceRegistry
 from knowledge.sources.base import KnowledgeSource
+from knowledge.sources.okp import OkpKnowledgeSource
 from log import get_logger
 from providers.inference.errors import (
     ModelNotAvailableError,
@@ -25,7 +28,7 @@ class KnowledgeFactory:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def build_capabilities(
-        settings: list[KnowledgeSourceSettings],
+        settings: KnowledgeSettings,
     ) -> Optional[Knowledge]:
         """Build a knowledge capability from knowledge source settings.
 
@@ -35,8 +38,8 @@ class KnowledgeFactory:  # pylint: disable=too-few-public-methods
         configuration. Each source's score weight is applied after merged
         matches are ranked. When inline reranking is enabled, the
         cross-encoder is loaded from the inference provider registry and
-        attached to the capability. OKP search mode and the chunk filter are
-        fixed on the registered OKP source.
+        attached to the capability. OKP product filters from the request are
+        applied on a copy of the registered OKP source.
 
         Parameters:
             settings: Per-request knowledge source selection.
@@ -48,12 +51,12 @@ class KnowledgeFactory:  # pylint: disable=too-few-public-methods
             cannot be resolved.
 
         """
-        if sources := _get_enabled_sources(settings):
+        if sources := _get_enabled_sources(settings.sources):
             return Knowledge(
                 sources=sources,
                 reranker=_get_reranker(),
                 auto_max_matches=configuration.rag.retrieval.inline.max_chunks,
-                tool_max_matches=configuration.rag.retrieval.tool.max_chunks,
+                tool_max_matches=settings.tool_max_matches or configuration.rag.retrieval.tool.max_chunks,
             )
         return None
 
@@ -68,7 +71,8 @@ def _get_enabled_sources(
 
     Returns:
         Registered sources whose settings are enabled. Disabled settings and
-        unknown ids are skipped. Unknown ids are logged.
+        unknown ids are skipped. Unknown ids are logged. An OKP source with
+        request product filters is a copy of the registered source.
 
     """
     registry = KnowledgeSourceRegistry()
@@ -83,6 +87,14 @@ def _get_enabled_sources(
                 setting.id,
             )
             continue
+        if isinstance(setting, OKPKnowledgeSourceSettings) and setting.products:
+            if isinstance(source, OkpKnowledgeSource):
+                source = replace(source, products=tuple(setting.products))
+            else:
+                logger.warning(
+                    "Knowledge source '%s' is not an OKP source; ignoring product filters",
+                    setting.id,
+                )
         sources.append(source)
     return sources
 
