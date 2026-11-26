@@ -8,6 +8,14 @@ REST API service based on FastAPI.
 
 Database engine management.
 
+## [endpoints/](endpoints/)
+
+Handlers for REST API endpoints.
+
+## [exceptions/](exceptions/)
+
+Centralized domain-exception-to-HTTP translation (handlers and per-domain mappings).
+
 ## [main.py](main.py)
 
 Definition of FastAPI based web service.

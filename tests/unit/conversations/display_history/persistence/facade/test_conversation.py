@@ -175,11 +175,14 @@ def test_update_conversation_topic(memory_engine: Engine) -> None:
     """Owners can replace the topic summary."""
     with Session(memory_engine) as session:
         seed_sample_conversation_and_turn(session)
-    update_conversation_topic(
-        TEST_CONVERSATION_ID,
-        TEST_USER_ID,
-        False,
-        "Updated topic",
+    assert (
+        update_conversation_topic(
+            TEST_CONVERSATION_ID,
+            TEST_USER_ID,
+            False,
+            "Updated topic",
+        )
+        is True
     )
     loaded = get_conversation_by_id(TEST_CONVERSATION_ID)
     assert loaded is not None

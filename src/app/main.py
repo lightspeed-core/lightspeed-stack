@@ -46,6 +46,7 @@ _OPENAPI_TAGS: Final[list[dict[str, str]]] = [
     {"name": "authorized", "description": "Authorization probe."},
     {"name": "config", "description": "Service configuration."},
     {"name": "conversations_v2", "description": "Conversations API v2."},
+    {"name": "conversations_v3", "description": "Conversations API v3."},
     {"name": "feedback", "description": "User feedback."},
     {"name": "health", "description": "Health and readiness probes."},
     {"name": "info", "description": "Service information."},

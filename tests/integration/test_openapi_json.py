@@ -291,6 +291,22 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
             "put",
             {"200", "400", "401", "403", "404", "500"},
         ),
+        ("/v3/conversations", "get", {"200", "401", "403", "500"}),
+        (
+            "/v3/conversations/{conversation_id}",
+            "get",
+            {"200", "400", "401", "403", "404", "500"},
+        ),
+        (
+            "/v3/conversations/{conversation_id}",
+            "delete",
+            {"200", "400", "401", "403", "500"},
+        ),
+        (
+            "/v3/conversations/{conversation_id}",
+            "put",
+            {"200", "400", "401", "403", "404", "500"},
+        ),
         ("/readiness", "get", {"200", "401", "403", "503"}),
         ("/liveness", "get", {"200", "401", "403"}),
         ("/authorized", "post", {"200", "401", "403"}),
@@ -389,6 +405,22 @@ def test_paths_and_responses_exist_from_file(
         ),
         (
             "/v2/conversations/{conversation_id}",
+            "put",
+            {"200", "400", "401", "403", "404", "500"},
+        ),
+        ("/v3/conversations", "get", {"200", "401", "403", "500"}),
+        (
+            "/v3/conversations/{conversation_id}",
+            "get",
+            {"200", "400", "401", "403", "404", "500"},
+        ),
+        (
+            "/v3/conversations/{conversation_id}",
+            "delete",
+            {"200", "400", "401", "403", "500"},
+        ),
+        (
+            "/v3/conversations/{conversation_id}",
             "put",
             {"200", "400", "401", "403", "404", "500"},
         ),

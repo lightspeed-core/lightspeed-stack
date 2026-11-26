@@ -1026,20 +1026,17 @@ class TestConversationUpdateResponse:
         response = ConversationUpdateResponse(
             conversation_id="123e4567-e89b-12d3-a456-426614174000",
             success=True,
-            message="Topic summary updated successfully",
         )
         assert isinstance(response, AbstractSuccessfulResponse)
         assert response.conversation_id == "123e4567-e89b-12d3-a456-426614174000"
         assert response.success is True
-        assert response.message == "Topic summary updated successfully"
+        assert response.model_dump()["message"] == "Topic summary updated successfully"
 
     def test_constructor_failure(self) -> None:
         """Test ConversationUpdateResponse with failed update."""
-        response = ConversationUpdateResponse(
-            conversation_id="conv-123", success=False, message="Update failed"
-        )
+        response = ConversationUpdateResponse(conversation_id="conv-123", success=False)
         assert response.success is False
-        assert response.message == "Update failed"
+        assert response.model_dump()["message"] == "Topic summary was not updated"
 
     def test_missing_required_parameters(self) -> None:
         """Test ConversationUpdateResponse raises ValidationError when required fields missing."""

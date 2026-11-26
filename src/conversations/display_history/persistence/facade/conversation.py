@@ -138,7 +138,7 @@ def update_conversation_topic(
     user_id: str,
     others_allowed: bool,
     topic_summary: str,
-) -> None:
+) -> bool:
     """Update the conversation topic summary.
 
     Args:
@@ -147,17 +147,22 @@ def update_conversation_topic(
         others_allowed: When true, allow updating other users' conversations.
         topic_summary: New topic summary text.
 
+    Returns:
+        True when the row was updated.
+
     Raises:
         ConversationAccessDeniedError: Caller may not update this conversation.
         ConversationNotFoundError: Conversation does not exist.
-        DisplayHistoryDatabaseError: Database operation failed.
+        ConversationHistoryDatabaseError: Database operation failed.
 
     """
     normalized = normalize_conversation_id(conversation_id)
     get_user_conversation(normalized, user_id, others_allowed)
-    update_conversation_topic_summary(normalized, topic_summary)
+    updated = update_conversation_topic_summary(normalized, topic_summary)
     logger.info(
-        "Updated topic summary for conversation %s for user %s",
+        "Updated topic summary for conversation %s for user %s: %s",
         normalized,
         user_id,
+        updated,
     )
+    return updated

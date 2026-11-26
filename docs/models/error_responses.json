@@ -308,6 +308,13 @@
                     },
                     {
                         "detail": {
+                            "cause": "Failed to list conversations due to a database error.",
+                            "response": "Database query failed"
+                        },
+                        "label": "database operation"
+                    },
+                    {
+                        "detail": {
                             "cause": "ClusterVersion 'version' resource not found in OpenShift cluster",
                             "response": "Internal server error"
                         },
@@ -362,6 +369,13 @@
                             "response": "Conversation not found"
                         },
                         "label": "conversation"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Response with ID resp_abc123 does not exist",
+                            "response": "Response not found"
+                        },
+                        "label": "response"
                     },
                     {
                         "detail": {

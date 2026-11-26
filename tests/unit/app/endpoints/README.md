@@ -32,6 +32,10 @@ Unit tests for the /conversations REST API endpoints.
 
 Unit tests for the /conversations REST API endpoints.
 
+## [test_conversations_v3.py](test_conversations_v3.py)
+
+Unit tests for the /v3/conversations REST API endpoints.
+
 ## [test_feedback.py](test_feedback.py)
 
 Unit tests for the /feedback REST API endpoint.

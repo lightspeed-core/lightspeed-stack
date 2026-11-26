@@ -60,6 +60,13 @@ class InternalServerErrorResponse(AbstractErrorResponse):
                     },
                 },
                 {
+                    "label": "database operation",
+                    "detail": {
+                        "response": "Database query failed",
+                        "cause": "Failed to list conversations due to a database error.",
+                    },
+                },
+                {
                     "label": "cluster version not found",
                     "detail": {
                         "response": "Internal server error",
