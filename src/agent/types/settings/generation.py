@@ -18,10 +18,12 @@ configuration and is mapped elsewhere.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Final, Literal, Optional
 
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
+from pydantic_ai.profiles import ModelProfile
 from pydantic_ai.settings import ThinkingLevel
 
 from log import get_logger
@@ -33,6 +35,9 @@ REASONING_EFFORT_OFF: Final[str] = "none"
 """The OpenResponses effort that turns reasoning off; ``thinking=False`` in pydantic-ai."""
 
 ReasoningSummary = Literal["auto", "concise", "detailed"]
+
+THINKING_SETTINGS: Final[tuple[str, ...]] = ("thinking", "openai_reasoning_summary")
+"""Settings that only mean something when the model reasons."""
 
 
 @dataclass
@@ -109,3 +114,52 @@ class GenerationSettings:
         if self.reasoning_summary is not None:
             settings["openai_reasoning_summary"] = self.reasoning_summary
         return settings
+
+    def model_settings_for(
+        self, profile: ModelProfile, model_id: str
+    ) -> OpenAIResponsesModelSettings:
+        """Return the settings the selected model can honor.
+
+        Resolves the requested settings against the model's profile and drops,
+        with a warning naming the model and the setting, what the profile rules
+        out: the thinking level and the reasoning summary when the model does
+        not reason, turning thinking off when the model always reasons,
+        ``parallel_tool_calls`` when the model has no tools, and every setting
+        the OpenAI-family profile lists as unsupported. A knob the profile is
+        silent about is kept, since pydantic-ai's model implementation makes
+        the final call. An unsupported optional knob is never a request error.
+
+        Parameters:
+            profile: The selected model's profile, from ``Model.profile``.
+            model_id: The ``provider/model`` identifier, for the warnings.
+
+        Returns:
+            The settings to pass to the agent run.
+
+        """
+        resolved = self.as_model_settings()
+
+        def drop(names: tuple[str, ...], reason: str) -> None:
+            """Remove *names* from the resolved settings, warning for each one present."""
+            for name in names:
+                if name in resolved:
+                    logger.warning(
+                        "Dropping model setting %s for %s: %s", name, model_id, reason
+                    )
+                    del resolved[name]  # type: ignore[misc]
+
+        if profile.get("supports_thinking") is False:
+            drop(THINKING_SETTINGS, "the model does not support reasoning")
+        elif resolved.get("thinking") is False and profile.get(
+            "thinking_always_enabled"
+        ):
+            drop(("thinking",), "the model always reasons")
+        if profile.get("supports_tools") is False:
+            drop(("parallel_tool_calls",), "the model does not support tools")
+        unsupported = profile.get("openai_unsupported_model_settings")
+        if isinstance(unsupported, Sequence):
+            drop(
+                tuple(str(name) for name in unsupported),
+                "the model profile lists it as unsupported",
+            )
+        return resolved
