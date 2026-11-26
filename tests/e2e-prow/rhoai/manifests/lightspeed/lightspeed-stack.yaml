@@ -67,6 +67,33 @@ spec:
           readOnly: true
         - name: rag-seed
           mountPath: /rag-dest
+    # BYOK / inline RAG embeddings (docker-compose: HF_CACHE_PATH -> .../.cache/huggingface).
+    - name: prefetch-embeddings
+      image: ${LIGHTSPEED_STACK_IMAGE}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      env:
+        - name: HF_HOME
+          value: /opt/app-root/src/.cache/huggingface
+        - name: HOME
+          value: /opt/app-root/src
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          mkdir -p "$HF_HOME"
+          /app-root/.venv/bin/python -c \
+            "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')"
+      volumeMounts:
+        - name: hf-cache
+          mountPath: /opt/app-root/src/.cache/huggingface
   containers:
     - name: lightspeed-stack-container
       securityContext:
@@ -121,6 +148,12 @@ spec:
           value: "lightspeed-stack-otel-anonymization-dev-default"
         - name: HF_HUB_OFFLINE
           value: "1"
+        # Align with docker-compose-library.yaml so sentence-transformers uses the
+        # prefetched HF cache (not ~/.cache under an unwritable $HOME).
+        - name: HOME
+          value: /opt/app-root/src
+        - name: HF_HOME
+          value: /opt/app-root/src/.cache/huggingface
       image: ${LIGHTSPEED_STACK_IMAGE}
       command: ["/bin/sh", "-c", "mkdir -p /tmp/data /tmp/e2e-rag-work && exec /app-root/entrypoint.sh"]
       ports:
@@ -158,6 +191,8 @@ spec:
           mountPath: /tmp/invalid-mcp-token
           subPath: token
           readOnly: true
+        - name: hf-cache
+          mountPath: /opt/app-root/src/.cache/huggingface
   volumes:
     - name: config
       configMap:
@@ -175,6 +210,8 @@ spec:
       configMap:
         name: e2e-skills
     - name: skills
+      emptyDir: {}
+    - name: hf-cache
       emptyDir: {}
     - name: mcp-file-auth-token
       secret:
