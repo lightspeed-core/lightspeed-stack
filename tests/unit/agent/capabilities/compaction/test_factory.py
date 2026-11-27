@@ -7,12 +7,14 @@ from pytest_mock import MockerFixture, MockType
 
 from agent.capabilities.compaction.factory import CompactionFactory
 from agent.types.settings import CompactionSettings
-from models.config import CompactionConfiguration
+from models.config import CompactionConfiguration, InferenceConfiguration
 from providers.inference.errors import (
     ModelNotAvailableError,
     ModelTypeNotSupportedError,
     ProviderNotFoundError,
 )
+
+INFERENCE = InferenceConfiguration(default_provider="openai", default_model="gpt")
 
 
 def _install(
@@ -23,7 +25,7 @@ def _install(
     config = compaction or CompactionConfiguration(enabled=True)
     mocker.patch(
         "agent.capabilities.compaction.factory.configuration",
-        SimpleNamespace(compaction=config),
+        SimpleNamespace(compaction=config, inference=INFERENCE),
     )
     registry = mocker.Mock()
     mocker.patch(
@@ -79,10 +81,10 @@ def test_unresolved_summarizer_builds_nothing(
 def test_resolved_model_is_passed_to_the_tiered_builder(
     mocker: MockerFixture,
 ) -> None:
-    """The loaded compaction config and resolved model are handed to the builder.
+    """The compaction config, the resolved model and the context window reach the builder.
 
-    The context window is not yet available from the provider registry, so the
-    factory passes ``None`` and returns whatever the builder produces.
+    The window is resolved for the summarizer model (LCORE-4764) and the
+    factory returns whatever the builder produces.
     """
     compaction = CompactionConfiguration(
         enabled=True,
@@ -91,6 +93,10 @@ def test_resolved_model_is_passed_to_the_tiered_builder(
         summary_prompt="Summarize\n{messages}",
     )
     registry, builder = _install(mocker, compaction)
+    resolver = mocker.patch(
+        "agent.capabilities.compaction.factory.resolve_context_window",
+        return_value=128_000,
+    )
     model = mocker.Mock()
     registry.resolve_model_instance.return_value = model
     builder.return_value = mocker.Mock()
@@ -101,4 +107,22 @@ def test_resolved_model_is_passed_to_the_tiered_builder(
 
     assert capability is builder.return_value
     registry.resolve_model_instance.assert_called_once_with("llm", "openai", "gpt")
-    builder.assert_called_once_with(compaction, model, None)
+    resolver.assert_called_once_with("openai/gpt", INFERENCE)
+    builder.assert_called_once_with(compaction, model, 128_000)
+
+
+def test_settings_without_provider_and_model_leave_the_window_to_the_harness(
+    mocker: MockerFixture,
+) -> None:
+    """With no provider and model to look up, the builder gets no window."""
+    registry, builder = _install(mocker)
+    resolver = mocker.patch(
+        "agent.capabilities.compaction.factory.resolve_context_window"
+    )
+    registry.resolve_model_instance.return_value = mocker.Mock()
+
+    CompactionFactory.build_capability(CompactionSettings(enabled=True))
+
+    resolver.assert_not_called()
+    builder.assert_called_once()
+    assert builder.call_args.args[2] is None
