@@ -134,6 +134,9 @@ spec:
           value: "/tmp/e2e-rag-work/kv_store.db"
         - name: PDF_KV_RAG_PATH
           value: "/tmp/e2e-rag-work/pdf_kv_store.db"
+        # OKP Solr (@cfg_okp): in-cluster Service from okp-solr.yaml (same namespace).
+        - name: RH_SERVER_OKP
+          value: "http://okp-solr-service-svc:8080/solr"
         - name: VLLM_URL
           valueFrom:
             secretKeyRef:
