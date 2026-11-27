@@ -2,6 +2,7 @@
 
 from agent.types.settings.agent import AgentSettings
 from agent.types.settings.compaction import CompactionSettings
+from agent.types.settings.generation import GenerationSettings
 from agent.types.settings.knowledge import KnowledgeSourceSettings
 from agent.types.settings.mcp import MCPSettings
 from agent.types.settings.shield import ShieldSettings
@@ -11,6 +12,7 @@ from agent.types.settings.step_persistence import StepPersistenceSettings
 __all__ = [
     "AgentSettings",
     "CompactionSettings",
+    "GenerationSettings",
     "KnowledgeSourceSettings",
     "MCPSettings",
     "ShieldSettings",

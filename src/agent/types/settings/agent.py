@@ -8,6 +8,7 @@ from typing import Optional
 from fastapi import Request
 
 from agent.types.settings.compaction import CompactionSettings
+from agent.types.settings.generation import GenerationSettings
 from agent.types.settings.knowledge import KnowledgeSourceSettings
 from agent.types.settings.mcp import MCPSettings
 from agent.types.settings.shield import ShieldSettings
@@ -26,6 +27,7 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
     model: Optional[str] = None
     instructions: Optional[str] = None
 
+    generation: GenerationSettings = field(default_factory=GenerationSettings)
     compaction: CompactionSettings = field(default_factory=CompactionSettings)
     step_persistence: StepPersistenceSettings = field(
         default_factory=StepPersistenceSettings
@@ -49,7 +51,9 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
         enabled; a provided list disables the rest. ``no_tools`` disables
         every MCP server. Skills, compaction, and step persistence come from
         configuration. The query does not select step persistence, so it stays
-        enabled and the history service decides whether a store exists.
+        enabled and the history service decides whether a store exists. A
+        query carries no generation settings, so the model's defaults apply;
+        the Responses request maps them (LCORE-4716).
         MCP headers are taken from the HTTP request and the auth token.
 
         Parameters:
