@@ -61,6 +61,14 @@ spec:
             echo "FATAL: RAG seed too small (${sz} bytes)"
             exit 1
           fi
+          if [ -f /rag-seed/pdf_kv_store.db.gz ]; then
+            gzip -dc /rag-seed/pdf_kv_store.db.gz > /rag-dest/pdf_kv_store.db
+            pdf_sz=$(wc -c < /rag-dest/pdf_kv_store.db)
+            if [ "$pdf_sz" -lt 1024 ]; then
+              echo "FATAL: PDF RAG seed too small (${pdf_sz} bytes)"
+              exit 1
+            fi
+          fi
       volumeMounts:
         - name: rag-data
           mountPath: /rag-seed
@@ -124,6 +132,8 @@ spec:
           value: "/app-root/.e2e-rag-seed"
         - name: KV_RAG_PATH
           value: "/tmp/e2e-rag-work/kv_store.db"
+        - name: PDF_KV_RAG_PATH
+          value: "/tmp/e2e-rag-work/pdf_kv_store.db"
         - name: VLLM_URL
           valueFrom:
             secretKeyRef:

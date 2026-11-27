@@ -259,13 +259,20 @@ conn.close()
     fi
 
     gzip -c "$RAG_DB_PATH" > /tmp/kv_store.db.gz
+    RAG_PDF_DB_PATH="$REPO_ROOT/tests/e2e/rag/pdf_kv_store.db"
+    rag_cm_args=(--from-file=kv_store.db.gz=/tmp/kv_store.db.gz)
+    if [ -f "$RAG_PDF_DB_PATH" ]; then
+      gzip -c "$RAG_PDF_DB_PATH" > /tmp/pdf_kv_store.db.gz
+      rag_cm_args+=(--from-file=pdf_kv_store.db.gz=/tmp/pdf_kv_store.db.gz)
+    else
+      log "⚠️  No pdf_kv_store.db at $RAG_PDF_DB_PATH — byok_pdf.feature will fail"
+    fi
     # Do not use `oc apply` here: client-side apply stores the full object in
     # metadata.annotations.kubectl.kubernetes.io/last-applied-configuration
     # (256KiB limit). The gzipped FAISS fixture (~800KiB+) overflows that.
     oc delete configmap rag-data -n "$NAMESPACE" --ignore-not-found
-    oc create configmap rag-data -n "$NAMESPACE" \
-      --from-file=kv_store.db.gz=/tmp/kv_store.db.gz
-    rm /tmp/kv_store.db.gz
+    oc create configmap rag-data -n "$NAMESPACE" "${rag_cm_args[@]}"
+    rm -f /tmp/kv_store.db.gz /tmp/pdf_kv_store.db.gz
     log "✅ RAG data ConfigMap created from $RAG_DB_PATH"
 else
     log "⚠️  No kv_store.db found at $RAG_DB_PATH"
