@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from conversations.display_history.agentic.projection import AgentRunOutcome
-    from models.common.agents.run_deps import AgentRunDeps
+    from models.common.agents.run_deps import AgentRunContextStatus, AgentRunDeps
 
 
 @dataclass
@@ -53,3 +53,14 @@ class AgentTurnArtifacts:
         if self._deps is None:
             raise RuntimeError("Agent turn artifacts: deps were not recorded")
         return self._deps
+
+    def run_context_status(self) -> AgentRunContextStatus:
+        """Return the run's compaction outcome, ``"full"`` when no run was recorded.
+
+        The agent's compaction capability marks the deps ``"compacted"`` when
+        a tier changed the history (LCORE-4694); a run that failed or never
+        happened left nothing to report.
+        """
+        if self._deps is None:
+            return "full"
+        return self._deps.context_status

@@ -232,6 +232,8 @@ The streaming `compaction` event comes from the run event stream (LCORE-4693). `
 
 After cutover, `context_status` is `"full"` or `"compacted"` (replacing today’s `"summarized"`). Use `"compacted"` whenever harness compaction changed agent history for the run—including clamp or clear-tool-results tiers that do not produce a summary—not only when the summarize tier ran. Query and streaming_query (and Conversations turns that expose the field) adopt that value; `/v1/responses` still does not.
 
+Where the value comes from (LCORE-4694): the compaction capability sets `AgentRunDeps.context_status` to `"compacted"` when a tier changed the history, in the run's deps that the caller passed in; query and streaming_query read it from the run's artifacts after the run and combine it with the pre-agent compaction's outcome for as long as both paths exist, and the agentic projection stores it with the turn. Nothing on the `/v1/responses` path reads the field.
+
 The OGX-specific handling of compaction markers, including filtering them from conversation responses, is removed. Compacted agent history is no longer represented in display history storage, so Conversation APIs continue to return the complete verbatim conversation and does not perform any compaction itself.
 
 ### 4.6 Alternative design

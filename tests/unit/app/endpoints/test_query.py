@@ -12,7 +12,11 @@ from app.endpoints.query import query_endpoint_handler
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.api.responses.successful import QueryResponse
-from models.common.agents import AgentTurnArtifacts
+from models.common.agents import (
+    AgentRunContextStatus,
+    AgentRunDeps,
+    AgentTurnArtifacts,
+)
 from models.common.query import Attachment
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import (
@@ -184,18 +188,27 @@ class TestQueryEndpointHandler:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        ("compacted", "expected_status"),
-        [(False, "full"), (True, "summarized")],
+        ("compacted", "run_status", "expected_status"),
+        [
+            (False, "full", "full"),
+            (True, "full", "summarized"),
+            (False, "compacted", "summarized"),
+        ],
     )
-    async def test_query_reports_context_status(
+    async def test_query_reports_context_status(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         dummy_request: Request,
         setup_configuration: AppConfig,
         mocker: MockerFixture,
         compacted: bool,
+        run_status: str,
         expected_status: str,
     ) -> None:
-        """Test that the compaction outcome is surfaced as context_status."""
+        """Test that either compaction's outcome is surfaced as context_status.
+
+        The pre-agent compaction reports through its result; the agent run's
+        compaction through the run deps recorded on the artifacts (LCORE-4694).
+        """
         query_request = QueryRequest(
             query="What is Kubernetes?"
         )  # pyright: ignore[reportCallIssue]
@@ -243,11 +256,14 @@ class TestQueryEndpointHandler:
         mock_turn_summary = TurnSummary()
         mock_turn_summary.llm_response = "An answer"
         mock_turn_summary.token_usage = TokenCounter(input_tokens=3, output_tokens=7)
+        artifacts = AgentTurnArtifacts()
+        artifacts.record(
+            mocker.Mock(),
+            AgentRunDeps(context_status=cast(AgentRunContextStatus, run_status)),
+        )
         mocker.patch(
             "app.endpoints.query.retrieve_agent_response",
-            new=mocker.AsyncMock(
-                return_value=(mock_turn_summary, AgentTurnArtifacts())
-            ),
+            new=mocker.AsyncMock(return_value=(mock_turn_summary, artifacts)),
         )
 
         mocker.patch(

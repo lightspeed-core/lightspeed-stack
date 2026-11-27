@@ -28,6 +28,7 @@ from models.api.responses.error import (
     UnprocessableEntityResponse,
 )
 from models.api.responses.successful import QueryResponse
+from models.common.agents import public_context_status
 from models.config import Action
 from utils.agents.query import retrieve_agent_response
 from utils.conversation_compaction import (
@@ -339,10 +340,18 @@ async def _handle_query_with_tracing(
 
     logger.info("Building final response")
 
+    # The agent run's own compaction (LCORE-4694) counts as much as the
+    # pre-agent one.
+    context_status = public_context_status(
+        compaction.context_status, agent_artifacts.run_context_status()
+    )
+
     # Set final root-span attributes (llm.* attrs live on the llm.inference span)
     set_span_attributes(
         root_span,
-        root_span_turn_attributes(turn_summary, conversation_id, compaction.compacted),
+        root_span_turn_attributes(
+            turn_summary, conversation_id, context_status == "summarized"
+        ),
     )
 
     # Emit LLM response completed event
@@ -356,7 +365,7 @@ async def _handle_query_with_tracing(
         rag_chunks=turn_summary.rag_chunks,
         referenced_documents=turn_summary.referenced_documents,
         truncated=False,
-        context_status=compaction.context_status,
+        context_status=context_status,
         input_tokens=reported_usage.input_tokens,
         output_tokens=reported_usage.output_tokens,
         available_quotas=available_quotas,
