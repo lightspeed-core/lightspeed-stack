@@ -29,6 +29,7 @@ from utils.otel_tracing import (
     set_span_attributes,
 )
 from utils.rag.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
+from utils.referenced_documents import graft_url_fragment
 from utils.responses import resolve_vector_store_ids
 
 if TYPE_CHECKING:
@@ -310,14 +311,20 @@ async def _query_store_for_byok_rag(  # pylint: disable=too-many-arguments,too-m
 
 def _extract_solr_document_metadata(
     chunk: Any,
-) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
-    """Extract document ID, title, reference URL, and source path from chunk metadata."""
+) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
+    """Extract document ID, title, reference URL, source path and portal path.
+
+    ``parent_id`` is the portal's own ``/documentation/en-us/...`` path and is what
+    offline document URLs must be built from; ``source_path`` is the docs.redhat.com
+    path and is only used to recover the section anchor (and for online fallbacks).
+    """
     # 1) dict metadata
     metadata = getattr(chunk, "metadata", None) or {}
     doc_id = metadata.get("doc_id") or metadata.get("document_id")
     title = metadata.get("title")
     reference_url = metadata.get("reference_url")
     source_path = metadata.get("source_path")
+    parent_id = metadata.get("parent_id") or metadata.get("document_id")
 
     # 2) typed chunk_metadata
     if not doc_id:
@@ -328,6 +335,11 @@ def _extract_solr_document_metadata(
                 title = title or chunk_meta.get("title")
                 reference_url = reference_url or chunk_meta.get("reference_url")
                 source_path = source_path or chunk_meta.get("source_path")
+                parent_id = (
+                    parent_id
+                    or chunk_meta.get("parent_id")
+                    or chunk_meta.get("document_id")
+                )
             else:
                 doc_id = getattr(chunk_meta, "doc_id", None) or getattr(
                     chunk_meta, "document_id", None
@@ -337,8 +349,13 @@ def _extract_solr_document_metadata(
                     chunk_meta, "reference_url", None
                 )
                 source_path = source_path or getattr(chunk_meta, "source_path", None)
+                parent_id = (
+                    parent_id
+                    or getattr(chunk_meta, "parent_id", None)
+                    or getattr(chunk_meta, "document_id", None)
+                )
 
-    return doc_id, title, reference_url, source_path
+    return doc_id, title, reference_url, source_path, parent_id
 
 
 def _process_byok_rag_chunks_for_documents(
@@ -432,16 +449,16 @@ def _process_solr_chunks_for_documents(
             "Extracting doc ids from chunk id: %s", getattr(chunk, "chunk_id", None)
         )
 
-        doc_id, title, reference_url, source_path = _extract_solr_document_metadata(
-            chunk
+        doc_id, title, reference_url, source_path, parent_id = (
+            _extract_solr_document_metadata(chunk)
         )
 
-        if not doc_id and not reference_url and not source_path:
+        if not doc_id and not reference_url and not source_path and not parent_id:
             continue
 
         # Build URL based on offline flag
         doc_url, reference_doc = _build_document_url(
-            offline, doc_id, reference_url, source_path
+            offline, doc_id, reference_url, source_path, parent_id
         )
 
         if reference_doc and reference_doc not in metadata_doc_ids:
@@ -773,14 +790,22 @@ def _build_document_url(
     doc_id: Optional[str],
     reference_url: Optional[str],
     source_path: Optional[str] = None,
+    parent_id: Optional[str] = None,
 ) -> tuple[str, Optional[str]]:
     """Build document URL based on offline flag and available metadata.
 
+    In offline mode the URL is built from the portal path (``parent_id`` /
+    ``doc_id``), i.e. the portal's ``/documentation/en-us/...`` layout, with the
+    section anchor grafted from ``source_path`` to preserve deep-linking. The raw
+    ``source_path`` is the docs.redhat.com path and is not served offline, so it is
+    used only for its ``#fragment``.
+
     Args:
-        offline: Whether to use offline mode (source_path) or online mode (reference_url)
+        offline: Whether to use offline mode (portal path) or online mode (reference_url)
         doc_id: Document ID from chunk metadata
         reference_url: Reference URL from chunk metadata (online deep-link)
-        source_path: Relative path from chunk metadata (offline deep-link)
+        source_path: docs.redhat.com path from chunk metadata (anchor source offline)
+        parent_id: Portal path from chunk metadata (offline deep-link)
 
     Returns:
         Tuple of (doc_url, reference_doc) where:
@@ -790,7 +815,7 @@ def _build_document_url(
     """
     base_url = _get_okp_base_url()
     if offline:
-        reference_doc = source_path or doc_id
+        reference_doc = graft_url_fragment(parent_id or doc_id, source_path)
     else:
         reference_doc = reference_url or doc_id
     doc_url = _join_okp_doc_url(base_url, reference_doc)
@@ -820,18 +845,22 @@ def _convert_solr_chunks_to_rag_format(
         # Build attributes with document metadata
         attributes = {}
 
-        # Legacy logic: extract doc_url from chunk metadata based on offline flag
-        if chunk.metadata:
-            if offline:
-                source_path = chunk.metadata.get("source_path")
-                if source_path:
-                    attributes["doc_url"] = _join_okp_doc_url(
-                        _get_okp_base_url(), source_path
-                    )
-            else:
-                reference_url = chunk.metadata.get("reference_url")
-                if reference_url:
-                    attributes["doc_url"] = reference_url
+        # Legacy logic: extract doc_url from chunk metadata based on offline flag.
+        # Offline URLs use the portal path (parent_id/document_id); source_path is
+        # the docs.redhat.com path and only contributes the section anchor.
+        metadata = chunk.metadata or {}
+        source_path = metadata.get("source_path")
+        if offline:
+            portal_path = metadata.get("parent_id") or metadata.get("document_id")
+            if portal_path:
+                attributes["doc_url"] = _join_okp_doc_url(
+                    _get_okp_base_url(),
+                    graft_url_fragment(portal_path, source_path),
+                )
+        else:
+            reference_url = metadata.get("reference_url")
+            if reference_url:
+                attributes["doc_url"] = reference_url
 
         # For Solr chunks, also extract from chunk_metadata
         if hasattr(chunk, "chunk_metadata") and chunk.chunk_metadata:
@@ -841,7 +870,8 @@ def _convert_solr_chunks_to_rag_format(
                 # Build URL if not already set
                 if "doc_url" not in attributes and offline and doc_id:
                     attributes["doc_url"] = _join_okp_doc_url(
-                        _get_okp_base_url(), doc_id
+                        _get_okp_base_url(),
+                        graft_url_fragment(doc_id, source_path),
                     )
 
         # Get score from retrieved_scores list if available

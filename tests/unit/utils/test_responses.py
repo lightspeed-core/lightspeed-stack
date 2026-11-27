@@ -3714,22 +3714,69 @@ class TestBuildOkpDocUrl:
         )
         assert url == "https://docs.openshift.com/docs/pipelines/config.html"
 
-    def test_offline_mode_uses_source_path(self, mocker: MockerFixture) -> None:
-        """Test that offline mode (offline=True) uses source_path."""
+    def test_offline_mode_uses_portal_path_with_anchor(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test offline mode uses the portal path and grafts the source_path anchor.
+
+        ``source_path`` is the docs.redhat.com path and must not be used as the
+        offline path; only its ``#fragment`` is carried over for deep-linking.
+        """
         mock_okp = mocker.Mock()
         mock_okp.offline = True
-        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_okp.rhokp_url = "https://okp.example.com"
         mock_config = mocker.Mock()
         mock_config.okp = mock_okp
         mocker.patch("utils.responses.configuration", mock_config)
 
         url = _build_okp_doc_url(
             {
-                "reference_url": "/docs/pipelines/config.html",
-                "source_path": "pipelines/config.html",
+                "reference_url": "https://docs.redhat.com/en/documentation/p/1/topic",
+                "source_path": "/en/documentation/p/1/topic#GUID-abc",
+                "parent_id": "/documentation/en-us/p/1/topic",
+                "document_id": "/documentation/en-us/p/1/topic",
             }
         )
-        assert url == "https://docs.openshift.com/pipelines/config.html"
+        assert url == "https://okp.example.com/documentation/en-us/p/1/topic#GUID-abc"
+
+    def test_offline_prefers_parent_id_over_document_id(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test offline mode prefers parent_id, then document_id, then doc_id."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = True
+        mock_okp.rhokp_url = "https://okp.example.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        url = _build_okp_doc_url(
+            {
+                "parent_id": "/documentation/en-us/p/1/topic",
+                "document_id": "/other/path",
+                "doc_id": "/documentation/en-us/p/1/topic_chunk_3",
+            }
+        )
+        assert url == "https://okp.example.com/documentation/en-us/p/1/topic"
+
+    def test_offline_portal_path_without_source_anchor(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test offline mode leaves the portal path unchanged when no anchor exists."""
+        mock_okp = mocker.Mock()
+        mock_okp.offline = True
+        mock_okp.rhokp_url = "https://okp.example.com"
+        mock_config = mocker.Mock()
+        mock_config.okp = mock_okp
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        url = _build_okp_doc_url(
+            {
+                "source_path": "/en/documentation/p/1/topic",
+                "document_id": "/documentation/en-us/p/1/topic",
+            }
+        )
+        assert url == "https://okp.example.com/documentation/en-us/p/1/topic"
 
     def test_online_falls_back_to_doc_id(self, mocker: MockerFixture) -> None:
         """Test online mode falls back to doc_id when reference_url is absent."""
@@ -3744,7 +3791,7 @@ class TestBuildOkpDocUrl:
         assert url == "https://docs.openshift.com/some-doc-id"
 
     def test_offline_falls_back_to_doc_id(self, mocker: MockerFixture) -> None:
-        """Test offline mode falls back to doc_id when source_path is absent."""
+        """Test offline mode falls back to doc_id when parent_id/document_id absent."""
         mock_okp = mocker.Mock()
         mock_okp.offline = True
         mock_okp.rhokp_url = "https://docs.openshift.com"
@@ -3824,23 +3871,40 @@ class TestParseReferencedDocumentsOkp:
         assert docs[0].doc_title == "Pipeline Config"
         assert docs[0].source == "okp"
 
-    def test_okp_offline_builds_url_from_source_path(
+    def test_okp_offline_builds_url_from_portal_path(
         self, mocker: MockerFixture
     ) -> None:
-        """Test OKP result builds URL from source_path in offline mode."""
+        """Test OKP result builds the offline URL from the portal path with anchor.
+
+        Regression test for the reported 404: the offline doc_url must use the
+        portal ``/documentation/en-us/...`` path (from parent_id/document_id), not
+        the docs.redhat.com ``/en/documentation/...`` source_path, while keeping the
+        section anchor.
+        """
         mock_okp = mocker.Mock()
         mock_okp.offline = True
-        mock_okp.rhokp_url = "https://docs.openshift.com"
+        mock_okp.rhokp_url = "http://localhost:8080"
         mock_config = mocker.Mock()
         mock_config.okp = mock_okp
         mocker.patch("utils.responses.configuration", mock_config)
 
+        parent = (
+            "/documentation/en-us/red_hat_developer_hub/2.1/whats_new-removed_features"
+        )
         mock_result = mocker.Mock()
         mock_result.attributes = {
-            "reference_url": "/docs/pipelines/config.html",
-            "source_path": "pipelines/config.html",
-            "title": "Pipeline Config",
-            "doc_id": "doc-001",
+            "reference_url": (
+                "https://docs.redhat.com/en/documentation/red_hat_developer_hub/2.1/"
+                "whats_new-removed_features#GUID-58b48cbd"
+            ),
+            "source_path": (
+                "/en/documentation/red_hat_developer_hub/2.1/"
+                "whats_new-removed_features#GUID-58b48cbd"
+            ),
+            "parent_id": parent,
+            "document_id": parent,
+            "title": "Removed features - Red Hat Developer Hub 2.1",
+            "doc_id": f"{parent}_chunk_1",
             "source": "okp",
         }
 
@@ -3858,9 +3922,7 @@ class TestParseReferencedDocumentsOkp:
         )
 
         assert len(docs) == 1
-        assert (
-            str(docs[0].doc_url) == "https://docs.openshift.com/pipelines/config.html"
-        )
+        assert str(docs[0].doc_url) == f"http://localhost:8080{parent}#GUID-58b48cbd"
         assert docs[0].source == "okp"
 
     def test_okp_multistore_detected_via_source_attribute(
