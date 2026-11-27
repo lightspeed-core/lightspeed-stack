@@ -49,6 +49,7 @@ from pydantic_ai_harness.compaction import (
 )
 
 from constants import DEFAULT_CONTEXT_WINDOW
+from models.common.agents.run_deps import AgentRunDeps
 from models.config import CompactionConfiguration
 from utils.token_estimator import estimate_tokens
 
@@ -83,6 +84,11 @@ class SignallingTieredCompaction(TieredCompaction[AgentDepsT]):
     then calls ``_escalate``; overriding ``_escalate`` therefore leaves requests
     under the threshold untouched and emits exactly once per compaction, before
     the first tier runs.
+
+    When the run carries :class:`AgentRunDeps` and a tier changed the history,
+    the capability also marks the run's ``context_status`` as ``"compacted"``
+    (LCORE-4694). That is the design's definition of the value: any tier that
+    altered what the model receives, not only a summary.
     """
 
     async def _escalate(
@@ -92,11 +98,16 @@ class SignallingTieredCompaction(TieredCompaction[AgentDepsT]):
         target: int,
         model_request_parameters: Optional[ModelRequestParameters] = None,
     ) -> list[ModelMessage]:
-        """Emit :class:`CompactionStartedEvent`, then apply the tiers."""
+        """Emit :class:`CompactionStartedEvent`, apply the tiers, record the outcome."""
         await ctx.emit(
             CompactionStartedEvent(message_count=len(messages), target_tokens=target)
         )
-        return await super()._escalate(messages, ctx, target, model_request_parameters)
+        compacted = await super()._escalate(
+            messages, ctx, target, model_request_parameters
+        )
+        if compacted != messages and isinstance(ctx.deps, AgentRunDeps):
+            ctx.deps.context_status = "compacted"
+        return compacted
 
 
 def build_tiered_compaction(

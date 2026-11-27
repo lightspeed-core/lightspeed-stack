@@ -1,6 +1,10 @@
 """Streaming payload models and event type exports."""
 
-from models.common.agents.run_deps import AgentRunContextStatus, AgentRunDeps
+from models.common.agents.run_deps import (
+    AgentRunContextStatus,
+    AgentRunDeps,
+    public_context_status,
+)
 from models.common.agents.stream_payloads import (
     CompactionEventData,
     CompactionStreamPayload,
@@ -45,4 +49,5 @@ __all__ = [
     "ToolCallStreamPayload",
     "ToolResultStreamPayload",
     "TurnCompleteStreamPayload",
+    "public_context_status",
 ]

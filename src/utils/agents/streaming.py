@@ -45,6 +45,7 @@ from models.common.agents import (
     ToolCallStreamPayload,
     ToolResultStreamPayload,
     TurnCompleteStreamPayload,
+    public_context_status,
 )
 from models.common.turn_summary import ContextStatus, TurnSummary
 from utils.agents.error_handler import map_agent_inference_error
@@ -359,6 +360,11 @@ async def generate_agent_response(  # pylint: disable=too-many-statements
     available_quotas = get_available_quotas(
         quota_limiters=configuration.quota_limiters,
         user_id=context.user_id,
+    )
+    # The agent run's own compaction (LCORE-4694) counts as much as the
+    # pre-agent one; the stream has ended, so the artifacts hold the run's deps.
+    context_status = public_context_status(
+        context_status, artifacts.run_context_status()
     )
     end_payload = EndStreamPayload.create(
         referenced_documents=turn_summary.referenced_documents,

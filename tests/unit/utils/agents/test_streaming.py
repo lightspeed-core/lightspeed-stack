@@ -743,6 +743,65 @@ class TestGenerateAgentResponse:
         )
 
     @pytest.mark.asyncio
+    async def test_end_event_reports_the_runs_compaction(
+        self,
+        mocker: MockerFixture,
+        make_generator_context: Callable[..., ResponseGeneratorContext],
+        responses_params: ResponsesApiParams,
+    ) -> None:
+        """A run whose compaction capability compacted the history ends as summarized.
+
+        The pre-agent path reported a full context; the agent run's deps,
+        recorded on the artifacts when the stream ended, say otherwise
+        (LCORE-4694).
+        """
+        context = make_generator_context()
+        turn_summary = TurnSummary()
+        background_tasks: list[asyncio.Task[None]] = []
+        artifacts = AgentTurnArtifacts()
+        artifacts.record(mocker.Mock(), AgentRunDeps(context_status="compacted"))
+
+        async def inner() -> AsyncIterator[str]:
+            yield serialize_event(
+                TokenStreamPayload.create(chunk_id=0, token="Hi"),
+                MEDIA_TYPE_JSON,
+            )
+
+        mocker.patch("utils.agents.streaming.consume_query_tokens")
+        mocker.patch("utils.agents.streaming.get_available_quotas", return_value={})
+        mocker.patch(
+            "utils.agents.streaming.maybe_get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch("utils.agents.streaming.store_query_results")
+        mock_config = mocker.Mock()
+        mock_config.quota_limiters = []
+        mocker.patch("utils.agents.streaming.configuration", mock_config)
+
+        result = [
+            event
+            async for event in generate_agent_response(
+                inner(),
+                context,
+                responses_params,
+                turn_summary,
+                artifacts,
+                background_tasks,
+                root_span=_dummy_root_span(),
+            )
+        ]
+
+        end_events = [
+            parsed
+            for event in result
+            if event.startswith("data: ")
+            and (parsed := json.loads(event.removeprefix("data: ").strip()))["event"]
+            == "end"
+        ]
+        assert len(end_events) == 1
+        assert end_events[0]["data"]["context_status"] == "summarized"
+
+    @pytest.mark.asyncio
     async def test_cancelled_persists_interrupted_turn(
         self,
         mocker: MockerFixture,

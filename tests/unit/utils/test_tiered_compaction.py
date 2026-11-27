@@ -23,6 +23,7 @@ from pydantic_ai_harness.compaction import (
 )
 
 from constants import DEFAULT_CONTEXT_WINDOW
+from models.common.agents import AgentRunDeps
 from models.config import CompactionConfiguration
 from utils.tiered_compaction import (
     CLAMP_MAX_PART_TOKENS,
@@ -282,3 +283,38 @@ class TestCompactionStartedEvent:
         )
         assert "SUMMARY" in repr(sent[-1])
         assert "q0 " not in repr(sent[-1])
+
+
+class TestContextStatusOnTheRunDeps:
+    """A compaction that changed the history marks the run as compacted (LCORE-4694)."""
+
+    async def test_compacted_history_marks_the_run(self) -> None:
+        """The run deps say compacted once a tier changed what the model receives."""
+        compaction = _signalling(TestModel(custom_output_text="SUMMARY"))
+        agent = Agent(TestModel(custom_output_text="answer"), capabilities=[compaction])
+        deps = AgentRunDeps()
+        await agent.run("current question", message_history=_long_history(), deps=deps)
+        assert deps.context_status == "compacted"
+
+    async def test_history_under_the_target_leaves_the_run_full(self) -> None:
+        """No compaction, no change to the default."""
+        compaction = _signalling(TestModel(custom_output_text="SUMMARY"))
+        agent = Agent(TestModel(custom_output_text="answer"), capabilities=[compaction])
+        deps = AgentRunDeps()
+        await agent.run("hi", deps=deps)
+        assert deps.context_status == "full"
+
+    async def test_run_without_deps_still_compacts(self) -> None:
+        """The capability does not require the run to carry deps."""
+        sent: list[list[ModelMessage]] = []
+
+        def chat(messages: list[ModelMessage], _: AgentInfo) -> ModelResponse:
+            """Record the request and answer."""
+            sent.append(messages)
+            return ModelResponse(parts=[TextPart(content="answer")])
+
+        compaction = _signalling(TestModel(custom_output_text="SUMMARY"))
+        await Agent(FunctionModel(chat), capabilities=[compaction]).run(
+            "current question", message_history=_long_history()
+        )
+        assert "SUMMARY" in repr(sent[-1])
