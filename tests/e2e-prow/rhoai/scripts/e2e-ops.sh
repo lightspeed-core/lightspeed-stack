@@ -8,7 +8,6 @@
 # - E2E_LSC_PORT_FORWARD_PID_FILE coordinates the handoff.
 # - Single pod: lightspeed-stack-service (OGX in-process). No separate OGX pod or :8321 forward.
 # - OKP Solr: deploy-okp-solr from @cfg_okp features; reachability checked from the LCS pod.
-# - Proxy/TLS sidecars (tunnel proxy, mock TLS) are Docker Compose only (@skip-in-prow).
 #
 # Commands:
 #   restart-lightspeed                - Restart lightspeed-stack pod and port-forward
@@ -213,8 +212,7 @@ verify_connectivity() {
         # First check /readiness to see if port-forward is alive (accept 200, 401, or 503)
         http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://localhost:$local_port/readiness" 2>/dev/null) || http_code="000"
 
-        # LCS returns 503 when provider health fails (see health.py). Intentionally broken
-        # Llama proxy e2e stays 503 forever while the tunnel is still fine. Only accept 503
+        # LCS returns 503 when provider health fails (see health.py). Only accept 503
         # on the last attempt so normal restarts keep retrying while providers warm up
         # (transient 503 then 200) and we do not short-circuit other suites on first 503.
         if [[ "$http_code" == "503" ]]; then
@@ -229,18 +227,15 @@ verify_connectivity() {
             # Port-forward works; now verify the app is fully initialized by hitting
             # a real endpoint. /v1/models requires the OGX handshake to complete.
             # Accept 200 (no auth) or 401/403 (auth) — both prove the full app stack is up.
-            #
-            # Proxy/TLS e2e scenarios intentionally misconfigure Llama (e.g. unreachable
-            # HTTP proxy). LCS still answers /v1/models with 5xx once the route exists;
-            # treating those as success avoids false failures on restart-lightspeed while
-            # still rejecting connection errors (000).
+            # Some e2e scenarios misconfigure inference; /v1/models may return 5xx while
+            # LCS is still reachable — treat that as success for restart-lightspeed.
             local models_code
             models_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://localhost:$local_port/v1/models" 2>/dev/null) || models_code="000"
             if [[ "$models_code" == "200" || "$models_code" == "401" || "$models_code" == "403" ]]; then
                 return 0
             fi
             if [[ "$models_code" =~ ^5[0-9][0-9]$ ]]; then
-                echo "[e2e-ops] /v1/models=$models_code (LCS reachable; Llama/provider error expected in some e2e)"
+                echo "[e2e-ops] /v1/models=$models_code (LCS reachable; provider error expected in some e2e)"
                 return 0
             fi
             echo "[e2e-ops] /readiness=$http_code but /v1/models=$models_code (app still initializing, attempt $attempt/$max_attempts)"

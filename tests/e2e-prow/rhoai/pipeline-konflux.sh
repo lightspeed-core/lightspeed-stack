@@ -204,8 +204,6 @@ log "✅ Mock servers deployed"
 # OKP Solr is not part of cluster setup. okp_rag.feature (@cfg_okp) deploys it from
 # before_feature via e2e-ops deploy-okp-solr (7GB image, ~10-15 min first pull).
 # No other e2e feature depends on OKP.
-#
-# Proxy/TLS networking tests use Docker Compose only (@skip-in-prow).
 
 #========================================
 # 5. DEPLOY LIGHTSPEED STACK (LIBRARY MODE)

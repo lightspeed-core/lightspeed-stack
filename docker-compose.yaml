@@ -8,9 +8,6 @@ services:
     container_name: ogx
     ports:
       - "8321:8321"  # Expose OGX on 8321 (adjust if needed)
-    depends_on:
-      mock-tls-inference:
-        condition: service_healthy
     volumes:
       # Used in legacy mode only: with a unified lightspeed-stack.yaml (one
       # carrying inference.providers / vector_store.providers / a
@@ -27,7 +24,6 @@ services:
       - ogx-storage:/opt/app-root/src/.llama/storage
       # Read-only e2e FAISS fixtures — never mount these as the live KV_RAG_PATH
       - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/.e2e-rag-seed:ro,z
-      - mock-tls-certs:/certs:ro
       - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface:z
     environment:
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
@@ -216,26 +212,8 @@ services:
       retries: 3
       start_period: 2s
 
-  # Mock TLS inference server for TLS E2E tests
-  mock-tls-inference:
-    build:
-      context: ./tests/e2e/mock_tls_inference_server
-      dockerfile: Dockerfile
-    container_name: mock-tls-inference
-    networks:
-      - lightspeednet
-    volumes:
-      - mock-tls-certs:/certs
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,ssl;c=ssl.create_default_context();c.check_hostname=False;c.verify_mode=ssl.CERT_NONE;urllib.request.urlopen('https://localhost:8443/health',context=c)"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
-
 volumes:
   ogx-storage:
-  mock-tls-certs:
 
 networks:
   lightspeednet:

@@ -222,8 +222,7 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         )
         return
 
-    # Skip scenarios that depend on services not deployed in Prow/OpenShift
-    # (e.g. mock-tls-inference, proxy sidecars only available in Docker Compose)
+    # Skip scenarios tagged @skip-in-prow (e.g. unified-mode fixtures, OpenTelemetry).
     if is_prow_environment() and "skip-in-prow" in scenario.effective_tags:
         scenario.skip("Skipped in Prow (requires Docker Compose services)")
         return

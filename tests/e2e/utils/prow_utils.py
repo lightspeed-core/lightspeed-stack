@@ -93,24 +93,8 @@ def wait_for_pod_health(pod_name: str, max_attempts: int = 60) -> None:
         raise
 
 
-_LIGHTSPEED_RESTART_NAMES = frozenset(
-    {
-        "lightspeed-stack",
-        "lightspeed-stack-service",
-        "ogx",
-        "llama-stack",
-        "llama-stack-service",
-    }
-)
+_LIGHTSPEED_RESTART_NAMES = frozenset({"lightspeed-stack", "lightspeed-stack-service"})
 _RESTART_POD_TIMEOUT_SECONDS = 420
-
-
-def assert_prow_cluster_sidecars_supported() -> None:
-    """Raise when proxy/TLS tests expect removed in-cluster e2e-ops deploy commands."""
-    raise AssertionError(
-        "In-cluster proxy/TLS sidecars are not deployed via e2e-ops "
-        "(Konflux library mode). Run those suites with Docker Compose (@skip-in-prow)."
-    )
 
 
 def restart_pod(container_name: str) -> None:
@@ -151,74 +135,6 @@ def restart_pod(container_name: str) -> None:
     except subprocess.TimeoutExpired as e:
         print(f"Failed to restart pod {container_name}: {e}")
         raise
-
-
-def restore_ogx_pod() -> None:
-    """Recreate lightspeed-stack-service after disruption (legacy name: restore OGX).
-
-    Raises:
-        subprocess.CalledProcessError: If oc/e2e-ops restore fails.
-        subprocess.TimeoutExpired: If the operation times out.
-
-    """
-    result = run_e2e_ops("restart-lightspeed", timeout=_RESTART_POD_TIMEOUT_SECONDS)
-    print(result.stdout, end="")
-    if result.returncode != 0:
-        print(result.stderr, end="")
-        raise subprocess.CalledProcessError(
-            result.returncode, "restart-lightspeed", result.stderr
-        )
-    print("✓ lightspeed-stack-service restored")
-
-
-def disrupt_ogx_pod() -> bool:
-    """Disrupt the stack by deleting lightspeed-stack-service in Prow/OpenShift.
-
-    Returns:
-        True if the pod was running and has been disrupted, False otherwise.
-
-    """
-    pod_name = "lightspeed-stack-service"
-    namespace = get_namespace()
-    try:
-        phase_result = subprocess.run(
-            [
-                "oc",
-                "get",
-                "pod",
-                pod_name,
-                "-n",
-                namespace,
-                "-o",
-                "jsonpath={.status.phase}",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-        phase = (phase_result.stdout or "").strip() or "NotFound"
-        if phase != "Running":
-            print(f"lightspeed-stack-service was not running (phase: {phase})")
-            return False
-
-        delete_result = subprocess.run(
-            ["oc", "delete", "pod", pod_name, "-n", namespace, "--wait=true"],
-            capture_output=True,
-            text=True,
-            timeout=90,
-            check=False,
-        )
-        print(delete_result.stdout, end="")
-        if delete_result.returncode != 0:
-            print(delete_result.stderr, end="")
-            return False
-        print("Connection disrupted successfully (lightspeed-stack-service deleted)")
-        return True
-
-    except subprocess.TimeoutExpired:
-        print("Warning: Timeout while disrupting connection")
-        return False
 
 
 # In-memory storage for ConfigMap backups in Prow environment

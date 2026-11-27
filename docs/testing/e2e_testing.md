@@ -316,9 +316,7 @@ For local Docker runs, defaults are usually enough. Override when the stack is o
 
 **Konflux** (`pipeline-konflux.sh`) always sets `E2E_DEPLOYMENT_MODE=library` and deploys only `lightspeed-stack-service` (no `llama-stack-service`, no `:8321` port-forward). The OpenShift ConfigMap `llama-stack-config` still holds the synthesis profile `run.yaml` mounted into the LCS pod.
 
-Mode is set in `before_all` from `E2E_DEPLOYMENT_MODE` and stored as `context.is_library_mode`.
-
-**Konflux** (`pipeline-konflux.sh`) and the Tekton integration pipelines set `E2E_DEPLOYMENT_MODE=library` and deploy a single `lightspeed-stack-service` pod (no `llama-stack-service` / `ogx-openai.yaml`). **Classic Prow** (`pipeline.sh`) remains server mode with `ogx-prow.yaml`.
+Mode is set in `before_all` from `E2E_DEPLOYMENT_MODE` and stored as `context.is_library_mode`. **Classic Prow** (`pipeline.sh`) remains server mode with `ogx-prow.yaml` plus a separate LCS pod.
 
 ---
 
@@ -343,10 +341,6 @@ All tag behaviour is implemented in **`features/environment.py`**: the hooks (`b
 | `@RHIdentity`                   | Feature-level: use RH identity config; restore in after_feature.                                                                                        |
 | `@Feedback`                     | Feature-level: set feedback conversation list; after_feature deletes those conversations.                                                               |
 | `@MCP`                          | Feature-level: use MCP config; restore in after_feature.                                                                                                |
-| `@TunnelProxy`                  | Selection: tunnel proxy (HTTP CONNECT) scenarios.                                                                                                       |
-| `@InterceptionProxy`            | Selection: TLS-intercepting proxy with trustme CA scenarios.                                                                                            |
-| `@TLSVersion`                   | Selection: TLS version configuration scenarios.                                                                                                          |
-| `@TLSCipher`                    | Selection: cipher suite configuration scenarios.                                                                                                         |
 
 
 ### Multiple Tags and Skip Comment
