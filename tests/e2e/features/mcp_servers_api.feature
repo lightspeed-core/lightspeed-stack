@@ -76,7 +76,6 @@ Feature: MCP Server Management API tests
     Then The status code of the response is 422
     And The body of the response contains scheme
 
-  @skip-in-library-mode
   Scenario: Register and delete MCP server lifecycle
     When I access REST API endpoint "mcp-servers" using HTTP POST method
     """

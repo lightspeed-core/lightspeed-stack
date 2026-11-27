@@ -1,4 +1,4 @@
-@cfg_byok_pdf @skip-in-server-mode
+@cfg_byok_pdf
 Feature: BYOK PDF support tests
 
   # Validates that a vector store built from a PDF by rag-content's `pdf`

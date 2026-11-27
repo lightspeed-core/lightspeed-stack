@@ -125,6 +125,7 @@ def test_unwritable_export_does_not_prevent_terminal_report(
     original_open = Path.open
 
     def open_with_denied_export(path, *args, **kwargs):
+        """Simulate a permission error when opening the export file."""
         if path == Path("logs.json"):
             raise PermissionError("read-only working directory")
         return original_open(path, *args, **kwargs)

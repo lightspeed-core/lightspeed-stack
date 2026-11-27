@@ -7,8 +7,8 @@ Spike deliverable for TODO: LCORE-XXXX (parent feature).
 ### What's in this PR
 
 **Design docs** (`docs/design/TODO/`):
-- [TODO: `...-spike.md`](TODO: link to file on branch) _(use the "Outline" button)_ — the spike: research, design alternatives, PoC results, proposed JIRAs
-- [TODO: `....md`](TODO: link to file on branch) _(use the "Outline" button)_ — feature spec — _changeable based on final decisions, will be kept in the repo long-term_
+- TODO: `...-spike.md` (link to file on branch; use the "Outline" button) — the spike: research, design alternatives, PoC results, proposed JIRAs
+- TODO: `....md` (link to file on branch; use the "Outline" button) — feature spec — _changeable based on final decisions, will be kept in the repo long-term_
 
 **PoC code** _(if applicable)_:
 - TODO

@@ -275,17 +275,6 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
         ("/v1/feedback/status", "put", {"200", "401", "403", "500"}),
-        ("/v1/conversations", "get", {"200", "401", "403", "500"}),
-        (
-            "/v1/conversations/{conversation_id}",
-            "get",
-            {"200", "400", "401", "403", "404", "500", "503"},
-        ),
-        (
-            "/v1/conversations/{conversation_id}",
-            "delete",
-            {"200", "400", "401", "403", "500", "503"},
-        ),
         ("/v2/conversations", "get", {"200", "401", "403", "500"}),
         (
             "/v2/conversations/{conversation_id}",
@@ -299,6 +288,22 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
         ),
         (
             "/v2/conversations/{conversation_id}",
+            "put",
+            {"200", "400", "401", "403", "404", "500"},
+        ),
+        ("/v3/conversations", "get", {"200", "401", "403", "500"}),
+        (
+            "/v3/conversations/{conversation_id}",
+            "get",
+            {"200", "400", "401", "403", "404", "500"},
+        ),
+        (
+            "/v3/conversations/{conversation_id}",
+            "delete",
+            {"200", "400", "401", "403", "500"},
+        ),
+        (
+            "/v3/conversations/{conversation_id}",
             "put",
             {"200", "400", "401", "403", "404", "500"},
         ),
@@ -387,17 +392,6 @@ def test_paths_and_responses_exist_from_file(
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
         ("/v1/feedback/status", "put", {"200", "401", "403", "500"}),
-        ("/v1/conversations", "get", {"200", "401", "403", "500"}),
-        (
-            "/v1/conversations/{conversation_id}",
-            "get",
-            {"200", "400", "401", "403", "404", "500", "503"},
-        ),
-        (
-            "/v1/conversations/{conversation_id}",
-            "delete",
-            {"200", "400", "401", "403", "500", "503"},
-        ),
         ("/v2/conversations", "get", {"200", "401", "403", "500"}),
         (
             "/v2/conversations/{conversation_id}",
@@ -411,6 +405,22 @@ def test_paths_and_responses_exist_from_file(
         ),
         (
             "/v2/conversations/{conversation_id}",
+            "put",
+            {"200", "400", "401", "403", "404", "500"},
+        ),
+        ("/v3/conversations", "get", {"200", "401", "403", "500"}),
+        (
+            "/v3/conversations/{conversation_id}",
+            "get",
+            {"200", "400", "401", "403", "404", "500"},
+        ),
+        (
+            "/v3/conversations/{conversation_id}",
+            "delete",
+            {"200", "400", "401", "403", "500"},
+        ),
+        (
+            "/v3/conversations/{conversation_id}",
             "put",
             {"200", "400", "401", "403", "404", "500"},
         ),

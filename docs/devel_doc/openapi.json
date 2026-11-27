@@ -7885,956 +7885,6 @@
                 }
             }
         },
-        "/v1/conversations": {
-            "get": {
-                "tags": [
-                    "conversations_v1"
-                ],
-                "summary": "Conversations List Endpoint Handler V1",
-                "description": "Handle request to retrieve all conversations for the authenticated user.",
-                "operationId": "get_conversations_list_endpoint_handler_v1_conversations_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ConversationsListResponse"
-                                },
-                                "example": {
-                                    "conversations": [
-                                        {
-                                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                                            "created_at": "2024-01-01T00:00:00Z",
-                                            "last_message_at": "2024-01-01T00:05:00Z",
-                                            "last_used_model": "gemini/gemini-2.0-flash",
-                                            "last_used_provider": "gemini",
-                                            "message_count": 5,
-                                            "topic_summary": "Openshift Microservices Deployment Strategies"
-                                        },
-                                        {
-                                            "conversation_id": "456e7890-e12b-34d5-a678-901234567890",
-                                            "created_at": "2024-01-01T01:00:00Z",
-                                            "last_used_model": "gemini/gemini-2.5-flash",
-                                            "last_used_provider": "gemini",
-                                            "message_count": 2,
-                                            "topic_summary": "RHDH Purpose Summary"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                },
-                                "examples": {
-                                    "missing header": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No Authorization header found",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No token found in Authorization header",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "expired token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token has expired",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid signature": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid token signature",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid key": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token signed by unknown key",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing claim": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token missing claim: user_id",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid k8s token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid or expired Kubernetes token",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid jwk token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Authentication key server returned invalid data",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Permission denied",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                },
-                                "examples": {
-                                    "endpoint": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 is not authorized to access this endpoint.",
-                                                "response": "User does not have permission to access this endpoint"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
-                                },
-                                "examples": {
-                                    "configuration": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Lightspeed Stack configuration has not been initialized.",
-                                                "response": "Configuration is not loaded"
-                                            }
-                                        }
-                                    },
-                                    "database": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to query the database",
-                                                "response": "Database query failed"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "OGX": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to OGX"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "deprecated": true
-            }
-        },
-        "/v1/conversations/{conversation_id}": {
-            "get": {
-                "tags": [
-                    "conversations_v1"
-                ],
-                "summary": "Conversation Get Endpoint Handler V1",
-                "description": "Handle request to retrieve a conversation identified by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the OGX\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nNote: ``tool_calls``/``tool_results`` here reflect OGX's raw,\nunredacted item history. If a Granite Guardian TOOL-point guardrail\nlater blocks a tool result, only the final assistant message in OGX's\nstore is patched (see ``replace_last_assistant_message``) -- the tool\nitem itself still shows the original, unredacted content. The v2/v3\nconversation reads (backed by LCORE's own conversation cache) are the\nguardrail-authoritative view; see \"Troubleshooting\" in\n``docs/devel_doc/conversations_api.md`` for details.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
-                "operationId": "get_conversation_endpoint_handler_v1_conversations__conversation_id__get",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Conversation Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ConversationResponse"
-                                },
-                                "example": {
-                                    "chat_history": [
-                                        {
-                                            "completed_at": "2024-01-01T00:01:05Z",
-                                            "messages": [
-                                                {
-                                                    "content": "Hello",
-                                                    "type": "user"
-                                                },
-                                                {
-                                                    "content": "Hi there!",
-                                                    "type": "assistant"
-                                                }
-                                            ],
-                                            "model": "gpt-5.6-luna",
-                                            "provider": "openai",
-                                            "started_at": "2024-01-01T00:01:00Z",
-                                            "tool_calls": [],
-                                            "tool_results": []
-                                        }
-                                    ],
-                                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request format",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "conversation_id": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
-                                                "response": "Invalid conversation ID format"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/BadRequestResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "missing header": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No Authorization header found",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No token found in Authorization header",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "expired token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token has expired",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid signature": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid token signature",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid key": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token signed by unknown key",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing claim": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token missing claim: user_id",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid k8s token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid or expired Kubernetes token",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid jwk token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Authentication key server returned invalid data",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Permission denied",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "conversation read": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
-                                                "response": "User does not have permission to perform this action"
-                                            }
-                                        }
-                                    },
-                                    "endpoint": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 is not authorized to access this endpoint.",
-                                                "response": "User does not have permission to access this endpoint"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "conversation": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-                                                "response": "Conversation not found"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotFoundResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "configuration": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Lightspeed Stack configuration has not been initialized.",
-                                                "response": "Configuration is not loaded"
-                                            }
-                                        }
-                                    },
-                                    "database": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to query the database",
-                                                "response": "Database query failed"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "OGX": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to OGX"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "conversations_v1"
-                ],
-                "summary": "Conversation Delete Endpoint Handler V1",
-                "description": "Handle request to delete a conversation by ID using Conversations API.\n\nValidates the conversation ID format and attempts to delete the\nconversation from the OGX backend using the Conversations API.\nRaises HTTP errors for invalid IDs, not found conversations, connection\nissues, or unexpected failures.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to delete\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationDeleteResponse: Response indicating the result of the deletion operation",
-                "operationId": "delete_conversation_endpoint_handler_v1_conversations__conversation_id__delete",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Conversation Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ConversationDeleteResponse"
-                                },
-                                "examples": {
-                                    "deleted": {
-                                        "value": {
-                                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                                            "deleted": true,
-                                            "response": "Conversation deleted successfully"
-                                        }
-                                    },
-                                    "not found": {
-                                        "value": {
-                                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                                            "deleted": false,
-                                            "response": "Conversation not found"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request format",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "conversation_id": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
-                                                "response": "Invalid conversation ID format"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/BadRequestResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "missing header": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No Authorization header found",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No token found in Authorization header",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "expired token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token has expired",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid signature": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid token signature",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid key": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token signed by unknown key",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing claim": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token missing claim: user_id",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid k8s token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid or expired Kubernetes token",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid jwk token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Authentication key server returned invalid data",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Permission denied",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "conversation delete": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 does not have permission to delete conversation with ID 123e4567-e89b-12d3-a456-426614174000",
-                                                "response": "User does not have permission to perform this action"
-                                            }
-                                        }
-                                    },
-                                    "endpoint": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 is not authorized to access this endpoint.",
-                                                "response": "User does not have permission to access this endpoint"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "configuration": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Lightspeed Stack configuration has not been initialized.",
-                                                "response": "Configuration is not loaded"
-                                            }
-                                        }
-                                    },
-                                    "database": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to query the database",
-                                                "response": "Database query failed"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "OGX": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to OGX"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "conversations_v1"
-                ],
-                "summary": "Conversation Update Endpoint Handler V1",
-                "description": "Handle request to update a conversation metadata using Conversations API.\n\nUpdates the conversation metadata (including topic summary) in both the\nOGX backend using the Conversations API and the local database.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to update\n    update_request: Request containing the topic summary to update\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationUpdateResponse: Response indicating the result of the update operation",
-                "operationId": "update_conversation_endpoint_handler_v1_conversations__conversation_id__put",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Conversation Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ConversationUpdateRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ConversationUpdateResponse"
-                                },
-                                "example": {
-                                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                                    "message": "Topic summary updated successfully",
-                                    "success": true
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request format",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "conversation_id": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
-                                                "response": "Invalid conversation ID format"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/BadRequestResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "missing header": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No Authorization header found",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No token found in Authorization header",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "expired token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token has expired",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid signature": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid token signature",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid key": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token signed by unknown key",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing claim": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Token missing claim: user_id",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid k8s token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid or expired Kubernetes token",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "invalid jwk token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Authentication key server returned invalid data",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Permission denied",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "endpoint": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 is not authorized to access this endpoint.",
-                                                "response": "User does not have permission to access this endpoint"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "conversation": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-                                                "response": "Conversation not found"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotFoundResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "configuration": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Lightspeed Stack configuration has not been initialized.",
-                                                "response": "Configuration is not loaded"
-                                            }
-                                        }
-                                    },
-                                    "database": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to query the database",
-                                                "response": "Database query failed"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "OGX": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to OGX"
-                                            }
-                                        }
-                                    },
-                                    "kubernetes api": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
-                                                "response": "Unable to connect to Kubernetes API"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/v2/conversations": {
             "get": {
                 "tags": [
@@ -8855,7 +7905,12 @@
                                     "conversations": [
                                         {
                                             "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                            "created_at": "2024-01-01T00:00:00Z",
+                                            "last_message_at": "2024-01-01T00:05:00Z",
                                             "last_message_timestamp": 1704067200.0,
+                                            "last_used_model": "gemini/gemini-2.0-flash",
+                                            "last_used_provider": "gemini",
+                                            "message_count": 5,
                                             "topic_summary": "Openshift Microservices Deployment Strategies"
                                         }
                                     ]
@@ -9678,6 +8733,940 @@
                                             "detail": {
                                                 "cause": "Conversation cache is not configured or unavailable.",
                                                 "response": "Conversation cache not configured"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "kubernetes api": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+                                                "response": "Unable to connect to Kubernetes API"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/conversations": {
+            "get": {
+                "tags": [
+                    "conversations_v3"
+                ],
+                "summary": "Get Conversations List Endpoint Handler",
+                "description": "Handle request to retrieve all conversations for the authenticated user.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Auth context tuple resolved from the authentication dependency.\n\n### Returns:\n- AgenticConversationListResponse: Metadata for conversations visible to the caller.\n\n### Raises:\n- HTTPException:\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions\n- 500: Internal Server Error - Configuration not loaded or database failure\n- 503: Service Unavailable - Kubernetes API unavailable when required by auth",
+                "operationId": "get_conversations_list_endpoint_handler_v3_conversations_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticConversationListResponse"
+                                },
+                                "example": {
+                                    "conversations": [
+                                        {
+                                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                            "created_at": "2024-01-01T00:00:00Z",
+                                            "last_turn_at": "2024-01-01T00:01:05Z",
+                                            "last_used_model": "gpt-5.6-luna",
+                                            "last_used_provider": "openai",
+                                            "topic_summary": "OpenShift deployment strategies",
+                                            "turn_count": 1
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database operation": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to list conversations due to a database error.",
+                                                "response": "Database query failed"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                },
+                                "examples": {
+                                    "kubernetes api": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+                                                "response": "Unable to connect to Kubernetes API"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v3/conversations/{conversation_id}": {
+            "get": {
+                "tags": [
+                    "conversations_v3"
+                ],
+                "summary": "Get Conversation Endpoint Handler",
+                "description": "Handle request to retrieve a conversation identified by its ID.\n\nLoads agent display history from persistence, including ordered agent turns.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- conversation_id: Unique identifier of the conversation to retrieve.\n- auth: Auth context tuple resolved from the authentication dependency.\n\n### Returns:\n- AgenticConversationGetResponse: Conversation metadata and agent turn history.\n\n### Raises:\n- HTTPException:\n- 400: Bad Request - Invalid conversation ID format\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions to read this conversation\n- 404: Not Found - Conversation does not exist\n- 500: Internal Server Error - Configuration not loaded or database failure\n- 503: Service Unavailable - Kubernetes API unavailable when required by auth",
+                "operationId": "get_conversation_endpoint_handler_v3_conversations__conversation_id__get",
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticConversationGetResponse"
+                                },
+                                "example": {
+                                    "chat_history": [
+                                        {
+                                            "completed_at": "2024-01-01T00:01:05Z",
+                                            "context_status": "full",
+                                            "id": "resp_1",
+                                            "input": [
+                                                {
+                                                    "content": [
+                                                        {
+                                                            "text": "Hello",
+                                                            "type": "text"
+                                                        }
+                                                    ],
+                                                    "id": "msg_user_1",
+                                                    "kind": "message",
+                                                    "role": "user"
+                                                }
+                                            ],
+                                            "model": "gpt-5.6-luna",
+                                            "output": [
+                                                {
+                                                    "content": [
+                                                        {
+                                                            "text": "Hi there!",
+                                                            "type": "text"
+                                                        }
+                                                    ],
+                                                    "id": "msg_assistant_1",
+                                                    "kind": "message",
+                                                    "role": "assistant"
+                                                }
+                                            ],
+                                            "provider": "openai",
+                                            "referenced_documents": [],
+                                            "started_at": "2024-01-01T00:01:00Z",
+                                            "status": "completed",
+                                            "usage": {
+                                                "input_tokens": 4,
+                                                "output_tokens": 6
+                                            }
+                                        }
+                                    ],
+                                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                    "created_at": "2024-01-01T00:00:00Z",
+                                    "last_turn_at": "2024-01-01T00:01:05Z",
+                                    "last_used_model": "gpt-5.6-luna",
+                                    "last_used_provider": "openai",
+                                    "topic_summary": "OpenShift deployment strategies",
+                                    "turn_count": 1
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation_id": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                                "response": "Invalid conversation ID format"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/BadRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation read": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+                                                "response": "User does not have permission to perform this action"
+                                            }
+                                        }
+                                    },
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Conversation not found"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database operation": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to list conversations due to a database error.",
+                                                "response": "Database query failed"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "kubernetes api": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+                                                "response": "Unable to connect to Kubernetes API"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "conversations_v3"
+                ],
+                "summary": "Delete Conversation Endpoint Handler",
+                "description": "Handle request to delete a conversation by ID.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- conversation_id: Unique identifier of the conversation to delete.\n- auth: Auth context tuple resolved from the authentication dependency.\n\n### Returns:\n- ConversationDeleteResponse: Whether the conversation was deleted.\n\n### Raises:\n- HTTPException:\n- 400: Bad Request - Invalid conversation ID format\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions to delete this conversation\n- 500: Internal Server Error - Configuration not loaded or database failure\n- 503: Service Unavailable - Kubernetes API unavailable when required by auth",
+                "operationId": "delete_conversation_endpoint_handler_v3_conversations__conversation_id__delete",
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationDeleteResponse"
+                                },
+                                "examples": {
+                                    "deleted": {
+                                        "value": {
+                                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                            "deleted": true,
+                                            "response": "Conversation deleted successfully"
+                                        }
+                                    },
+                                    "not found": {
+                                        "value": {
+                                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                            "deleted": false,
+                                            "response": "Conversation not found"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation_id": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                                "response": "Invalid conversation ID format"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/BadRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation delete": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 does not have permission to delete conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+                                                "response": "User does not have permission to perform this action"
+                                            }
+                                        }
+                                    },
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database operation": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to list conversations due to a database error.",
+                                                "response": "Database query failed"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "kubernetes api": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+                                                "response": "Unable to connect to Kubernetes API"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "conversations_v3"
+                ],
+                "summary": "Update Conversation Endpoint Handler",
+                "description": "Handle request to update a conversation topic summary by ID.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- conversation_id: Unique identifier of the conversation to update.\n- update_request: Request body containing the new topic summary.\n- auth: Auth context tuple resolved from the authentication dependency.\n\n### Returns:\n- ConversationUpdateResponse: Result of the update operation.\n\n### Raises:\n- HTTPException:\n- 400: Bad Request - Invalid conversation ID format\n- 401: Unauthorized - Missing or invalid credentials\n- 403: Forbidden - Insufficient permissions to update this conversation\n- 404: Not Found - Conversation does not exist\n- 500: Internal Server Error - Configuration not loaded or database failure\n- 503: Service Unavailable - Kubernetes API unavailable when required by auth",
+                "operationId": "update_conversation_endpoint_handler_v3_conversations__conversation_id__put",
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConversationUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationUpdateResponse"
+                                },
+                                "example": {
+                                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                    "message": "Topic summary updated successfully",
+                                    "success": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation_id": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                                "response": "Invalid conversation ID format"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/BadRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Conversation not found"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database operation": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to list conversations due to a database error.",
+                                                "response": "Database query failed"
                                             }
                                         }
                                     }
@@ -11946,6 +11935,375 @@
                 "title": "AgentStepPersistenceSqliteConfiguration",
                 "description": "SQLite-backed harness step store."
             },
+            "AgentTurn": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Run identity (run_id / response id)"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "completed",
+                            "interrupted",
+                            "failed",
+                            "awaiting_input"
+                        ],
+                        "title": "Status",
+                        "description": "Run lifecycle status"
+                    },
+                    "agent": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Agent",
+                        "description": "Optional agent identifier; reserved for future use"
+                    },
+                    "provider": {
+                        "type": "string",
+                        "title": "Provider",
+                        "description": "Inference provider used for the run"
+                    },
+                    "model": {
+                        "type": "string",
+                        "title": "Model",
+                        "description": "Inference model used for the run"
+                    },
+                    "started_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Started At",
+                        "description": "UTC timestamp when the run started",
+                        "examples": [
+                            "2024-01-01T00:01:00Z"
+                        ]
+                    },
+                    "completed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Completed At",
+                        "description": "UTC timestamp when the run completed or paused",
+                        "examples": [
+                            "2024-01-01T00:01:05Z"
+                        ]
+                    },
+                    "context_status": {
+                        "type": "string",
+                        "enum": [
+                            "full",
+                            "compacted"
+                        ],
+                        "title": "Context Status",
+                        "description": "Whether agent history for this run was full or compacted"
+                    },
+                    "usage": {
+                        "$ref": "#/components/schemas/TurnUsage",
+                        "description": "Aggregated token usage for the run"
+                    },
+                    "referenced_documents": {
+                        "items": {
+                            "$ref": "#/components/schemas/ReferencedDocument"
+                        },
+                        "type": "array",
+                        "title": "Referenced Documents",
+                        "description": "Deduplicated citations for the turn"
+                    },
+                    "input": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/MessageTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ToolCallTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ToolResultTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/SourcesTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ReasoningTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ApprovalRequestTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ApprovalResultTurnItem"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "kind",
+                                "mapping": {
+                                    "approval_request": "#/components/schemas/ApprovalRequestTurnItem",
+                                    "approval_result": "#/components/schemas/ApprovalResultTurnItem",
+                                    "message": "#/components/schemas/MessageTurnItem",
+                                    "reasoning": "#/components/schemas/ReasoningTurnItem",
+                                    "sources": "#/components/schemas/SourcesTurnItem",
+                                    "tool_call": "#/components/schemas/ToolCallTurnItem",
+                                    "tool_result": "#/components/schemas/ToolResultTurnItem"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Input",
+                        "description": "Ordered items that started the run"
+                    },
+                    "output": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/MessageTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ToolCallTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ToolResultTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/SourcesTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ReasoningTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ApprovalRequestTurnItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ApprovalResultTurnItem"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "kind",
+                                "mapping": {
+                                    "approval_request": "#/components/schemas/ApprovalRequestTurnItem",
+                                    "approval_result": "#/components/schemas/ApprovalResultTurnItem",
+                                    "message": "#/components/schemas/MessageTurnItem",
+                                    "reasoning": "#/components/schemas/ReasoningTurnItem",
+                                    "sources": "#/components/schemas/SourcesTurnItem",
+                                    "tool_call": "#/components/schemas/ToolCallTurnItem",
+                                    "tool_result": "#/components/schemas/ToolResultTurnItem"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Output",
+                        "description": "Ordered items the run produced"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "status",
+                    "provider",
+                    "model",
+                    "started_at",
+                    "completed_at",
+                    "context_status"
+                ],
+                "title": "AgentTurn",
+                "description": "One agent run in the public conversation timeline.\n\nA turn is one PAI Agent.run (same identity as Responses response.id when\nthat path created the run). The timeline order within a turn is input\nfollowed by output."
+            },
+            "AgenticConversationGetResponse": {
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id",
+                        "description": "Conversation ID (UUID)",
+                        "examples": [
+                            "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "When the conversation was created (UTC)",
+                        "examples": [
+                            "2024-01-01T01:00:00Z"
+                        ]
+                    },
+                    "last_turn_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Turn At",
+                        "description": "When the most recent agent run completed or paused (UTC)",
+                        "examples": [
+                            "2024-01-01T01:05:00Z"
+                        ]
+                    },
+                    "turn_count": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Turn Count",
+                        "description": "Number of agent runs in the conversation",
+                        "default": 0,
+                        "examples": [
+                            3
+                        ]
+                    },
+                    "last_used_model": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Used Model",
+                        "description": "Identification of the last model used",
+                        "examples": [
+                            "gpt-5.6-luna"
+                        ]
+                    },
+                    "last_used_provider": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Used Provider",
+                        "description": "Identification of the last provider used",
+                        "examples": [
+                            "openai"
+                        ]
+                    },
+                    "topic_summary": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Topic Summary",
+                        "description": "Topic summary for the conversation",
+                        "examples": [
+                            "OpenShift deployment strategies"
+                        ]
+                    },
+                    "chat_history": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgentTurn"
+                        },
+                        "type": "array",
+                        "title": "Chat History",
+                        "description": "Ordered agent runs for the conversation"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversation_id",
+                    "created_at"
+                ],
+                "title": "AgenticConversationGetResponse",
+                "description": "Response for one agentic conversation.\n\nAttributes:\n    conversation_id: Conversation identifier.\n    created_at: When the conversation was created.\n    last_turn_at: When the most recent agent run completed or paused.\n    turn_count: Number of agent runs in the conversation.\n    last_used_model: Model used on the last agent run.\n    last_used_provider: Provider used on the last agent run.\n    topic_summary: Topic summary when available.\n    chat_history: Ordered agent turns shown to the client.",
+                "examples": [
+                    {
+                        "chat_history": [
+                            {
+                                "completed_at": "2024-01-01T00:01:05Z",
+                                "context_status": "full",
+                                "id": "resp_1",
+                                "input": [
+                                    {
+                                        "content": [
+                                            {
+                                                "text": "Hello",
+                                                "type": "text"
+                                            }
+                                        ],
+                                        "id": "msg_user_1",
+                                        "kind": "message",
+                                        "role": "user"
+                                    }
+                                ],
+                                "model": "gpt-5.6-luna",
+                                "output": [
+                                    {
+                                        "content": [
+                                            {
+                                                "text": "Hi there!",
+                                                "type": "text"
+                                            }
+                                        ],
+                                        "id": "msg_assistant_1",
+                                        "kind": "message",
+                                        "role": "assistant"
+                                    }
+                                ],
+                                "provider": "openai",
+                                "referenced_documents": [],
+                                "started_at": "2024-01-01T00:01:00Z",
+                                "status": "completed",
+                                "usage": {
+                                    "input_tokens": 4,
+                                    "output_tokens": 6
+                                }
+                            }
+                        ],
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "last_turn_at": "2024-01-01T00:01:05Z",
+                        "last_used_model": "gpt-5.6-luna",
+                        "last_used_provider": "openai",
+                        "topic_summary": "OpenShift deployment strategies",
+                        "turn_count": 1
+                    }
+                ]
+            },
+            "AgenticConversationListResponse": {
+                "properties": {
+                    "conversations": {
+                        "items": {
+                            "$ref": "#/components/schemas/ConversationMetadata"
+                        },
+                        "type": "array",
+                        "title": "Conversations"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversations"
+                ],
+                "title": "AgenticConversationListResponse",
+                "description": "Response listing agentic conversations for the user.\n\nAttributes:\n    conversations: Conversation metadata only; turn history is omitted.",
+                "examples": [
+                    {
+                        "conversations": [
+                            {
+                                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "created_at": "2024-01-01T00:00:00Z",
+                                "last_turn_at": "2024-01-01T00:01:05Z",
+                                "last_used_model": "gpt-5.6-luna",
+                                "last_used_provider": "openai",
+                                "topic_summary": "OpenShift deployment strategies",
+                                "turn_count": 1
+                            }
+                        ]
+                    }
+                ]
+            },
             "AllowedModel": {
                 "properties": {
                     "name": {
@@ -12072,6 +12430,102 @@
                 "type": "object",
                 "title": "ApprovalFilter",
                 "description": "Granular approval control for specific MCP tools.\n\nAttributes:\n    always: Tool names that always require human approval before execution.\n    never: Tool names that never require approval (pre-approved)."
+            },
+            "ApprovalRequestTurnItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Stable identifier for this turn item"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "approval_request",
+                        "title": "Kind",
+                        "default": "approval_request"
+                    },
+                    "call_id": {
+                        "type": "string",
+                        "title": "Call Id",
+                        "description": "Related tool call identifier"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Tool name for the invocation pending approval"
+                    },
+                    "arguments": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Arguments",
+                        "description": "Arguments for the invocation pending approval"
+                    },
+                    "toolset": {
+                        "$ref": "#/components/schemas/ToolsetInfo",
+                        "description": "Tool family classification for the pending invocation"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "call_id",
+                    "name",
+                    "toolset"
+                ],
+                "title": "ApprovalRequestTurnItem",
+                "description": "Human-in-the-loop approval request (typically in output)."
+            },
+            "ApprovalResultTurnItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Stable identifier for this turn item"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "approval_result",
+                        "title": "Kind",
+                        "default": "approval_result"
+                    },
+                    "call_id": {
+                        "type": "string",
+                        "title": "Call Id",
+                        "description": "Related tool call identifier"
+                    },
+                    "approved": {
+                        "type": "boolean",
+                        "title": "Approved",
+                        "description": "Whether the action was approved"
+                    },
+                    "reason": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reason",
+                        "description": "Optional explanation for the decision"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "call_id",
+                    "approved"
+                ],
+                "title": "ApprovalResultTurnItem",
+                "description": "Approval decision when resuming a deferred run (typically in input)."
             },
             "ApprovalsConfiguration": {
                 "properties": {
@@ -13458,37 +13912,6 @@
                     "summarized"
                 ]
             },
-            "ConversationData": {
-                "properties": {
-                    "conversation_id": {
-                        "type": "string",
-                        "title": "Conversation Id"
-                    },
-                    "topic_summary": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Topic Summary"
-                    },
-                    "last_message_timestamp": {
-                        "type": "number",
-                        "title": "Last Message Timestamp"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "conversation_id",
-                    "topic_summary",
-                    "last_message_timestamp"
-                ],
-                "title": "ConversationData",
-                "description": "Model representing conversation data returned by cache list operations.\n\nAttributes:\n    conversation_id: The conversation ID\n    topic_summary: The topic summary for the conversation (can be None)\n    last_message_timestamp: The timestamp of the last message in the conversation"
-            },
             "ConversationDeleteResponse": {
                 "properties": {
                     "deleted": {
@@ -13550,7 +13973,69 @@
                     }
                 ]
             },
-            "ConversationDetails": {
+            "ConversationHistoryConfiguration": {
+                "properties": {
+                    "type": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "noop",
+                                    "memory",
+                                    "sqlite",
+                                    "postgres"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Conversation history database type",
+                        "description": "Type of database where the conversation history is to be stored."
+                    },
+                    "memory": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/InMemoryCacheConfig"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "In-memory cache configuration",
+                        "description": "In-memory cache configuration"
+                    },
+                    "sqlite": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SQLiteDatabaseConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "SQLite configuration",
+                        "description": "SQLite database configuration"
+                    },
+                    "postgres": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PostgreSQLDatabaseConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL configuration",
+                        "description": "PostgreSQL database configuration"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "ConversationHistoryConfiguration",
+                "description": "Conversation history configuration."
+            },
+            "ConversationListItemV2": {
                 "properties": {
                     "conversation_id": {
                         "type": "string",
@@ -13651,76 +14136,128 @@
                         "examples": [
                             "Openshift Microservices Deployment Strategies"
                         ]
+                    },
+                    "last_message_timestamp": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Message Timestamp",
+                        "description": "Unix epoch of the last cached message when cache is configured",
+                        "examples": [
+                            1704067200.0
+                        ]
                     }
                 },
                 "type": "object",
                 "required": [
                     "conversation_id"
                 ],
-                "title": "ConversationDetails",
-                "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    last_used_model: The last model used for the conversation.\n    last_used_provider: The provider of the last used model.\n    topic_summary: The topic summary for the conversation.\n\nExample:\n    ```python\n    conversation = ConversationDetails(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        last_used_model=\"gemini/gemini-2.0-flash\",\n        last_used_provider=\"gemini\",\n        topic_summary=\"Openshift Microservices Deployment Strategies\",\n    )\n    ```"
+                "title": "ConversationListItemV2",
+                "description": "v2 conversations list item: envelope metadata plus cache activity timestamp."
             },
-            "ConversationHistoryConfiguration": {
+            "ConversationMetadata": {
                 "properties": {
-                    "type": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id",
+                        "description": "Conversation ID (UUID)",
+                        "examples": [
+                            "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "When the conversation was created (UTC)",
+                        "examples": [
+                            "2024-01-01T01:00:00Z"
+                        ]
+                    },
+                    "last_turn_at": {
                         "anyOf": [
                             {
                                 "type": "string",
-                                "enum": [
-                                    "noop",
-                                    "memory",
-                                    "sqlite",
-                                    "postgres"
-                                ]
+                                "format": "date-time"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Conversation history database type",
-                        "description": "Type of database where the conversation history is to be stored."
+                        "title": "Last Turn At",
+                        "description": "When the most recent agent run completed or paused (UTC)",
+                        "examples": [
+                            "2024-01-01T01:05:00Z"
+                        ]
                     },
-                    "memory": {
+                    "turn_count": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Turn Count",
+                        "description": "Number of agent runs in the conversation",
+                        "default": 0,
+                        "examples": [
+                            3
+                        ]
+                    },
+                    "last_used_model": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/InMemoryCacheConfig"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "In-memory cache configuration",
-                        "description": "In-memory cache configuration"
+                        "title": "Last Used Model",
+                        "description": "Identification of the last model used",
+                        "examples": [
+                            "gpt-5.6-luna"
+                        ]
                     },
-                    "sqlite": {
+                    "last_used_provider": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/SQLiteDatabaseConfiguration"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "SQLite configuration",
-                        "description": "SQLite database configuration"
+                        "title": "Last Used Provider",
+                        "description": "Identification of the last provider used",
+                        "examples": [
+                            "openai"
+                        ]
                     },
-                    "postgres": {
+                    "topic_summary": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/PostgreSQLDatabaseConfiguration"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "PostgreSQL configuration",
-                        "description": "PostgreSQL database configuration"
+                        "title": "Topic Summary",
+                        "description": "Topic summary for the conversation",
+                        "examples": [
+                            "OpenShift deployment strategies"
+                        ]
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
-                "title": "ConversationHistoryConfiguration",
-                "description": "Conversation history configuration."
+                "required": [
+                    "conversation_id",
+                    "created_at"
+                ],
+                "title": "ConversationMetadata",
+                "description": "Shared metadata for get and list conversation responses."
             },
             "ConversationResponse": {
                 "properties": {
@@ -13905,10 +14442,8 @@
                     "message": {
                         "type": "string",
                         "title": "Message",
-                        "description": "A message about the update result",
-                        "examples": [
-                            "Topic summary updated successfully"
-                        ]
+                        "description": "Outcome message for the topic summary update.",
+                        "readOnly": true
                     }
                 },
                 "type": "object",
@@ -13918,7 +14453,7 @@
                     "message"
                 ],
                 "title": "ConversationUpdateResponse",
-                "description": "Model representing a response for updating a conversation topic summary.\n\nAttributes:\n    conversation_id: The conversation ID (UUID) that was updated.\n    success: Whether the update was successful.\n    message: A message about the update result.",
+                "description": "Model representing a response for updating a conversation topic summary.\n\nAttributes:\n    conversation_id: The conversation ID (UUID) that was updated.\n    success: Whether the update was successful.\n    message: Human-readable outcome derived from ``success``.",
                 "examples": [
                     {
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -13927,51 +14462,11 @@
                     }
                 ]
             },
-            "ConversationsListResponse": {
-                "properties": {
-                    "conversations": {
-                        "items": {
-                            "$ref": "#/components/schemas/ConversationDetails"
-                        },
-                        "type": "array",
-                        "title": "Conversations"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "conversations"
-                ],
-                "title": "ConversationsListResponse",
-                "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation details associated with the user.",
-                "examples": [
-                    {
-                        "conversations": [
-                            {
-                                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                                "created_at": "2024-01-01T00:00:00Z",
-                                "last_message_at": "2024-01-01T00:05:00Z",
-                                "last_used_model": "gemini/gemini-2.0-flash",
-                                "last_used_provider": "gemini",
-                                "message_count": 5,
-                                "topic_summary": "Openshift Microservices Deployment Strategies"
-                            },
-                            {
-                                "conversation_id": "456e7890-e12b-34d5-a678-901234567890",
-                                "created_at": "2024-01-01T01:00:00Z",
-                                "last_used_model": "gemini/gemini-2.5-flash",
-                                "last_used_provider": "gemini",
-                                "message_count": 2,
-                                "topic_summary": "RHDH Purpose Summary"
-                            }
-                        ]
-                    }
-                ]
-            },
             "ConversationsListResponseV2": {
                 "properties": {
                     "conversations": {
                         "items": {
-                            "$ref": "#/components/schemas/ConversationData"
+                            "$ref": "#/components/schemas/ConversationListItemV2"
                         },
                         "type": "array",
                         "title": "Conversations"
@@ -13988,7 +14483,12 @@
                         "conversations": [
                             {
                                 "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "created_at": "2024-01-01T00:00:00Z",
+                                "last_message_at": "2024-01-01T00:05:00Z",
                                 "last_message_timestamp": 1704067200.0,
+                                "last_used_model": "gemini/gemini-2.0-flash",
+                                "last_used_provider": "gemini",
+                                "message_count": 5,
                                 "topic_summary": "Openshift Microservices Deployment Strategies"
                             }
                         ]
@@ -14452,6 +14952,43 @@
                     }
                 ]
             },
+            "FileContentPart": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "file",
+                        "title": "Type",
+                        "default": "file"
+                    },
+                    "file_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "File Id",
+                        "description": "Uploaded file identifier"
+                    },
+                    "filename": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Filename",
+                        "description": "Original filename when available"
+                    }
+                },
+                "type": "object",
+                "title": "FileContentPart",
+                "description": "File reference within a multimodal message."
+            },
             "FileResponse": {
                 "properties": {
                     "id": {
@@ -14823,6 +15360,57 @@
                 ],
                 "title": "HealthStatus",
                 "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by OGX providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - UNHEALTHY: Service connected but one or more providers are unhealthy"
+            },
+            "ImageContentPart": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "image",
+                        "title": "Type",
+                        "default": "image"
+                    },
+                    "image_url": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "minLength": 1,
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Image Url",
+                        "description": "URL of the image, including data URIs for inline bytes"
+                    },
+                    "file_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "File Id",
+                        "description": "Uploaded file identifier when the image is stored by LCORE"
+                    },
+                    "media_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Media Type",
+                        "description": "MIME type of the image when known, for example image/png"
+                    }
+                },
+                "type": "object",
+                "title": "ImageContentPart",
+                "description": "Image reference for display (not raw bytes).\n\nClients render a URL (http or data URI) and/or an uploaded file id.\nInference-only fields such as vision detail are not stored in display history."
             },
             "ImplicitOAuthFlow": {
                 "properties": {
@@ -15202,6 +15790,13 @@
                             "response": "Database query failed"
                         },
                         "label": "database"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Failed to list conversations due to a database error.",
+                            "response": "Database query failed"
+                        },
+                        "label": "database operation"
                     },
                     {
                         "detail": {
@@ -15797,6 +16392,66 @@
                 ],
                 "title": "Message",
                 "description": "Model representing a message in a conversation turn.\n\nAttributes:\n    content: The message content.\n    type: The type of message.\n    referenced_documents: Optional list of documents referenced in an assistant response."
+            },
+            "MessageContent": {
+                "items": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/components/schemas/TextContentPart"
+                        },
+                        {
+                            "$ref": "#/components/schemas/ImageContentPart"
+                        },
+                        {
+                            "$ref": "#/components/schemas/FileContentPart"
+                        }
+                    ],
+                    "discriminator": {
+                        "propertyName": "type",
+                        "mapping": {
+                            "file": "#/components/schemas/FileContentPart",
+                            "image": "#/components/schemas/ImageContentPart",
+                            "text": "#/components/schemas/TextContentPart"
+                        }
+                    }
+                },
+                "type": "array"
+            },
+            "MessageTurnItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Stable identifier for this turn item"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "message",
+                        "title": "Kind",
+                        "default": "message"
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "user",
+                            "assistant"
+                        ],
+                        "title": "Role",
+                        "description": "Message author"
+                    },
+                    "content": {
+                        "$ref": "#/components/schemas/MessageContent",
+                        "description": "Ordered multimodal message parts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "role",
+                    "content"
+                ],
+                "title": "MessageTurnItem",
+                "description": "User or assistant multimodal message."
             },
             "ModelContextProtocolServer": {
                 "properties": {
@@ -19929,6 +20584,33 @@
                     }
                 ]
             },
+            "ReasoningTurnItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Stable identifier for this turn item"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "reasoning",
+                        "title": "Kind",
+                        "default": "reasoning"
+                    },
+                    "content": {
+                        "type": "string",
+                        "title": "Content",
+                        "description": "Reasoning text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "content"
+                ],
+                "title": "ReasoningTurnItem",
+                "description": "Optional reasoning content exposed for the run."
+            },
             "RedactionConfig": {
                 "properties": {
                     "rules": {
@@ -22227,6 +22909,97 @@
                 "title": "SolrVectorSearchRequest",
                 "description": "LCORE Solr inline RAG options for vector_io.query (mode and provider filters).\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the configured OKP default is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies)."
             },
+            "SourceChunk": {
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "title": "Content",
+                        "description": "Chunk text"
+                    },
+                    "source": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Source",
+                        "description": "Knowledge source or index name"
+                    },
+                    "score": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Score",
+                        "description": "Relevance score"
+                    },
+                    "attributes": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Attributes",
+                        "description": "Document metadata from the provider"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "content"
+                ],
+                "title": "SourceChunk",
+                "description": "Retrieval chunk attached to a sources turn item."
+            },
+            "SourcesTurnItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Stable identifier for this turn item"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "sources",
+                        "title": "Kind",
+                        "default": "sources"
+                    },
+                    "origin": {
+                        "type": "string",
+                        "enum": [
+                            "auto",
+                            "tool"
+                        ],
+                        "title": "Origin",
+                        "description": "Whether evidence came from automatic RAG or a tool"
+                    },
+                    "chunks": {
+                        "items": {
+                            "$ref": "#/components/schemas/SourceChunk"
+                        },
+                        "type": "array",
+                        "title": "Chunks",
+                        "description": "Retrieved chunks for this item"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "origin"
+                ],
+                "title": "SourcesTurnItem",
+                "description": "Retrieval evidence for the turn (automatic RAG or tool-backed)."
+            },
             "SplunkConfiguration": {
                 "properties": {
                     "enabled": {
@@ -22449,6 +23222,27 @@
                 "title": "TLSConfiguration",
                 "description": "TLS configuration.\n\nTransport Layer Security (TLS) is a cryptographic protocol designed to\nprovide communications security over a computer network, such as the\nInternet. The protocol is widely used in applications such as email,\ninstant messaging, and voice over IP, but its use in securing HTTPS remains\nthe most publicly visible.\n\nUseful resources:\n\n  - [FastAPI HTTPS Deployment](https://fastapi.tiangolo.com/deployment/https/)\n  - [Transport Layer Security Overview](https://en.wikipedia.org/wiki/Transport_Layer_Security)\n  - [What is TLS](https://www.ssltrust.eu/learning/ssl/transport-layer-security-tls)"
             },
+            "TextContentPart": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "text",
+                        "title": "Type",
+                        "default": "text"
+                    },
+                    "text": {
+                        "type": "string",
+                        "title": "Text",
+                        "description": "Message text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text"
+                ],
+                "title": "TextContentPart",
+                "description": "Text segment within a multimodal message."
+            },
             "TooManyConcurrentRequestsResponse": {
                 "properties": {
                     "status_code": {
@@ -22518,6 +23312,65 @@
                 "title": "ToolCallSummary",
                 "description": "Model representing a tool call made during response generation (for tool_calls list)."
             },
+            "ToolCallTurnItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Stable identifier for this turn item"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "tool_call",
+                        "title": "Kind",
+                        "default": "tool_call"
+                    },
+                    "call_id": {
+                        "type": "string",
+                        "title": "Call Id",
+                        "description": "Tool call identifier"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Tool name"
+                    },
+                    "arguments": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Arguments",
+                        "description": "Arguments passed to the tool"
+                    },
+                    "toolset": {
+                        "$ref": "#/components/schemas/ToolsetInfo",
+                        "description": "Tool family classification for this call"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "call_id",
+                    "name",
+                    "toolset"
+                ],
+                "title": "ToolCallTurnItem",
+                "description": "Tool invocation produced during a run."
+            },
+            "ToolResultBody": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "additionalProperties": true,
+                        "type": "object"
+                    },
+                    {
+                        "items": {},
+                        "type": "array"
+                    }
+                ]
+            },
             "ToolResultSummary": {
                 "properties": {
                     "id": {
@@ -22556,6 +23409,67 @@
                 ],
                 "title": "ToolResultSummary",
                 "description": "Model representing a result from a tool call (for tool_results list)."
+            },
+            "ToolResultTurnItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Stable identifier for this turn item"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "tool_result",
+                        "title": "Kind",
+                        "default": "tool_result"
+                    },
+                    "call_id": {
+                        "type": "string",
+                        "title": "Call Id",
+                        "description": "Matches the corresponding tool_call call_id"
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Tool name when useful without the paired tool_call item"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "success",
+                            "failed",
+                            "denied",
+                            "interrupted"
+                        ],
+                        "title": "Status",
+                        "description": "success: normal completion; failed: execution error; denied: blocked or not recorded (guardrail, etc.); interrupted: run stopped before tool finished"
+                    },
+                    "content": {
+                        "$ref": "#/components/schemas/ToolResultBody",
+                        "description": "Tool outcome: UTF-8 text or structured JSON (object or array)"
+                    },
+                    "toolset": {
+                        "$ref": "#/components/schemas/ToolsetInfo",
+                        "description": "Tool family classification for this result"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "call_id",
+                    "status",
+                    "content",
+                    "toolset"
+                ],
+                "title": "ToolResultTurnItem",
+                "description": "Outcome of a tool call."
             },
             "ToolsResponse": {
                 "properties": {
@@ -22596,6 +23510,42 @@
                         ]
                     }
                 ]
+            },
+            "ToolsetInfo": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "function",
+                            "mcp",
+                            "file_search",
+                            "skills"
+                        ],
+                        "title": "Type",
+                        "description": "Tool family: function, mcp, file_search, or skills"
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Human-readable toolset label when applicable",
+                        "examples": [
+                            "filesystem"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "ToolsetInfo",
+                "description": "Classifies which tool family a call or result belongs to for display."
             },
             "TrustedProxyConfiguration": {
                 "properties": {
@@ -22647,6 +23597,27 @@
                 ],
                 "title": "TrustedProxyServiceAccount",
                 "description": "A Kubernetes ServiceAccount identity for trusted-proxy allowlist."
+            },
+            "TurnUsage": {
+                "properties": {
+                    "input_tokens": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Input Tokens",
+                        "description": "Tokens sent to the model during the run",
+                        "default": 0
+                    },
+                    "output_tokens": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Output Tokens",
+                        "description": "Tokens received from the model during the run",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "title": "TurnUsage",
+                "description": "Aggregated token usage for one agent run."
             },
             "UnauthorizedResponse": {
                 "properties": {
@@ -24157,12 +25128,12 @@
             "description": "Service configuration."
         },
         {
-            "name": "conversations_v1",
-            "description": "Conversations API v1 (OGX-backed). Deprecated: use /v2/conversations; scheduled for removal when OGX is dropped."
-        },
-        {
             "name": "conversations_v2",
             "description": "Conversations API v2."
+        },
+        {
+            "name": "conversations_v3",
+            "description": "Conversations API v3."
         },
         {
             "name": "feedback",

@@ -2661,6 +2661,13 @@ def test_dump_models(tmpdir: Path) -> None:
                         },
                         {
                             "detail": {
+                                "cause": "Failed to list conversations due to a database error.",
+                                "response": "Database query failed"
+                            },
+                            "label": "database operation"
+                        },
+                        {
+                            "detail": {
                                 "cause": "ClusterVersion 'version' resource not found in OpenShift cluster",
                                 "response": "Internal server error"
                             },
@@ -9949,6 +9956,8 @@ def test_dump_models(tmpdir: Path) -> None:
             "Configuration",
             "ConfigurationResponse",
             "ConflictResponse",
+            "AgenticConversationGetResponse",
+            "AgenticConversationListResponse",
             "ConversationData",
             "ConversationDeleteResponse",
             "ConversationDetails",
@@ -10232,6 +10241,8 @@ def test_dump_models_group_successful_responses(tmpdir: Path) -> None:
         "SavedPromptsConfigResponse",
         "AuthorizedResponse",
         "ConfigurationResponse",
+        "AgenticConversationGetResponse",
+        "AgenticConversationListResponse",
         "ConversationDeleteResponse",
         "ConversationResponse",
         "ConversationUpdateResponse",

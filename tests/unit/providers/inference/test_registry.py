@@ -187,6 +187,40 @@ async def _ready_registry(
     return registry
 
 
+async def test_is_initialized_false_before_initialize() -> None:
+    """is_initialized is False on a fresh registry."""
+    registry = ProviderRegistry()
+
+    assert registry.is_initialized is False
+
+
+@pytest.mark.asyncio
+async def test_is_initialized_true_after_initialize() -> None:
+    """is_initialized is True after successful initialization."""
+    _register_fake("openai")
+    registry = ProviderRegistry()
+
+    await registry.initialize(_inference_config(_openai_entry()))
+
+    assert registry.is_initialized is True
+
+
+@pytest.mark.asyncio
+async def test_is_initialized_false_when_initialize_fails(mocker: Any) -> None:
+    """is_initialized stays False when initialization raises."""
+    _register_fake("openai")
+    registry = ProviderRegistry()
+
+    mocker.patch.object(
+        FakeInferenceProvider, "initialize", side_effect=RuntimeError("boom")
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await registry.initialize(_inference_config(_openai_entry()))
+
+    assert registry.is_initialized is False
+
+
 @pytest.mark.asyncio
 async def test_initialize_registers_configured_providers() -> None:
     """initialize registers a provider for each configured entry."""
@@ -194,21 +228,6 @@ async def test_initialize_registers_configured_providers() -> None:
     registry = ProviderRegistry()
 
     await registry.initialize(_inference_config(_openai_entry(), _vllm_entry()))
-
-    assert [provider.provider_id for provider in registry.list_providers()] == [
-        "openai",
-        "vllm",
-    ]
-
-
-@pytest.mark.asyncio
-async def test_initialize_adds_to_existing_providers() -> None:
-    """Repeated initialization adds providers without removing existing ones."""
-    _register_fake("openai", "vllm")
-    registry = ProviderRegistry()
-
-    await registry.initialize(_inference_config(_openai_entry()))
-    await registry.initialize(_inference_config(_vllm_entry()))
 
     assert [provider.provider_id for provider in registry.list_providers()] == [
         "openai",

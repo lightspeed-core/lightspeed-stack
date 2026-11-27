@@ -96,6 +96,7 @@ from utils.responses import (
     get_rag_tools,
     get_shield_moderation_input,
     get_topic_summary,
+    get_vector_store_ids,
     is_server_deployed_output,
     maybe_get_topic_summary,
     model_reasoning_enabled_by_default,
@@ -318,6 +319,41 @@ def test_extract_text_with_refusal_content() -> None:
     result = extract_text_from_response_item(output_item)
 
     assert result == "I understand your request, but I cannot help with that."
+
+
+class TestGetVectorStoreIds:
+    """Tests for vector store discovery."""
+
+    @pytest.mark.asyncio
+    async def test_lists_stores_when_ids_are_omitted(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Return all discovered IDs in the order supplied by OGX."""
+        client = mocker.Mock()
+        client.vector_stores.list = mocker.AsyncMock(
+            return_value=[mocker.Mock(id="store-a"), mocker.Mock(id="store-b")]
+        )
+
+        assert await get_vector_store_ids(client) == ["store-a", "store-b"]
+        client.vector_stores.list.assert_awaited_once_with()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("backend_status", "http_status"), [(None, 503), (400, 500)]
+    )
+    async def test_translates_listing_errors(
+        self, mocker: MockerFixture, backend_status: int | None, http_status: int
+    ) -> None:
+        """Map connection and API errors to their respective HTTP responses."""
+        client = mocker.Mock()
+        client.vector_stores.list = mocker.AsyncMock(
+            side_effect=ApiException(status=backend_status, reason="Listing failed")
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_vector_store_ids(client)
+
+        assert exc_info.value.status_code == http_status
 
 
 class TestExtractTextFromResponseItems:

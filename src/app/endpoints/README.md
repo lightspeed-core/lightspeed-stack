@@ -28,6 +28,10 @@ Handler for REST API calls to manage conversation history using Conversations AP
 
 Handler for REST API calls to manage conversation history.
 
+## [conversations_v3.py](conversations_v3.py)
+
+Handler for REST API calls to manage agentic display-history conversations.
+
 ## [feedback.py](feedback.py)
 
 Handler for REST API endpoint for user feedback.

@@ -13,6 +13,7 @@ from agent.types.settings.knowledge import KnowledgeSourceSettings
 from agent.types.settings.mcp import MCPSettings
 from agent.types.settings.shield import ShieldSettings
 from agent.types.settings.skill import SkillSettings
+from agent.types.settings.step_persistence import StepPersistenceSettings
 from constants import OKP_RAG_ID
 from models.api.requests import QueryRequest
 from models.config import (
@@ -122,6 +123,7 @@ def test_query_fields_select_the_agent(mocker: MockerFixture) -> None:
         model="granite",
         enabled=True,
     )
+    assert settings.step_persistence == StepPersistenceSettings(enabled=True)
     assert settings.skills == [SkillSettings(path="skills/one")]
     assert settings.shields == [
         ShieldSettings(id="topic", enabled=False),
@@ -151,6 +153,7 @@ def test_omitted_query_fields_use_configuration_defaults(
         model="default-model",
         enabled=True,
     )
+    assert settings.step_persistence == StepPersistenceSettings(enabled=True)
     assert settings.skills == []
     assert [shield.enabled for shield in settings.shields] == [True, True]
     assert [source.enabled for source in settings.knowledge_sources] == [True, True]

@@ -7,8 +7,8 @@ from app.endpoints import (
     a2a,
     authorized,
     config,
-    conversations_v1,
     conversations_v2,
+    conversations_v3,
     feedback,
     health,
     info,
@@ -40,8 +40,9 @@ def include_routers(app: FastAPI) -> None:
     Register and mount project routers on the given FastAPI application.
 
     Registers endpoint routers and assigns URL prefixes: most endpoints are
-    mounted under "/v1", v2 routers under "/v2", and core endpoints (health,
-    authorized, metrics) are mounted without a version prefix.
+    mounted under "/v1", v2 routers under "/v2", v3 routers under "/v3", and
+    core endpoints (health, authorized, metrics) are mounted without a version
+    prefix.
 
     Parameters:
     ----------
@@ -67,8 +68,8 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(config.router, prefix="/v1")
     app.include_router(saved_prompts.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")
-    app.include_router(conversations_v1.router, prefix="/v1")
     app.include_router(conversations_v2.router, prefix="/v2")
+    app.include_router(conversations_v3.router, prefix="/v3")
     app.include_router(responses.router, prefix="/v1")
     # RHEL Lightspeed rlsapi v1 compatibility - stateless CLA (Command Line Assistant) endpoint
     app.include_router(rlsapi_v1.router, prefix="/v1")

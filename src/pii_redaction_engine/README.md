@@ -33,8 +33,13 @@ anonymizer = PIIAnonymizer(
 )
 ```
 
-The spaCy model is pinned to `en_core_web_lg` and must be installed separately
-(it is not pulled in automatically):
+PII redaction uses Explosion's `en_core_web_lg`, spaCy's large English pipeline,
+for named entity recognition.
+[GitHub release repository](https://github.com/explosion/spacy-models) ·
+[Hugging Face model card](https://huggingface.co/spacy/en_core_web_lg)
+
+For a local installation, use spaCy's downloader to install the model from
+the GitHub release repository.
 
 ```
 python -m spacy download en_core_web_lg

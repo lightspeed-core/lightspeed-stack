@@ -3,6 +3,7 @@
 from models.common.conversation import (
     ConversationData,
     ConversationDetails,
+    ConversationListItemV2,
     ConversationTurn,
     Message,
 )
@@ -48,6 +49,7 @@ __all__ = [
     "ContextStatus",
     "ConversationData",
     "ConversationDetails",
+    "ConversationListItemV2",
     "ConversationTurn",
     "FeedbackCategory",
     "HealthStatus",

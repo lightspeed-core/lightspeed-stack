@@ -419,6 +419,25 @@ class TestExtractSolrDocumentMetadata:
         assert reference_url == "https://example.com/doc"
         assert source_path == "/docs/page.html#section"
 
+    def test_extract_from_chunk_metadata_dict(self, mocker: MockerFixture) -> None:
+        """Fill missing fields from dictionary-valued chunk metadata."""
+        chunk = mocker.Mock(
+            metadata={"title": "Primary title"},
+            chunk_metadata={
+                "document_id": "doc_456",
+                "title": "Fallback title",
+                "reference_url": "https://example.com/doc",
+                "source_path": "/docs/page.html",
+            },
+        )
+
+        assert _extract_solr_document_metadata(chunk) == (
+            "doc_456",
+            "Primary title",
+            "https://example.com/doc",
+            "/docs/page.html",
+        )
+
     def test_extract_from_chunk_metadata_object(self, mocker: MockerFixture) -> None:
         """Test extraction from typed chunk_metadata object."""
         chunk_meta = mocker.Mock()

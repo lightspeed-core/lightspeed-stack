@@ -190,10 +190,8 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     resetting per-scenario Lightspeed override tracking and skip-restart flags.
 
     Skips the scenario if it has the `skip` tag, if it has the `local` tag
-    while the test run is not in local mode, if it has `konflux-only` when
-    ``E2E_KONFLUX_E2E`` is not ``1``, if it has `skip-in-library-mode` when
-    running in library mode, or if it has `skip-in-server-mode` when running
-    in server mode. Scenario-specific Lightspeed YAML is applied in the
+    while the test run is not in local mode, or if it has `konflux-only` when
+    ``E2E_KONFLUX_E2E`` is not ``1``. Scenario-specific Lightspeed YAML is applied in the
     feature files (``The service uses the ... configuration`` steps).
     """
     if "skip" in scenario.effective_tags:
@@ -206,23 +204,8 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         scenario.skip("Skipped outside Konflux (requires E2E_KONFLUX_E2E=1)")
         return
 
-    # Skip scenarios that require separate OGX container in library mode
-    if context.is_library_mode and "skip-in-library-mode" in scenario.effective_tags:
-        scenario.skip("Skipped in library mode (no separate OGX container)")
-        return
-
-    # Skip scenarios that rely on a non-default BYOK store. Only library mode
-    # re-enriches the (in-process) OGX with the active config's byok_rag
-    # on restart; in server mode the external OGX keeps its startup
-    # config, so a feature-specific store would not be loaded.
-    if not context.is_library_mode and "skip-in-server-mode" in scenario.effective_tags:
-        scenario.skip(
-            "Skipped in server mode (feature-specific BYOK store is not loaded "
-            "into the external OGX service)"
-        )
-        return
-
-    # Skip scenarios tagged @skip-in-prow (e.g. unified-mode fixtures, OpenTelemetry).
+    # Skip scenarios that depend on services not deployed in Prow/OpenShift
+    # (e.g. mock-tls-inference, proxy sidecars only available in Docker Compose)
     if is_prow_environment() and "skip-in-prow" in scenario.effective_tags:
         scenario.skip("Skipped in Prow (requires Docker Compose services)")
         return

@@ -307,7 +307,15 @@ class TestSplunkTelemetryHooks:
             ),
             pytest.param(
                 lambda m: OpenAIAPIStatusError(
-                    message="API error", response=m.Mock(request=None), body=None
+                    message="API error",
+                    response=m.Mock(
+                        request=m.Mock(headers={}),
+                        headers={},
+                        history=[],
+                        next_request=None,
+                        status_code=500,
+                    ),
+                    body=None,
                 ),
                 id="OpenAIAPIStatusError",
             ),
@@ -537,7 +545,15 @@ class TestSplunkTelemetryHooks:
             ),
             pytest.param(
                 lambda m: OpenAIAPIStatusError(
-                    message="API error", response=m.Mock(request=None), body=None
+                    message="API error",
+                    response=m.Mock(
+                        request=m.Mock(headers={}),
+                        headers={},
+                        history=[],
+                        next_request=None,
+                        status_code=500,
+                    ),
+                    body=None,
                 ),
                 id="OpenAIAPIStatusError",
             ),

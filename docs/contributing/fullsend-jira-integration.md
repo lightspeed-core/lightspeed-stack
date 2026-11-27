@@ -1,6 +1,6 @@
 # Fullsend Jira integration
 
-[Fullsend]((https://fullsend.sh/docs)) is an agentic assistant onboarded to this repository. This document
+[Fullsend](https://fullsend.sh/docs) is an agentic assistant onboarded to this repository. This document
 describes how its Jira integration works, what does and does not trigger an agent, 
 and how to interact with it safely.
 

@@ -73,7 +73,7 @@ class AgentFactory:  # pylint: disable=too-few-public-methods
             SkillFactory.build_capabilities(settings.skills),
             KnowledgeFactory.build_capabilities(settings.knowledge_sources),
             CompactionFactory.build_capability(settings.compaction),
-            StepPersistenceFactory.build_capability(),
+            StepPersistenceFactory.build_capability(settings.step_persistence),
         )
         capabilities = [
             capability for capability in raw_capabilities if capability is not None

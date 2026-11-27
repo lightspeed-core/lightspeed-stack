@@ -35,7 +35,7 @@ class ConversationMetadata(BaseModel):
     last_used_model: Optional[str] = Field(
         default=None,
         description="Identification of the last model used",
-        examples=["gpt-4-turbo"],
+        examples=["gpt-5.6-luna"],
     )
     last_used_provider: Optional[str] = Field(
         default=None,

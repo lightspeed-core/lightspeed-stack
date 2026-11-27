@@ -12,6 +12,7 @@ from agent.types.settings.knowledge import KnowledgeSourceSettings
 from agent.types.settings.mcp import MCPSettings
 from agent.types.settings.shield import ShieldSettings
 from agent.types.settings.skill import SkillSettings
+from agent.types.settings.step_persistence import StepPersistenceSettings
 from configuration import configuration
 from models.api.requests import QueryRequest
 from utils.prompts import get_system_prompt
@@ -26,6 +27,9 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
     instructions: Optional[str] = None
 
     compaction: CompactionSettings = field(default_factory=CompactionSettings)
+    step_persistence: StepPersistenceSettings = field(
+        default_factory=StepPersistenceSettings
+    )
 
     skills: list[SkillSettings] = field(default_factory=list)
     shields: list[ShieldSettings] = field(default_factory=list)
@@ -43,7 +47,9 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
         Shields, knowledge sources, and MCP servers always include every
         configured entry. Omitted shield and knowledge-source ids leave them
         enabled; a provided list disables the rest. ``no_tools`` disables
-        every MCP server. Skills and compaction come from configuration.
+        every MCP server. Skills, compaction, and step persistence come from
+        configuration. The query does not select step persistence, so it stays
+        enabled and the history service decides whether a store exists.
         MCP headers are taken from the HTTP request and the auth token.
 
         Parameters:
@@ -62,6 +68,7 @@ class AgentSettings:  # pylint: disable=too-many-instance-attributes
             model=model,
             instructions=get_system_prompt(query_request.system_prompt),
             compaction=CompactionSettings.from_query_request(query_request),
+            step_persistence=StepPersistenceSettings.from_query_request(query_request),
             skills=SkillSettings.from_query_request(query_request),
             shields=ShieldSettings.from_query_request(query_request),
             knowledge_sources=KnowledgeSourceSettings.from_query_request(query_request),
