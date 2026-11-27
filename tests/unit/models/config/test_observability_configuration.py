@@ -312,6 +312,19 @@ def test_signal_specific_certificates_redacted() -> None:
     assert cfg.otel["OTEL_SERVICE_NAME"] == "test-service"
 
 
+def test_anonymization_secret_redacted() -> None:
+    """Test that OTEL_ANONYMIZATION_SECRET is fully redacted."""
+    otel_dict = {
+        "OTEL_ANONYMIZATION_SECRET": "hmac-key",
+        "OTEL_SERVICE_NAME": "my-service",
+    }
+
+    cfg = ObservabilityConfiguration(otel=otel_dict)
+
+    assert cfg.otel["OTEL_ANONYMIZATION_SECRET"] == "[REDACTED]"
+    assert cfg.otel["OTEL_SERVICE_NAME"] == "my-service"
+
+
 def test_validator_does_not_mutate_input() -> None:
     """Test that the validator returns a new dict without mutating input."""
     original_dict = {

@@ -3484,7 +3484,8 @@ class ObservabilityConfiguration(ConfigurationBase):
         """Redact sensitive OTEL environment variables.
 
         For headers (e.g., OTEL_EXPORTER_OTLP_HEADERS), redacts values while preserving
-        key names for debugging. For certificates and client keys, redacts the entire value.
+        key names for debugging. For certificates, client keys, and
+        OTEL_ANONYMIZATION_SECRET, redacts the entire value.
 
         Parameters:
         ----------
@@ -3522,6 +3523,9 @@ class ObservabilityConfiguration(ConfigurationBase):
             # Matches: OTEL_EXPORTER_OTLP_CLIENT_KEY,
             #          OTEL_EXPORTER_OTLP_TRACES_CLIENT_KEY, etc.
             elif "CLIENT_KEY" in key and "OTLP" in key:
+                redacted[key] = "[REDACTED]"
+            # Redact the HMAC secret used to anonymize span attributes
+            elif key == constants.OTEL_ANONYMIZATION_SECRET_ENV_VAR:
                 redacted[key] = "[REDACTED]"
             else:
                 redacted[key] = val
