@@ -12,6 +12,7 @@ from providers.inference.errors import (
     ProviderNotFoundError,
 )
 from providers.inference.registry import ProviderRegistry
+from utils.context_window import resolve_context_window
 from utils.tiered_compaction import build_tiered_compaction
 
 
@@ -24,7 +25,9 @@ class CompactionFactory:  # pylint: disable=too-few-public-methods
 
         Disabled settings and models that cannot be resolved produce no
         capability. The summarizer and tier thresholds come from the loaded
-        compaction configuration.
+        compaction configuration; the context window the tiers size against
+        is resolved for the summarizer model, and left to the harness default
+        when the settings name no provider and model.
 
         Parameters:
             settings: Compaction settings, including whether compaction is
@@ -51,8 +54,14 @@ class CompactionFactory:  # pylint: disable=too-few-public-methods
         ):
             return None
 
-        # pylint: disable-next=fixme
-        # TODO: Implement context window calculation from ProviderRegistry()
-        context_window = None
+        # The window sizes every tier (LCORE-4764): catalog metadata first, then
+        # the configured map, then the bundled model data, then the default.
+        context_window = (
+            resolve_context_window(
+                f"{settings.provider}/{settings.model}", configuration.inference
+            )
+            if settings.provider and settings.model
+            else None
+        )
 
         return build_tiered_compaction(configuration.compaction, model, context_window)
