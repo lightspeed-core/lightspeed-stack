@@ -167,16 +167,6 @@ Konflux only (`@konflux-only`) in CI. Targeted local Behave (match YAML to OGX/L
 * Query returns no rag_chunks and no referenced_documents when OKP is disabled
 * Streaming query returns no referenced_documents when OKP is disabled
 
-## [`proxy.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/proxy.feature)
-
-* LLM traffic is routed through a configured tunnel proxy
-* LLM query fails gracefully when proxy is unreachable
-* LLM traffic works through interception proxy with correct CA
-* LLM query fails when interception proxy CA is not provided
-* TLS minimum version TLSv1.2 is respected
-* TLS minimum version TLSv1.3 is respected
-* Custom cipher suite configuration is respected
-
 ## [`query.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/query.feature)
 
 * Check if LLM responds properly to restrictive system prompt to sent question with different system prompt

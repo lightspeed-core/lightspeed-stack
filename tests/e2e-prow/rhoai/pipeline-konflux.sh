@@ -1,13 +1,15 @@
 #!/bin/bash
-# Konflux integration E2E: OGX run-from-source + configurable inference provider.
-# Default: OpenAI (run-ci.yaml). For RHEL AI vLLM: set LLAMA_STACK_CONFIG and LCS_CONFIG env vars.
-# Prow (vLLM) workflow uses pipeline.sh unchanged.
+# Konflux integration E2E: library mode only (OGX in-process in lightspeed-stack-service).
+# Default: OpenAI (run-ci.yaml + configuration/library-mode/lightspeed-stack.yaml).
+# RHEL AI vLLM: set LLAMA_STACK_CONFIG and LCS_CONFIG in Tekton. Classic Prow uses pipeline.sh (unchanged here).
 set -euo pipefail
 trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 
 # Signal to e2e tests that we're running in Prow/OpenShift
 export RUNNING_PROW=true
 export E2E_KONFLUX_E2E=1
+export E2E_DEPLOYMENT_MODE=library
+export E2E_LIGHTSPEED_CONFIG_DIR="${E2E_LIGHTSPEED_CONFIG_DIR:-tests/e2e/configuration/library-mode}"
 
 #========================================
 # 1. GLOBAL CONFIG
@@ -21,7 +23,7 @@ log() { [ "$QUIET" != "1" ] && echo "$@"; }
 # Always print progress so Konflux UI shows where we are (short one-liners)
 progress() { echo "[e2e] $*"; }
 
-# Lightspeed-stack image (from Konflux SNAPSHOT or default). OGX runs from source in-pod (no image).
+# Lightspeed-stack image (from Konflux SNAPSHOT or default); OGX is in-process in that image.
 LIGHTSPEED_STACK_IMAGE="${LIGHTSPEED_STACK_IMAGE:-quay.io/lightspeed-core/lightspeed-stack:dev-latest}"
 log "Using lightspeed-stack image: $LIGHTSPEED_STACK_IMAGE"
 export LIGHTSPEED_STACK_IMAGE
@@ -202,38 +204,21 @@ log "✅ Mock servers deployed"
 # OKP Solr is not part of cluster setup. okp_rag.feature (@cfg_okp) deploys it from
 # before_feature via e2e-ops deploy-okp-solr (7GB image, ~10-15 min first pull).
 # No other e2e feature depends on OKP.
-#
-# e2e-tunnel-proxy and e2e-interception-proxy are deployed from proxy.feature steps
-# (see tests/e2e/features/steps/proxy.py + e2e-ops deploy-e2e-*-proxy).
 
 #========================================
-# 5. DEPLOY LIGHTSPEED STACK AND OGX
+# 5. DEPLOY LIGHTSPEED STACK (LIBRARY MODE)
 #========================================
-progress "Deploying lightspeed-stack and llama-stack"
+progress "Deploying lightspeed-stack (library mode)"
 
-# PVC for OGX app-root: caches dnf/uv/git install so TLS per-scenario pod
-# recreates skip the expensive init (~6-15 min → ~1-2 min). Delete first to guarantee
-# a fresh checkout for this pipeline revision; re-create immediately so the pod can bind.
-log "Recreating llama-stack-app-root PVC (fresh per pipeline run)..."
+# Drop legacy server-mode llama-stack resources from earlier pipeline revisions.
+oc delete pod llama-stack-service -n "$NAMESPACE" --ignore-not-found=true --wait=false 2>/dev/null || true
+oc delete svc llama-stack-service-svc -n "$NAMESPACE" --ignore-not-found=true 2>/dev/null || true
 oc delete pvc llama-stack-app-root -n "$NAMESPACE" --ignore-not-found=true 2>/dev/null || true
-cat <<'EOF' | oc apply -n "$NAMESPACE" -f -
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: llama-stack-app-root
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-EOF
-log "✅ llama-stack-app-root PVC created"
 
-# Configurable config paths: default to OpenAI, override for RHEL AI / vLLM.
+# Configurable paths: OpenAI defaults; Tekton overrides for RHEL AI / vLLM.
 LLAMA_STACK_CONFIG="${LLAMA_STACK_CONFIG:-$REPO_ROOT/tests/e2e/configs/run-ci.yaml}"
-LCS_CONFIG="${LCS_CONFIG:-$REPO_ROOT/tests/e2e/configuration/server-mode/lightspeed-stack.yaml}"
-log "OGX config: $LLAMA_STACK_CONFIG"
+LCS_CONFIG="${LCS_CONFIG:-$REPO_ROOT/tests/e2e/configuration/library-mode/lightspeed-stack.yaml}"
+log "OGX synthesis profile (run.yaml): $LLAMA_STACK_CONFIG"
 log "LCS config: $LCS_CONFIG"
 oc create configmap llama-stack-config -n "$NAMESPACE" \
   --from-file=run.yaml="$LLAMA_STACK_CONFIG" \
@@ -274,13 +259,20 @@ conn.close()
     fi
 
     gzip -c "$RAG_DB_PATH" > /tmp/kv_store.db.gz
+    RAG_PDF_DB_PATH="$REPO_ROOT/tests/e2e/rag/pdf_kv_store.db"
+    rag_cm_args=(--from-file=kv_store.db.gz=/tmp/kv_store.db.gz)
+    if [ -f "$RAG_PDF_DB_PATH" ]; then
+      gzip -c "$RAG_PDF_DB_PATH" > /tmp/pdf_kv_store.db.gz
+      rag_cm_args+=(--from-file=pdf_kv_store.db.gz=/tmp/pdf_kv_store.db.gz)
+    else
+      log "⚠️  No pdf_kv_store.db at $RAG_PDF_DB_PATH — byok_pdf.feature will fail"
+    fi
     # Do not use `oc apply` here: client-side apply stores the full object in
     # metadata.annotations.kubectl.kubernetes.io/last-applied-configuration
     # (256KiB limit). The gzipped FAISS fixture (~800KiB+) overflows that.
     oc delete configmap rag-data -n "$NAMESPACE" --ignore-not-found
-    oc create configmap rag-data -n "$NAMESPACE" \
-      --from-file=kv_store.db.gz=/tmp/kv_store.db.gz
-    rm /tmp/kv_store.db.gz
+    oc create configmap rag-data -n "$NAMESPACE" "${rag_cm_args[@]}"
+    rm -f /tmp/kv_store.db.gz /tmp/pdf_kv_store.db.gz
     log "✅ RAG data ConfigMap created from $RAG_DB_PATH"
 else
     log "⚠️  No kv_store.db found at $RAG_DB_PATH"
@@ -300,17 +292,6 @@ else
 fi
 
 
-# ConfigMap for OGX run-from-source (init container clones this repo @ this revision)
-REPO_URL="${REPO_URL:-$(cd "$REPO_ROOT" && git config --get remote.origin.url 2>/dev/null)}"
-REPO_REVISION="${REPO_REVISION:-$(cd "$REPO_ROOT" && git rev-parse HEAD 2>/dev/null)}"
-[[ -z "$REPO_URL" ]] && REPO_URL='https://github.com/lightspeed-core/lightspeed-stack.git'
-[[ -z "$REPO_REVISION" ]] && REPO_REVISION='main'
-oc create configmap llama-stack-source -n "$NAMESPACE" \
-  --from-literal=repo_url="$REPO_URL" \
-  --from-literal=repo_revision="$REPO_REVISION" \
-  --dry-run=client -o yaml | oc apply -f -
-log "llama-stack-source ConfigMap: repo @ ${REPO_REVISION}"
-
 "$PIPELINE_DIR/pipeline-services-konflux.sh"
 
 # Print pod logs with echo so CI/Konflux log capture shows each line (especially when QUIET=1)
@@ -320,30 +301,24 @@ e2e_echo_pod_logs() {
   while IFS= read -r line || [[ -n "$line" ]]; do
     echo "[e2e] $line"
   done < <(oc logs lightspeed-stack-service -n "$NAMESPACE" --tail="$n" 2>&1) || true
-  echo "[e2e] ========== llama-stack-service logs (tail $n) =========="
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    echo "[e2e] $line"
-  done < <(oc logs llama-stack-service -n "$NAMESPACE" --tail="$n" 2>&1) || true
 }
 
-progress "Waiting for lightspeed-stack and llama-stack pods (up to 10 min)"
+progress "Waiting for lightspeed-stack-service (up to 10 min)"
 for i in $(seq 1 60); do
   lcs_ready=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
-  llama_ready=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
 
-  if [[ "$lcs_ready" == "True" ]] && [[ "$llama_ready" == "True" ]]; then
-    log "✅ Both service pods are ready after $(( i * 10 ))s"
+  if [[ "$lcs_ready" == "True" ]]; then
+    log "✅ lightspeed-stack-service ready after $(( i * 10 ))s"
     break
   fi
 
   if [ $((i % 6)) -eq 0 ]; then
     lcs_status=$(oc get pod lightspeed-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
-    llama_status=$(oc get pod llama-stack-service -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
-    progress "[$(( i * 10 ))s] lightspeed-stack: $lcs_status ($lcs_ready), llama-stack: $llama_status ($llama_ready)"
+    progress "[$(( i * 10 ))s] lightspeed-stack: $lcs_status ($lcs_ready)"
   fi
 
   if [ $i -eq 60 ]; then
-    progress "❌ One or both service pods failed to become ready within 600s timeout"
+    progress "❌ lightspeed-stack-service failed to become ready within 600s timeout"
     e2e_echo_pod_logs 200
     exit 1
   fi
@@ -357,8 +332,6 @@ else
   e2e_echo_pod_logs 200
   echo "[e2e] ========== oc describe lightspeed-stack-service =========="
   oc describe pod lightspeed-stack-service -n "$NAMESPACE" 2>&1 | while IFS= read -r line || [[ -n "$line" ]]; do echo "[e2e] $line"; done || true
-  echo "[e2e] ========== oc describe llama-stack-service =========="
-  oc describe pod llama-stack-service -n "$NAMESPACE" 2>&1 | while IFS= read -r line || [[ -n "$line" ]]; do echo "[e2e] $line"; done || true
 fi
 
 
@@ -368,9 +341,7 @@ fi
 # So behave/e2e-ops can kill this listener before rebinding 8080 (restart-lightspeed hooks).
 # Debug hook/port churn: export E2E_OPS_VERBOSE=1 before running pipeline.sh
 export E2E_LSC_PORT_FORWARD_PID_FILE="${E2E_LSC_PORT_FORWARD_PID_FILE:-/tmp/e2e-lightspeed-port-forward.pid}"
-export E2E_OGX_PORT_FORWARD_PID_FILE="${E2E_OGX_PORT_FORWARD_PID_FILE:-/tmp/e2e-ogx-port-forward.pid}"
 rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE"
-rm -f "$E2E_OGX_PORT_FORWARD_PID_FILE"
 
 oc label pod lightspeed-stack-service pod=lightspeed-stack-service -n $NAMESPACE
 
@@ -391,7 +362,7 @@ kill_listeners_on_ports() {
     fi
   done
 }
-kill_listeners_on_ports 8080 8000 8321
+kill_listeners_on_ports 8080 8000
 
 # Start port-forward for lightspeed-stack
 progress "Starting port-forward, then E2E tests"
@@ -403,13 +374,6 @@ echo "$PF_LCS_PID" >"$E2E_LSC_PORT_FORWARD_PID_FILE"
 log "Starting port-forward for mock-jwks..."
 oc port-forward svc/mock-jwks 8000:8000 -n $NAMESPACE &
 PF_JWKS_PID=$!
-
-# Behave runs in this shell; pipeline-services-konflux.sh cannot export here. MCP hooks call
-# OGX directly — mirror LCS and forward llama-stack-service-svc to localhost:8321.
-log "Starting port-forward for llama-stack (MCP / ogx_client hooks)..."
-oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
-PF_OGX_PID=$!
-echo "$PF_OGX_PID" >"$E2E_OGX_PORT_FORWARD_PID_FILE"
 
 # Wait for port-forward to be usable (app may not be listening immediately; port-forward can drop)
 log "Waiting for port-forward to lightspeed-stack to be ready..."
@@ -430,7 +394,6 @@ for i in $(seq 1 36); do
     done < <(oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' 2>&1 | tail -40) || true
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
-    kill $PF_OGX_PID 2>/dev/null || true
     exit 1
   fi
   # If port-forward process died, restart it (e.g. "connection refused" / "lost connection to pod")
@@ -443,35 +406,8 @@ for i in $(seq 1 36); do
   sleep 5
 done
 
-log "Waiting for OGX port-forward (localhost:8321 /v1/health)..."
-for i in $(seq 1 36); do
-  if curl -sf http://localhost:8321/v1/health > /dev/null 2>&1; then
-    log "✅ OGX port-forward ready after $(( i * 5 ))s"
-    break
-  fi
-  if [ $i -eq 36 ]; then
-    echo "❌ Port-forward to llama-stack never became healthy (3 min)" | tee /dev/stderr
-    trap - ERR
-    set +e
-    e2e_echo_pod_logs 250
-    kill $PF_LCS_PID 2>/dev/null || true
-    kill $PF_JWKS_PID 2>/dev/null || true
-    kill $PF_OGX_PID 2>/dev/null || true
-    exit 1
-  fi
-  if ! kill -0 $PF_OGX_PID 2>/dev/null; then
-    log "Llama port-forward died, restarting (attempt $i)..."
-    oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &
-    PF_OGX_PID=$!
-    echo "$PF_OGX_PID" >"$E2E_OGX_PORT_FORWARD_PID_FILE"
-  fi
-  sleep 5
-done
-
 export E2E_LSC_HOSTNAME="localhost"
 export E2E_JWKS_HOSTNAME="localhost"
-export E2E_OGX_HOSTNAME="localhost"
-export E2E_OGX_PORT="8321"
 # Same pattern as tests/e2e-prow/rhoai/pipeline.sh and .github/workflows/e2e_tests_*.yaml:
 # Behave {MODEL}/{PROVIDER} use these when set; avoids wrong fallbacks if /v1/models
 # discovery in before_all is empty (matches run-ci.yaml openai + E2E_OPENAI_MODEL).
@@ -485,7 +421,6 @@ fi
 export E2E_DEFAULT_PROVIDER_OVERRIDE E2E_DEFAULT_MODEL_OVERRIDE
 log "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
 log "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
-log "OGX (e2e client hooks) at: http://$E2E_OGX_HOSTNAME:$E2E_OGX_PORT"
 
 #========================================
 # 7. RUN TESTS
@@ -513,20 +448,10 @@ if [[ -n "${E2E_LSC_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_LSC_PORT_FORWARD_PID_F
   fi
   rm -f "$E2E_LSC_PORT_FORWARD_PID_FILE"
 fi
-if [[ -n "${E2E_OGX_PORT_FORWARD_PID_FILE:-}" && -f "$E2E_OGX_PORT_FORWARD_PID_FILE" ]]; then
-  read -r _ll_pf <"$E2E_OGX_PORT_FORWARD_PID_FILE" 2>/dev/null || true
-  if [[ "${_ll_pf:-}" =~ ^[0-9]+$ ]]; then
-    kill -9 "$_ll_pf" 2>/dev/null || true
-  fi
-  rm -f "$E2E_OGX_PORT_FORWARD_PID_FILE"
-fi
-
 kill $PF_LCS_PID 2>/dev/null || true
 kill $PF_JWKS_PID 2>/dev/null || true
-kill $PF_OGX_PID 2>/dev/null || true
 wait $PF_LCS_PID 2>/dev/null || true
 wait $PF_JWKS_PID 2>/dev/null || true
-wait $PF_OGX_PID 2>/dev/null || true
 set -e
 trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 

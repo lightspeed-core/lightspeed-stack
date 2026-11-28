@@ -4,7 +4,8 @@
 
 ### OpenAI E2E (`lightspeed-stack-integration-test.yaml`)
 
-Standard e2e test pipeline using OpenAI as the inference provider.
+Standard e2e test pipeline using OpenAI as the inference provider. Deploys a single
+`lightspeed-stack-service` pod (library mode, OGX in-process) via `pipeline-konflux.sh`.
 
 ### RHEL AI E2E (`lightspeed-stack-rhelai-test.yaml`)
 

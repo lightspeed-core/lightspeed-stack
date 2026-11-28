@@ -14,8 +14,8 @@ spec:
       default: '{"components": [{"name":"lightspeed-stack-0-8", "containerImage": "quay.io/example/lightspeed-stack-0-8:latest"}]}'
       type: string
     - name: llama-stack-image
-      description: 'OGX runs from source on UBI (init container clones repo and installs deps). Parameter name kept for backwards compatibility.'
-      default: 'run-from-source (UBI)'
+      description: 'Deprecated (library mode). Kept for Konflux parameter compatibility; OGX runs in-process in lightspeed-stack.'
+      default: 'in-process (library mode)'
       type: string
     - name: test-name
       description: 'The name of the test corresponding to a defined Konflux integration test.'
@@ -63,7 +63,7 @@ spec:
         - name: env
           value: '{"COMPUTE_NODE_TYPE":"$(params.compute-node-type)","HOSTED_MANAGEMENT_CLUSTER":"$(params.hosted-management-cluster)"}'
     - name: get-stack-images
-      description: Extract lightspeed-stack image and commit from SNAPSHOT (OGX runs from source in-pod)
+      description: Extract lightspeed-stack image and commit from SNAPSHOT (Konflux E2E library mode)
       runAfter:
         - provision-cluster
       params:
@@ -237,6 +237,7 @@ spec:
                 value: "true"
               - name: LIGHTSPEED_STACK_IMAGE
                 value: "$(params.lightspeedstackimage)"
+              # LLAMA_STACK_IMAGE: deprecated param; echoed only (library mode, no separate OGX image).
               - name: LLAMA_STACK_IMAGE
                 value: "$(params.llamastackimage)"
               - name: NAMESPACE

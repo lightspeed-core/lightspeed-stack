@@ -74,21 +74,21 @@ tests/e2e-prow/
 └── rhoai/                       # RHOAI / OpenShift E2E
     ├── run-tests.sh             # Entry to run E2E in Prow
     ├── pipeline.sh              # Prow: full vLLM + LCS + behave (main branch workflow)
-    ├── pipeline-konflux.sh      # Konflux: OpenAI Llama run-from-source + run-ci.yaml + behave
+    ├── pipeline-konflux.sh      # Konflux: library-mode LCS pod + run-ci.yaml + behave
     ├── pipeline-services.sh     # Services for Prow (vLLM OGX image + LCS)
-    ├── pipeline-services-konflux.sh  # Services for Konflux (ogx-openai + templated LCS)
+    ├── pipeline-services-konflux.sh  # Konflux: library-mode lightspeed-stack pod only
     ├── pipeline-vllm.sh         # vLLM cluster setup (called from pipeline.sh)
     ├── pipeline-test-pod.sh     # Test pod pipeline
     ├── configs/                 # vLLM OGX `run.yaml` (used by pipeline.sh for ogx-config ConfigMap seed)
     ├── scripts/
-    │   ├── e2e-ops.sh           # E2E ops (e.g. disrupt/restore OGX) — called from prow_utils
+    │   ├── e2e-ops.sh           # E2E ops (Konflux library mode: single LCS pod)
     │   ├── bootstrap.sh
     │   ├── deploy-vllm.sh
     │   ├── fetch-vllm-image.sh
     │   ├── get-vllm-pod-info.sh
     │   └── gpu-setup.sh
     └── manifests/               # OpenShift/Kubernetes manifests
-        ├── lightspeed/          # Lightspeed stack, OGX, mock-jwks, mock-mcp
+        ├── lightspeed/          # LCS pod manifest, ogx-prow (classic Prow), mocks
         ├── vllm/                # vLLM runtime and inference services (CPU/GPU)
         ├── operators/           # Operator install (operatorgroup, operators, ds-cluster)
         ├── namespaces/          # NFD, nvidia-operator
@@ -287,7 +287,8 @@ For another YAML (`lightspeed-stack-okp-online.yaml`, tool RAG, and so on), repe
 
 | Variable                        | Default     | Description                                                                                                                               |
 |---------------------------------|-------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| `E2E_DEPLOYMENT_MODE`           | `server`    | `server` or `library`. Drives config paths under `configuration/server-mode/` vs `configuration/library-mode/`.                             |
+| `E2E_DEPLOYMENT_MODE`           | `server`    | `server` or `library`. Drives config paths and which scenarios run (e.g. `@skip-in-library-mode`). Konflux forces `library`.              |
+| `E2E_LIGHTSPEED_CONFIG_DIR`     | see below   | Repo-relative folder for Prow/Konflux ConfigMap YAML sources. Konflux default: `tests/e2e/configuration/library-mode`.                      |
 | `E2E_LSC_HOSTNAME`              | `localhost` | Host of the Lightspeed Core Stack API.                                                                                                    |
 | `E2E_LSC_PORT`                  | `8080`      | Port of the Lightspeed Core Stack API.                                                                                                    |
 | `E2E_OGX_HOSTNAME`            | `localhost` | Host of the OGX service (server mode). GitHub Actions repo variable: `E2E_LLAMA_HOSTNAME` (compose maps it here). |
@@ -313,7 +314,9 @@ For local Docker runs, defaults are usually enough. Override when the stack is o
 - **Server mode** (`E2E_DEPLOYMENT_MODE=server`): Lightspeed Core Stack talks to a **separate** OGX service (e.g. `OGX` container). Configs under `configuration/server-mode/` are used.
 - **Library mode** (`E2E_DEPLOYMENT_MODE=library`): OGX runs **in-process** with the app. Configs under `configuration/library-mode/` are used.
 
-Mode is set in `before_all` from `E2E_DEPLOYMENT_MODE` and stored as `context.is_library_mode`.
+**Konflux** (`pipeline-konflux.sh`) always sets `E2E_DEPLOYMENT_MODE=library` and deploys only `lightspeed-stack-service` (no `llama-stack-service`, no `:8321` port-forward). The OpenShift ConfigMap `llama-stack-config` still holds the synthesis profile `run.yaml` mounted into the LCS pod.
+
+Mode is set in `before_all` from `E2E_DEPLOYMENT_MODE` and stored as `context.is_library_mode`. **Classic Prow** (`pipeline.sh`) remains server mode with `ogx-prow.yaml` plus a separate LCS pod.
 
 ---
 
@@ -337,10 +340,6 @@ All tag behaviour is implemented in **`features/environment.py`**: the hooks (`b
 | `@RHIdentity`                   | Feature-level: use RH identity config; restore in after_feature.                                                                                        |
 | `@Feedback`                     | Feature-level: set feedback conversation list; after_feature deletes those conversations.                                                               |
 | `@MCP`                          | Feature-level: use MCP config; restore in after_feature.                                                                                                |
-| `@TunnelProxy`                  | Selection: tunnel proxy (HTTP CONNECT) scenarios.                                                                                                       |
-| `@InterceptionProxy`            | Selection: TLS-intercepting proxy with trustme CA scenarios.                                                                                            |
-| `@TLSVersion`                   | Selection: TLS version configuration scenarios.                                                                                                          |
-| `@TLSCipher`                    | Selection: cipher suite configuration scenarios.                                                                                                         |
 
 
 ### Multiple Tags and Skip Comment

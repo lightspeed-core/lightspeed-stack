@@ -97,7 +97,9 @@ def before_all(context: Context) -> None:
             "e2e-test-secret-do-not-use-in-production"
         )
 
-    # Detect deployment mode from environment variable
+    # Konflux always runs library mode (single LCS pod, OGX in-process).
+    if is_konflux_environment():
+        os.environ["E2E_DEPLOYMENT_MODE"] = "library"
     context.deployment_mode = os.getenv("E2E_DEPLOYMENT_MODE", "server").lower()
     context.is_library_mode = context.deployment_mode == "library"
 
@@ -253,8 +255,7 @@ def _dump_pod_logs_on_failure(
     """Dump container logs when a scenario fails in Prow."""
     if scenario.status != "failed":
         return
-    # Pod names match tests/e2e-prow manifests (legacy llama-stack-service id).
-    pods: tuple[str, ...] = ("llama-stack-service", "lightspeed-stack-service")
+    pods: tuple[str, ...] = ("lightspeed-stack-service",)
     feature = getattr(context, "feature", None)
     feat_tags = getattr(feature, "tags", []) if feature else []
     if "cfg_okp" in feat_tags:

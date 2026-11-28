@@ -1,14 +1,18 @@
+# Konflux / library-mode E2E: single pod with in-process OGX (matches docker-compose-library.yaml).
+# Needs ConfigMaps: lightspeed-stack-config, llama-stack-config (legacy name — key run.yaml), rag-data, e2e-skills;
+# Secrets: openai-api-key-secret, optional faiss-vector-store-secret, optional vllm-* for RHEL AI.
 apiVersion: v1
 kind: Pod
 metadata:
   name: lightspeed-stack-service
 spec:
+  imagePullSecrets:
+    - name: quay-lightspeed-pull-secret
   securityContext:
     seccompProfile:
       type: RuntimeDefault
-  # Seed agent-skills fixtures (docker-compose: ./tests/e2e/skills -> /app-root/skills).
-  # ConfigMap cannot preserve nested skill dirs; extract tarball into emptyDir.
   initContainers:
+    # Seed agent-skills fixtures (docker-compose: ./tests/e2e/skills -> /app-root/skills).
     - name: seed-skills
       image: busybox:latest
       securityContext:
@@ -25,15 +29,15 @@ spec:
         - |
           set -e
           tar xzf /skills-seed/skills.tgz -C /skills-dest
-          ls -la /skills-dest
       volumeMounts:
         - name: skills-seed
           mountPath: /skills-seed
           readOnly: true
         - name: skills
           mountPath: /skills-dest
-  containers:
-    - name: lightspeed-stack-container
+    # FAISS BYOK fixture — entrypoint.sh copies seed into KV_RAG_PATH (writable).
+    - name: seed-rag
+      image: busybox:latest
       securityContext:
         allowPrivilegeEscalation: false
         capabilities:
@@ -42,46 +46,131 @@ spec:
         runAsUser: 1000
         seccompProfile:
           type: RuntimeDefault
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          if [ ! -f /rag-seed/kv_store.db.gz ]; then
+            echo "WARN: rag-data ConfigMap missing kv_store.db.gz"
+            exit 0
+          fi
+          gzip -dc /rag-seed/kv_store.db.gz > /rag-dest/kv_store.db
+          sz=$(wc -c < /rag-dest/kv_store.db)
+          if [ "$sz" -lt 1048576 ]; then
+            echo "FATAL: RAG seed too small (${sz} bytes)"
+            exit 1
+          fi
+          if [ -f /rag-seed/pdf_kv_store.db.gz ]; then
+            gzip -dc /rag-seed/pdf_kv_store.db.gz > /rag-dest/pdf_kv_store.db
+            pdf_sz=$(wc -c < /rag-dest/pdf_kv_store.db)
+            if [ "$pdf_sz" -lt 1024 ]; then
+              echo "FATAL: PDF RAG seed too small (${pdf_sz} bytes)"
+              exit 1
+            fi
+          fi
+      volumeMounts:
+        - name: rag-data
+          mountPath: /rag-seed
+          readOnly: true
+        - name: rag-seed
+          mountPath: /rag-dest
+    # BYOK / inline RAG embeddings (docker-compose: HF_CACHE_PATH -> .../.cache/huggingface).
+    - name: prefetch-embeddings
+      image: ${LIGHTSPEED_STACK_IMAGE}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
       env:
-        - name: E2E_OGX_HOSTNAME
+        - name: HF_HOME
+          value: /opt/app-root/src/.cache/huggingface
+        - name: HOME
+          value: /opt/app-root/src
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          mkdir -p "$HF_HOME"
+          /app-root/.venv/bin/python -c \
+            "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')"
+      volumeMounts:
+        - name: hf-cache
+          mountPath: /opt/app-root/src/.cache/huggingface
+  containers:
+    - name: lightspeed-stack-container
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        # Match Konflux/Containerfile USER 1001 so library-mode synthesis can write
+        # ./.generated under /app-root (DEFAULT_SYNTHESIZED_CONFIG_PATH).
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      env:
+        - name: OPENAI_API_KEY
           valueFrom:
             secretKeyRef:
-              name: llama-stack-ip-secret
+              name: openai-api-key-secret
               key: key
+        - name: E2E_OPENAI_MODEL
+          value: "gpt-5.6-luna"
         - name: FAISS_VECTOR_STORE_ID
           valueFrom:
             secretKeyRef:
               name: faiss-vector-store-secret
               key: id
               optional: true
-        # LCS inference.providers (openai): pydantic-ai reads OPENAI_API_KEY at startup.
-        - name: OPENAI_API_KEY
+        - name: RAG_SEED_DIR
+          value: "/app-root/.e2e-rag-seed"
+        - name: KV_RAG_PATH
+          value: "/tmp/e2e-rag-work/kv_store.db"
+        - name: PDF_KV_RAG_PATH
+          value: "/tmp/e2e-rag-work/pdf_kv_store.db"
+        # OKP Solr (@cfg_okp): in-cluster Service from okp-solr.yaml (same namespace).
+        - name: RH_SERVER_OKP
+          value: "http://okp-solr-service-svc:8080/solr"
+        - name: VLLM_URL
           valueFrom:
             secretKeyRef:
-              name: openai-api-key-secret
+              name: vllm-url-secret
               key: key
               optional: true
-        - name: E2E_OPENAI_MODEL
-          value: "gpt-5.6-luna"
-        # Unused for server-mode FAISS (llama pod owns the fixture); keep out of ~/.llama.
-        - name: KV_RAG_PATH
-          value: "/app-root/.e2e-rag-work/kv_store.db"
-        - name: OTEL_SDK_DISABLED
-          value: "true"
-        - name: OTEL_ANONYMIZATION_SECRET
-          value: "lightspeed-stack-otel-anonymization-dev-default"
+        - name: VLLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: vllm-api-key-secret
+              key: key
+              optional: true
         - name: VLLM_MODEL
           valueFrom:
             secretKeyRef:
               name: vllm-model-secret
               key: key
               optional: true
+        - name: OTEL_SDK_DISABLED
+          value: "true"
+        - name: OTEL_ANONYMIZATION_SECRET
+          value: "lightspeed-stack-otel-anonymization-dev-default"
+        - name: HF_HUB_OFFLINE
+          value: "1"
+        # Align with docker-compose-library.yaml so sentence-transformers uses the
+        # prefetched HF cache (not ~/.cache under an unwritable $HOME).
+        - name: HOME
+          value: /opt/app-root/src
+        - name: HF_HOME
+          value: /opt/app-root/src/.cache/huggingface
       image: ${LIGHTSPEED_STACK_IMAGE}
-      command: ["/bin/sh", "-c", "mkdir -p /tmp/data && exec /app-root/entrypoint.sh"]
+      command: ["/bin/sh", "-c", "mkdir -p /tmp/data /tmp/e2e-rag-work && exec /app-root/entrypoint.sh"]
       ports:
         - containerPort: 8080
-      # TCP probes avoid HTTP/auth. LCS + Llama handshake and large images can take 60–120s before :8080 listens;
-      # aggressive liveness was killing the container (connection refused) and breaking port-forward sandboxes.
       readinessProbe:
         tcpSocket:
           port: 8080
@@ -98,28 +187,44 @@ spec:
         - name: config
           mountPath: /app-root/lightspeed-stack.yaml
           subPath: lightspeed-stack.yaml
-        # Agent skills E2E (skills.feature): matches docker-compose mount path
+        - name: ogx-run-config
+          mountPath: /app-root/run.yaml
+          subPath: run.yaml
+        - name: rag-seed
+          mountPath: /app-root/.e2e-rag-seed
+          readOnly: true
         - name: skills
           mountPath: /app-root/skills
           readOnly: true
-        # MCPFileAuth E2E: must match authorization_headers paths in lightspeed-stack-mcp-file-auth.yaml (/tmp/mcp-token)
         - name: mcp-file-auth-token
           mountPath: /tmp/mcp-token
           subPath: token
           readOnly: true
-        # InvalidMCPFileAuthConfig E2E: docker-compose mounts tests/e2e/secrets/invalid-mcp-token here
         - name: mcp-invalid-file-auth-token
           mountPath: /tmp/invalid-mcp-token
           subPath: token
           readOnly: true
+        - name: hf-cache
+          mountPath: /opt/app-root/src/.cache/huggingface
   volumes:
     - name: config
       configMap:
         name: lightspeed-stack-config
+    - name: ogx-run-config
+      configMap:
+        name: llama-stack-config
+    - name: rag-data
+      configMap:
+        name: rag-data
+        optional: true
+    - name: rag-seed
+      emptyDir: {}
     - name: skills-seed
       configMap:
         name: e2e-skills
     - name: skills
+      emptyDir: {}
+    - name: hf-cache
       emptyDir: {}
     - name: mcp-file-auth-token
       secret:

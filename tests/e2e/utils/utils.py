@@ -20,6 +20,7 @@ from tests.e2e.utils.prow_utils import (
 )
 
 _DEFAULT_CLUSTER_LIGHTSPEED_CONFIG_DIR = "tests/e2e/configuration/server-mode"
+_DEFAULT_KONFLUX_LIGHTSPEED_CONFIG_DIR = "tests/e2e/configuration/library-mode"
 
 
 def _e2e_repo_root() -> str:
@@ -74,6 +75,17 @@ def is_konflux_environment() -> bool:
     return os.getenv("E2E_KONFLUX_E2E") == "1"
 
 
+def is_e2e_library_cluster() -> bool:
+    """Return True when cluster E2E runs LCS with in-process OGX (Konflux today).
+
+    Classic ``pipeline.sh`` remains server mode until it is rewired; only Konflux
+    forces library mode in the pipeline and test harness.
+    """
+    if is_konflux_environment():
+        return True
+    return os.getenv("E2E_DEPLOYMENT_MODE", "server").strip().lower() == "library"
+
+
 # Transient connection resets (e.g. errno 104) after container restarts in CI/Docker.
 E2E_HTTP_TRANSIENT_MAX_ATTEMPTS: int = 3
 E2E_HTTP_TRANSIENT_DELAY_S: float = 0.5
@@ -117,15 +129,17 @@ def cluster_lightspeed_config_dir() -> str:
 
     Paths are relative to the repository root. Pipelines set
     ``E2E_LIGHTSPEED_CONFIG_DIR`` explicitly so local and CI agree on one variable;
-    when unset, defaults to ``tests/e2e/configuration/server-mode``.
+    Konflux defaults to ``tests/e2e/configuration/library-mode``; classic Prow
+    defaults to ``server-mode``.
 
     Returns:
         Non-empty repo-relative directory path.
 
     """
-    raw = os.getenv("E2E_LIGHTSPEED_CONFIG_DIR", _DEFAULT_CLUSTER_LIGHTSPEED_CONFIG_DIR)
+    default = _DEFAULT_KONFLUX_LIGHTSPEED_CONFIG_DIR
+    raw = os.getenv("E2E_LIGHTSPEED_CONFIG_DIR", default)
     stripped = raw.strip()
-    return stripped or _DEFAULT_CLUSTER_LIGHTSPEED_CONFIG_DIR
+    return stripped or default
 
 
 def cluster_lightspeed_config_path(filename: str) -> str:

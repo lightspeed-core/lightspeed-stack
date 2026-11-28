@@ -1,9 +1,5 @@
 # List of source files stored in `tests/e2e/utils` directory
 
-## [ogx_prow_utils.py](ogx_prow_utils.py)
-
-Thin Prow/OpenShift wrappers for OGX run.yaml ConfigMap operations.
-
 ## [prow_utils.py](prow_utils.py)
 
 Prow/OpenShift-specific utility functions for E2E tests.
